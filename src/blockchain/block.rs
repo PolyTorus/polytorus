@@ -1,5 +1,7 @@
 use std::fmt;
+use std::time::SystemTime;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub timestamp: u64,
     pub last_hash: String,
@@ -19,6 +21,17 @@ impl Block {
 
     pub fn genesis() -> Block {
         Block::new(0, "genesis_last_hash".to_string(), "genesis_hash".to_string(), "genesis_data".to_string())
+    }
+
+    pub fn mine_block(last_block: &Block, data: String) -> Block {
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let last_hash = last_block.hash.clone();
+        let hash = "todo".to_string();
+
+        Block::new(timestamp, last_hash, hash, data)
     }
 }
 
@@ -64,5 +77,15 @@ mod tests {
         assert_eq!(genesis_block.last_hash, "genesis_last_hash".to_string());
         assert_eq!(genesis_block.hash, "genesis_hash".to_string());
         assert_eq!(genesis_block.data, "genesis_data".to_string());
+    }
+
+    #[test]
+    fn block_mine_block() {
+        let last_block = Block::genesis();
+        let data = "mined data".to_string();
+        let mined_block = Block::mine_block(&last_block, data.clone());
+
+        assert_eq!(mined_block.last_hash, last_block.hash);
+        assert_eq!(mined_block.data, data);
     }
 }
