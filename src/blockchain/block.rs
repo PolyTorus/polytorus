@@ -16,6 +16,10 @@ impl Block {
             data,
         }
     }
+
+    pub fn genesis() -> Block {
+        Block::new(0, "genesis_last_hash".to_string(), "genesis_hash".to_string(), "genesis_data".to_string())
+    }
 }
 
 impl fmt::Display for Block {
@@ -50,5 +54,15 @@ mod tests {
             format!("{}", block),
             "Block - Timestamp: 0, Last Hash: foo, Hash: bar, Data: baz"
         );
+    }
+
+    #[test]
+    fn block_genesis() {
+        let genesis_block = Block::genesis();
+
+        assert_eq!(genesis_block.timestamp, 0);
+        assert_eq!(genesis_block.last_hash, "genesis_last_hash".to_string());
+        assert_eq!(genesis_block.hash, "genesis_hash".to_string());
+        assert_eq!(genesis_block.data, "genesis_data".to_string());
     }
 }
