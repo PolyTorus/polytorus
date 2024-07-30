@@ -1,8 +1,9 @@
 use super::global::{CHAIN, BlockJson};
-use actix_web::{get, HttpResponse, Responder};
+use actix_web::{get, post, HttpResponse, Responder};
 
-#[get("/block")]
-async fn block() -> impl Responder {
+// /mine endpoint
+#[post("/mine")]
+async fn mine() -> impl Responder {
     let mut chain = CHAIN.lock().unwrap();
     let block = chain.add_block("block".to_string());
 
