@@ -41,6 +41,10 @@ impl Block {
         hasher.update(input);
         format!("{:x}", hasher.finalize())
     }
+
+    pub fn hash_block(block: &Block) -> String {
+        Block::hash(block.timestamp, block.last_hash.clone(), block.data.clone())
+    }
 }
 
 impl fmt::Display for Block {
@@ -106,4 +110,5 @@ mod tests {
 
         assert_eq!(hash, Block::hash(timestamp, last_hash, data));
     }
+
 }
