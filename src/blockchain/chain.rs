@@ -1,7 +1,8 @@
 // blockをimport
 use super::block::Block;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chain {
     chain: Vec<Block>,
 }

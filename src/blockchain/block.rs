@@ -1,8 +1,9 @@
 use std::fmt;
 use std::time::SystemTime;
 use sha2::{Digest, Sha256};
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Block {
     pub timestamp: u64,
     pub last_hash: String,
@@ -30,7 +31,7 @@ impl Block {
             .unwrap()
             .as_secs();
         let last_hash = last_block.hash.clone();
-        let hash = "todo".to_string();
+        let hash = Block::hash(timestamp, last_hash.clone(), data.clone());
 
         Block::new(timestamp, last_hash, hash, data)
     }

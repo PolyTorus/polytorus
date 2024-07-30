@@ -1,4 +1,4 @@
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, web};
 use polytorus::app::route::index;
 use polytorus::app::show_block::block;
 
@@ -8,6 +8,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .service(index)
             .service(block)
+            .service(web::redirect("/mine", "/block"))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
