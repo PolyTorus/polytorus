@@ -1,11 +1,11 @@
-use super::global::{CHAIN, BlockJson};
+use super::global::{CHAIN, BlockJson, PostBlockJson};
 use actix_web::{post, HttpResponse, Responder, web};
 
 // /mine endpoint
 #[post("/mine")]
-async fn mine(block: web::Json<BlockJson>) -> impl Responder {
+async fn mine(data: web::Json<PostBlockJson>) -> impl Responder {
     let mut chain = CHAIN.lock().unwrap();
-    let block = chain.add_block(block.data.clone());
+    let block = chain.add_block(data.data.clone());
 
     let block_json = BlockJson {
         timestamp: block.timestamp,
@@ -16,8 +16,5 @@ async fn mine(block: web::Json<BlockJson>) -> impl Responder {
 
     let json = serde_json::to_string(&block_json).unwrap();
 
-    // redirect to /block
-    HttpResponse::Found()
-        .append_header(("location", "/block"))
-        .body(json)
+    HttpResponse::Ok().body(json)
 }

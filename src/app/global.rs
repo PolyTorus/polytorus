@@ -15,3 +15,9 @@ pub struct BlockJson {
     pub hash: String,
     pub data: String,
 }
+
+// post
+#[derive(Serialize, Deserialize)]
+pub struct PostBlockJson {
+    pub data: String,
+}
