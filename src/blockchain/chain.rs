@@ -1,6 +1,7 @@
 // blockをimport
 use super::block::Block;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chain {
     chain: Vec<Block>,
 }
@@ -74,7 +75,7 @@ mod tests {
         chain.chain[0].data = "corrupt_data".to_string();
 
         assert!(!chain.is_valid_chain());
-        
+
         chain.chain[0].data = "genesis_data".to_string();
         chain.chain.push(Block::mine_block(&chain.chain[
             chain.chain.len() - 1
