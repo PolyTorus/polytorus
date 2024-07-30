@@ -36,6 +36,16 @@ impl Chain {
 
         true
     }
+
+    pub fn replace_chain(&mut self, new_chain: &Chain) {
+        if new_chain.chain.len() <= self.chain.len() {
+            return;
+        } else if !new_chain.is_valid_chain() {
+            return;
+        }
+
+        self.chain = new_chain.chain.clone();
+    }
 }
 
 impl Default for Chain {
@@ -82,5 +92,16 @@ mod tests {
         ], "foo".to_string()));
 
         assert!(!chain.is_valid_chain());
+    }
+
+    #[test]
+    fn chain_replace_chain() {
+        let mut blockchain = Chain::new();
+        blockchain.add_block("First block after genesis".to_string());
+
+        let mut new_blockchain = Chain::new();
+        new_blockchain.replace_chain(&blockchain);
+
+        assert_eq!(new_blockchain.chain.len(), 1);
     }
 }
