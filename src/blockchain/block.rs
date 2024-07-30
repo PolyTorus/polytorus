@@ -1,5 +1,6 @@
 use std::fmt;
 use std::time::SystemTime;
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
@@ -32,6 +33,13 @@ impl Block {
         let hash = "todo".to_string();
 
         Block::new(timestamp, last_hash, hash, data)
+    }
+
+    pub fn hash(timestamp: u64, last_hash: String, data: String) -> String {
+        let input = format!("{}{}{}", timestamp, last_hash, data);
+        let mut hasher = Sha256::new();
+        hasher.update(input);
+        format!("{:x}", hasher.finalize())
     }
 }
 
@@ -87,5 +95,15 @@ mod tests {
 
         assert_eq!(mined_block.last_hash, last_block.hash);
         assert_eq!(mined_block.data, data);
+    }
+
+    #[test]
+    fn block_hash() {
+        let timestamp = 0;
+        let last_hash = "foo".to_string();
+        let data = "bar".to_string();
+        let hash = Block::hash(timestamp, last_hash.clone(), data.clone());
+
+        assert_eq!(hash, Block::hash(timestamp, last_hash, data));
     }
 }
