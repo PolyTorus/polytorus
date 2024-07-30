@@ -1,5 +1,5 @@
 use super::global::{CHAIN, BlockJson};
-use actix_web::{get, post, HttpResponse, Responder};
+use actix_web::{post, HttpResponse, Responder};
 
 // /mine endpoint
 #[post("/mine")]
@@ -16,5 +16,8 @@ async fn mine() -> impl Responder {
 
     let json = serde_json::to_string(&block_json).unwrap();
 
-    HttpResponse::Ok().body(json)
+    // redirect to /block
+    HttpResponse::Found()
+        .append_header(("location", "/block"))
+        .body(json)
 }
