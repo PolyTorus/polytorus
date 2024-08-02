@@ -116,7 +116,6 @@ T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Di
 #[cfg(test)]
 mod tests {
     use super::*;
-    use k256::elliptic_curve::rand_core::le;
     use primitive_types::U256;
 
     #[test]
