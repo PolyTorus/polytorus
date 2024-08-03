@@ -52,6 +52,29 @@ where
     }
 }
 
+impl<T, U> Mul<U> for Point<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + PartialOrd + Copy + std::fmt::Debug,
+    U: Sub<Output = U> + Div<Output = U> + Mul<Output = U> + PartialOrd + Copy + std::fmt::Debug,
+{
+    type Output = Point<T>;
+
+    fn mul(self, other: U) -> Self::Output {
+        let zero = other - other;
+        let one = other / other;
+
+        let mut result = Point::Infinity;
+        let mut counter = other;
+
+        while counter > zero {
+            result = result + self;
+            counter = counter - one;
+        }
+
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use primitive_types::U256;
@@ -87,5 +110,15 @@ mod tests {
 
         assert_eq!(p3, Point::Coordinate { x: x3, y: y3, a, b });
 
+    }
+
+    #[test]
+    fn mul_point() {
+        let p0 = Point::new(2, 5, 5, 7);
+        let p1 = Point::new(2, -5, 5, 7);
+
+        assert_ne!(p0, p1);
+        assert_eq!(p0 * 3, p1);
+        assert_eq!(p0 * U256::from(3), p1);
     }
 }
