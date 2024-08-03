@@ -51,3 +51,41 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use primitive_types::U256;
+    use super::super::field_element::FieldElement;
+    use super::super::point::Point;
+
+    #[test]
+    fn point_on_elliptic_curve() {
+        let a = FieldElement::new(U256::from(0), U256::from(223)).unwrap();
+        let b = FieldElement::new(U256::from(7), U256::from(223)).unwrap();
+        let x = FieldElement::new(U256::from(192), U256::from(223)).unwrap();
+        let y = FieldElement::new(U256::from(105), U256::from(223)).unwrap();
+
+        assert_eq!(y * y, x * x * x + a * x + b);
+    }
+
+    #[test]
+    fn add_points() {
+        let a = FieldElement::new(U256::from(0), U256::from(223)).unwrap();
+        let b = FieldElement::new(U256::from(7), U256::from(223)).unwrap();
+        let x1 = FieldElement::new(U256::from(192), U256::from(223)).unwrap();
+        let y1 = FieldElement::new(U256::from(105), U256::from(223)).unwrap();
+        let x2 = FieldElement::new(U256::from(17), U256::from(223)).unwrap();
+        let y2 = FieldElement::new(U256::from(56), U256::from(223)).unwrap();
+
+        let p1 = Point::Coordinate { x: x1, y: y1, a, b };
+        let p2 = Point::Coordinate { x: x2, y: y2, a, b };
+
+        let p3 = p1 + p2;
+
+        let x3 = FieldElement::new(U256::from(170), U256::from(223)).unwrap();
+        let y3 = FieldElement::new(U256::from(142), U256::from(223)).unwrap();
+
+        assert_eq!(p3, Point::Coordinate { x: x3, y: y3, a, b });
+
+    }
+}
