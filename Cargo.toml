@@ -20,3 +20,4 @@ hex-literal = "0.4.1"
 hex = "0.4"
 k256 = "0.13.3"
 primitive-types = "0.12.2"
+secp256k1 = {versoin = "0.29.0", features = ["rand", "hashes"]}
