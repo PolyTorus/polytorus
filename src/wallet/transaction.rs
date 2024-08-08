@@ -56,3 +56,17 @@ impl Transaction {
         balance
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transaction() {
+        let mut transaction = Transaction::new(vec![], vec![]);
+        transaction.add_input(Uuid::new_v4(), 0, 100, "Alice".to_string());
+        transaction.add_output(0, 100, "Bob".to_string());
+        assert_eq!(transaction.get_balance("Alice"), -100);
+        assert_eq!(transaction.get_balance("Bob"), 100);
+    }
+}
