@@ -15,9 +15,9 @@ pub struct Transaction {
 #[derive(Debug, Clone)]
 pub struct Input {
     pub timestamp: SystemTime,
-    amount: u64,
-    address: String,
-    signature: Vec<u8>,
+    pub amount: u64,
+    pub address: String,
+    pub signature: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -55,13 +55,11 @@ impl Transaction {
     // sign transaction
     pub fn sign(&self, wallet: &Wallet) -> Self {
         let mut transaction = self.clone();
-        let message = sha256::Hash::hash(Uuid::to_string(&transaction.id).as_bytes());
-        let sign = wallet.sign(message);
         transaction.input.push(Input {
             timestamp: SystemTime::now(),
             amount: wallet.balance,
             address: wallet.public_key.to_string(),
-            signature: sign.serialize_compact().to_vec(),
+            signature: vec![],
         });
         transaction
     }
