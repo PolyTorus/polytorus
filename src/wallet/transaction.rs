@@ -76,4 +76,11 @@ mod tests {
         let signed_transaction = transaction.sign(&wallet);
         println!("{:?}", signed_transaction);
     }
+
+    #[test]
+    fn test_transaction_invalid_amount() {
+        let wallet = Wallet::new();
+        let transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 1000);
+        println!("{:?}", transaction.unwrap());
+    }
 }
