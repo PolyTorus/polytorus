@@ -1,59 +1,69 @@
 use uuid::Uuid;
+use super::wallets::{self, Wallet};
+use secp256k1::hashes::{sha256, Hash};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::{Secp256k1, Message};
+use std::time::SystemTime;
 
+#[derive(Debug, Clone)]
 pub struct Transaction {
     pub id: Uuid,
     pub input: Vec<Input>,
     pub output: Vec<Output>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Input {
-    pub transaction_id: Uuid,
-    pub index: u32,
-    pub amount: u64,
-    pub address: String,
+    pub timestamp: SystemTime,
+    amount: u64,
+    address: String,
+    signature: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Output {
-    pub index: u32,
     pub amount: u64,
     pub address: String,
 }
 
 impl Transaction {
-    pub fn new(input: Vec<Input>, output: Vec<Output>) -> Self {
-        Transaction {
+    pub fn new(sender: Wallet, receipient: String, amount: u64) -> Result<Self, String> {
+        if amount > sender.balance {
+            return Err("Amount exceeds balance".to_string());
+        }
+
+        let mut transaction = Transaction {
             id: Uuid::new_v4(),
-            input,
-            output,
-        }
-    }
+            input: vec![],
+            output: vec![],
+        };
 
-    pub fn add_input(&mut self, transaction_id: Uuid, index: u32, amount: u64, address: String) {
-        self.input.push(Input {
-            transaction_id,
-            index,
-            amount,
-            address,
+        transaction.output.push(Output {
+            amount: sender.balance - amount,
+            address: sender.public_key.to_string(),
         });
-    }
 
-    pub fn add_output(&mut self, index: u32, amount: u64, address: String) {
-        self.output.push(Output { index, amount, address });
-    }
+        transaction.output.push(Output {
+            amount: amount,
+            address: receipient,
+        });
 
-    pub fn get_balance(&self, address: &str) -> i64 {
-        let mut balance = 0;
-        for input in &self.input {
-            if input.address == address {
-                balance -= input.amount as i64;
-            }
-        }
-        for output in &self.output {
-            if output.address == address {
-                balance += output.amount as i64;
-            }
-        }
-        balance
+        Ok(transaction)
+    }
+   
+
+    // sign transaction
+    pub fn sign(&self, wallet: &Wallet) -> Self {
+        let mut transaction = self.clone();
+        let message = sha256::Hash::hash(Uuid::to_string(&transaction.id).as_bytes());
+        let sign = wallet.sign(message);
+        transaction.input.push(Input {
+            timestamp: SystemTime::now(),
+            amount: wallet.balance,
+            address: wallet.public_key.to_string(),
+            signature: sign.serialize_compact().to_vec(),
+        });
+        transaction
     }
 }
 
@@ -63,10 +73,9 @@ mod tests {
 
     #[test]
     fn test_transaction() {
-        let mut transaction = Transaction::new(vec![], vec![]);
-        transaction.add_input(Uuid::new_v4(), 0, 100, "Alice".to_string());
-        transaction.add_output(0, 100, "Bob".to_string());
-        assert_eq!(transaction.get_balance("Alice"), -100);
-        assert_eq!(transaction.get_balance("Bob"), 100);
+        let wallet = Wallet::new();
+        let transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 10).unwrap();
+        let signed_transaction = transaction.sign(&wallet);
+        println!("{:?}", signed_transaction);
     }
 }
