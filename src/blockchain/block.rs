@@ -1,8 +1,9 @@
 use std::fmt;
 use std::time::SystemTime;
-use sha2::{Digest, Sha256};
+// use sha2::{Digest, Sha256};
 use serde::{Serialize, Deserialize};
 use super::config::{DIFFICULTY, MINE_RATE};
+use secp256k1::hashes::{sha256, Hash};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Block {
@@ -40,7 +41,7 @@ impl Block {
         let mut difficulty = last_block.difficulty;
     
         let mut hash = Block::hash(timestamp, last_hash.clone(), nonce, data.clone(), difficulty);
-        while !hash.starts_with(&"0".repeat(difficulty as usize)) {
+        while !hash.to_string().starts_with(&"0".repeat(difficulty as usize)) {
             nonce += 1;
             timestamp = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -50,17 +51,16 @@ impl Block {
             hash = Block::hash(timestamp, last_hash.clone(), nonce, data.clone(), difficulty);
         }
     
-        Block::new(timestamp, last_hash, hash, nonce, data, last_block.difficulty)
+        Block::new(timestamp, last_hash, hash.to_string(), nonce, data, last_block.difficulty)
     }
 
-    pub fn hash(timestamp: u64, last_hash: String, nonce: u64, data: String, difficulty: u32) -> String {
-        let input = format!("{}{}{}{}{}", timestamp, last_hash, nonce, data, difficulty);
-        let mut hasher = Sha256::new();
-        hasher.update(input);
-        format!("{:x}", hasher.finalize())
+    pub fn hash(timestamp: u64, last_hash: String, nonce: u64, data: String, difficulty: u32) -> sha256::Hash {
+        let input = format!("{}{}{}{}{}", timestamp, last_hash, nonce, data, difficulty);        
+        let hash = sha256::Hash::hash(input.as_bytes());
+        hash
     }
 
-    pub fn hash_block(block: &Block) -> String {
+    pub fn hash_block(block: &Block) -> sha256::Hash {
         Block::hash(block.timestamp, block.last_hash.clone(),  block.nonce, block.data.clone(), block.difficulty)
     }
 

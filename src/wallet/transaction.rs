@@ -1,8 +1,5 @@
 use uuid::Uuid;
-use super::wallets::{self, Wallet};
-use secp256k1::hashes::{sha256, Hash};
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, Message};
+use super::wallets::Wallet;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
@@ -81,6 +78,6 @@ mod tests {
     fn test_transaction_invalid_amount() {
         let wallet = Wallet::new();
         let transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 1000);
-        println!("{:?}", transaction.unwrap());
+        assert!(transaction.is_err());
     }
 }

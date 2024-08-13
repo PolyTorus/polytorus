@@ -30,7 +30,7 @@ impl Chain {
             let block = &self.chain[i];
             let last_block = &self.chain[i - 1];
 
-            if block.last_hash != last_block.hash || block.hash != Block::hash_block(block) {
+            if block.last_hash != last_block.hash || block.hash != Block::hash_block(block).to_string() {
                 return false;
             }
         }
