@@ -68,4 +68,13 @@ mod tests {
         let signature = wallet.sign(message_hash);
         println!("{:?}", signature);
     }
+
+    #[test]
+    fn test_wallet_verify() {
+        let wallet = Wallet::new();
+        let message = "Hello, world!";
+        let message_hash = sha256::Hash::hash(message.as_bytes());
+        let signature = wallet.sign(message_hash);
+        assert!(wallet.verify(message_hash, signature));
+    }
 }

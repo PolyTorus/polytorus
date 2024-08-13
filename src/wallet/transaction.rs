@@ -66,19 +66,11 @@ impl Transaction {
     // verify transaction
     pub fn verify(&self) -> bool {
         let mut message = self.clone();
-        for output in &self.output {
-            message.output.push(Output {
-                amount: output.amount,
-                address: output.address.clone(),
-            });
-        }
-
-        for input in &self.input {
-            if !Wallet::verify(&input.address, sha256::Hash::hash(&bincode::serialize(&message.output).unwrap()), input.signature) {
-                return false;
-            }
-        }
-        true
+        message.input = vec![];
+        let message_hash = sha256::Hash::hash(&bincode::serialize(&message.output).unwrap());
+        self.input.iter().all(|input| {
+            input.address.verify(message_hash, input.signature)
+        })
     }
 }
 
@@ -99,5 +91,13 @@ mod tests {
         let wallet = Wallet::new();
         let transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 1000);
         assert!(transaction.is_err());
+    }
+
+    #[test]
+    fn test_transaction_verify() {
+        let wallet = Wallet::new();
+        let transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 10).unwrap();
+        let signed_transaction = transaction.sign(&wallet);
+        assert!(signed_transaction.verify());
     }
 }
