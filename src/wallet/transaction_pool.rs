@@ -1,4 +1,4 @@
-use super::transaction::Transaction;
+use super::{transaction::{Input, Transaction}, wallets::Wallet};
 use std::fmt;
 
 pub struct Pool {
@@ -18,6 +18,10 @@ impl Pool {
             Some(i) => self.transactions[i] = transaction,
             None => self.transactions.push(transaction),
         }
+    }
+
+    pub fn exists(&self, address: Wallet) -> Option<Transaction> {
+        self.transactions.iter().find(|t| <Vec<Input> as Clone>::clone(&t.input).into_iter().any(|i| i.address.public_key == address.public_key)).cloned()
     }
 }
 

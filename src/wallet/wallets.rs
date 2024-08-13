@@ -4,12 +4,14 @@ use secp256k1::{Secp256k1, Message};
 use crate::blockchain::config::INITIAL_BALANCE;
 use secp256k1::hashes::sha256;
 use lazy_static::lazy_static;
+use super::transaction::Transaction;
+use super::transaction_pool::Pool;
 
 lazy_static! {
     pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct Wallet {
     pub balance: u64,
     pub keypair: secp256k1::Keypair,
@@ -39,6 +41,25 @@ impl Wallet {
     pub fn verify(&self, message_hash: sha256::Hash, signature: secp256k1::ecdsa::Signature) -> bool {
         let message = Message::from_digest_slice(message_hash.as_ref()).unwrap();
         SECP.verify_ecdsa(&message, &signature, &self.public_key).is_ok()
+    }
+
+    pub fn create_transaction(&self, recipient: String, amount: u64, pool: &mut Pool) -> Result<Transaction, String> {
+        if amount > self.balance {
+            return Err("Amount exceeds balance".to_string());
+        }
+    
+        let mut transaction = pool.exists(self.clone());
+    
+        if transaction.is_none() {
+            transaction = Some(Transaction::new(self.clone(), recipient.clone(), amount)?);
+        } else {
+            let mut transaction = transaction.take().unwrap();
+            transaction.output.push(super::transaction::Output {
+                amount: amount,
+                address: recipient,
+            });
+        }
+        Ok(transaction.unwrap())
     }
 }
 
@@ -76,5 +97,15 @@ mod tests {
         let message_hash = sha256::Hash::hash(message.as_bytes());
         let signature = wallet.sign(message_hash);
         assert!(wallet.verify(message_hash, signature));
+    }
+
+    #[test]
+    fn test_wallet_create_transaction() {
+        let mut pool = Pool::new();
+        let wallet = Wallet::new();
+        let recipient = "recipient".to_string();
+        let amount = 10;
+        let transaction = wallet.create_transaction(recipient.clone(), amount, &mut pool).unwrap();
+        println!("{:?}", transaction);
     }
 }

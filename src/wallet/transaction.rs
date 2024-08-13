@@ -4,14 +4,14 @@ use std::time::SystemTime;
 use secp256k1::hashes::{sha256, Hash};
 use bincode;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Transaction {
     pub id: Uuid,
     pub input: Vec<Input>,
     pub output: Vec<Output>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Input {
     pub timestamp: SystemTime,
     pub amount: u64,
