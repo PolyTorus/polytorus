@@ -22,8 +22,8 @@ impl Wallet {
         let keypair = secp256k1::Keypair::from_secret_key(&SECP, &secret_key);
         Wallet {
             balance: INITIAL_BALANCE,
-            keypair: keypair,
-            public_key: public_key,
+            keypair,
+            public_key,
         }
     }
 
