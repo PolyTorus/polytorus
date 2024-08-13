@@ -72,6 +72,21 @@ impl Transaction {
             input.address.verify(message_hash, input.signature)
         })
     }
+
+    pub fn update(&mut self, sender_wallet: Wallet, receipient: String, amount: u64) -> Result<Self, String> {
+        let sender_output = self.output.iter_mut().find(|output| output.address == sender_wallet.public_key.to_string()).unwrap();
+        if amount > sender_output.amount {
+            return Err("Amount exceeds balance".to_string());
+        }
+    
+        sender_output.amount -= amount;
+        self.output.push(Output {
+            amount,
+            address: receipient,
+        });
+        
+        Ok(self.sign(&sender_wallet))
+    }
 }
 
 #[cfg(test)]
