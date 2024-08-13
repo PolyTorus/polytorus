@@ -2,7 +2,7 @@ use std::fmt;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{Secp256k1, Message};
 use crate::blockchain::config::INITIAL_BALANCE;
-use secp256k1::hashes::{sha256, Hash};
+use secp256k1::hashes::sha256;
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -35,6 +35,11 @@ impl Wallet {
         let message = Message::from_digest_slice(message_hash.as_ref()).unwrap();
         SECP.sign_ecdsa(&message, &self.keypair.secret_key())
     }
+
+    pub fn verify(&self, message_hash: sha256::Hash, signature: secp256k1::ecdsa::Signature) -> bool {
+        let message = Message::from_digest_slice(message_hash.as_ref()).unwrap();
+        SECP.verify_ecdsa(&message, &signature, &self.public_key).is_ok()
+    }
 }
 
 impl fmt::Display for Wallet {
@@ -47,6 +52,7 @@ impl fmt::Display for Wallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use secp256k1::hashes::Hash;
 
     #[test]
     fn test_wallet_new() {

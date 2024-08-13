@@ -1,6 +1,8 @@
 use uuid::Uuid;
 use super::wallets::Wallet;
 use std::time::SystemTime;
+use secp256k1::hashes::{sha256, Hash};
+use bincode;
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
@@ -13,11 +15,11 @@ pub struct Transaction {
 pub struct Input {
     pub timestamp: SystemTime,
     pub amount: u64,
-    pub address: String,
-    pub signature: Vec<u8>,
+    pub address: Wallet,
+    pub signature: secp256k1::ecdsa::Signature,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Output {
     pub amount: u64,
     pub address: String,
@@ -55,10 +57,28 @@ impl Transaction {
         transaction.input.push(Input {
             timestamp: SystemTime::now(),
             amount: wallet.balance,
-            address: wallet.public_key.to_string(),
-            signature: vec![],
+            address: wallet.clone(),
+            signature: wallet.sign(sha256::Hash::hash(&bincode::serialize(&transaction.output).unwrap())),
         });
         transaction
+    }
+
+    // verify transaction
+    pub fn verify(&self) -> bool {
+        let mut message = self.clone();
+        for output in &self.output {
+            message.output.push(Output {
+                amount: output.amount,
+                address: output.address.clone(),
+            });
+        }
+
+        for input in &self.input {
+            if !Wallet::verify(&input.address, sha256::Hash::hash(&bincode::serialize(&message.output).unwrap()), input.signature) {
+                return false;
+            }
+        }
+        true
     }
 }
 
