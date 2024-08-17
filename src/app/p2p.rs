@@ -1,20 +1,37 @@
 use actix::prelude::*;
 use actix_web::{web, HttpRequest, Responder};
 use actix_web_actors::ws;
-use crate::blockchain::chain::Chain;
+use crate::blockchain::chain::{self, Chain};
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug, Clone)]
 pub struct P2p {
     chain: Arc<Mutex<Chain>>,
     sockets: Vec<actix::Addr<WebSocketSession>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct WebSocketSession {
     server: Arc<Mutex<P2p>>
 }
 
 impl Actor for WebSocketSession {
     type Context = ws::WebsocketContext<Self>;
+}
+
+impl WebSocketSession {
+    pub fn message_handler(&self, text: String, ctx: &mut ws::WebsocketContext<Self>) {
+        match serde_json::from_str::<Chain>(&text) {
+            Ok(received_chain) => {
+                println!("Received chain: {:?}", received_chain);
+                let server = self.server.lock().unwrap();
+                server.chain.lock().unwrap().replace_chain(&received_chain);
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+            }
+        }
+    }
 }
 
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketSession {
@@ -27,6 +44,18 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketSession 
     }
 }
 
+#[derive(Message)]
+#[rtype(result = "()")]
+struct SendChain(String);
+
+impl Handler<SendChain> for WebSocketSession {
+    type Result = ();
+
+    fn handle(&mut self, msg: SendChain, ctx: &mut Self::Context) {
+        ctx.text(msg.0);
+    }
+}
+
 impl P2p {
     pub fn new(chain: Chain) -> Self {
         P2p {
@@ -36,8 +65,14 @@ impl P2p {
     }
 
     pub fn connect_socket(&mut self, addr: actix::Addr<WebSocketSession>) {
+        let addr_clone = addr.clone();
         self.sockets.push(addr);
         println!("Connected sockets: {}", self.sockets.len());
+
+        let chain = self.chain.lock().unwrap().clone();
+        let chain_json = serde_json::to_string(&chain).unwrap();
+
+        addr_clone.do_send(SendChain(chain_json));
     }
 
     pub async fn connect_peers(&self) {
@@ -48,6 +83,15 @@ impl P2p {
                 // Connect to peer
                 println!("Connecting to peer: {}", peer);
             }
+        }
+    }
+
+    pub fn broadcast_chain(&self) {
+        let chain = self.chain.lock().unwrap().clone();
+        let chain_json = serde_json::to_string(&chain).unwrap();
+
+        for socket in &self.sockets {
+            socket.do_send(SendChain(chain_json.clone()));
         }
     }
 }
