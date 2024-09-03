@@ -8,7 +8,6 @@ use itertools::Itertools;
 use super::inverse::Inverse;
 use super::field::{Felt, Q};
 
-/// Marked pub for benchmarking; not considered part of the public API.
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct Polynomial<F> {
@@ -28,11 +27,6 @@ impl<F> Polynomial<F>
 where
     F: Clone + Neg<Output = F>,
 {
-    /// Compute the Hermitian adjoint of the polynomial f in the
-    /// cyclotomic ring $\mathbb{Q}[X] / \langle X^n + 1 \rangle$ where $n \geq \deg(f)+1$.
-    /// In this structure, the Hermitian adjoint is given by
-    ///
-    /// $$ f*(X) = f_{[0]} + \sum_{i=1}^{n-1} f_{[i]} * X({n-i}) . $$
     #[allow(dead_code)]
     pub fn hermitian_adjoint(&self) -> Polynomial<F> {
         let coefficients = [
@@ -103,10 +97,8 @@ fn vector_karatsuba<
     product
 }
 
-#[allow(private_bounds)] // The module is marked `pub` only for benchmarking.
-impl<
-        F: Mul<Output = F> + Sub<Output = F> + AddAssign + Zero + Div<Output = F> + Inverse + Clone,
-    > Polynomial<F>
+#[allow(private_bounds)] 
+impl<F: Mul<Output = F> + Sub<Output = F> + AddAssign + Zero + Div<Output = F> + Inverse + Clone,> Polynomial<F>
 {
     pub fn hadamard_mul(&self, other: &Self) -> Self {
         Polynomial::new(
@@ -137,7 +129,6 @@ impl<
 impl<F: Mul<Output = F> + Sub<Output = F> + AddAssign + Zero + Div<Output = F> + Clone>
     Polynomial<F>
 {
-    /// Multiply two polynomials using Karatsuba's divide-and-conquer algorithm.
     pub fn karatsuba(&self, other: &Self) -> Self {
         Polynomial::new(vector_karatsuba(&self.coefficients, &other.coefficients))
     }
@@ -191,13 +182,10 @@ impl<F: Zero + Clone> Polynomial<F> {
     }
 }
 
-/// The following implementations are specific to cyclotomic polynomial rings,
-/// i.e., F[ X ] / <X^n + 1>, and are used extensively in Falcon.
 impl<
         F: One + Zero + Clone + Neg<Output = F> + MulAssign + AddAssign + Sub<Output = F> + PartialEq,
     > Polynomial<F>
 {
-    /// Reduce the polynomial by X^n + 1.
     pub fn reduce_by_cyclotomic(&self, n: usize) -> Self {
         let mut coefficients = vec![F::zero(); n];
         let mut sign = -F::one();
@@ -211,8 +199,6 @@ impl<
     }
 }
 
-/// The following implementations are specific to cyclotomic polynomial rings,
-/// i.e., F[ X ] / <X^n + 1>, and are used extensively in Falcon.
 impl<
         F: One
             + Zero
@@ -225,11 +211,6 @@ impl<
             + PartialEq,
     > Polynomial<F>
 {
-    /// Compute the multiplicative inverse of the polynomial in the ring
-    /// F[ X ] / <X^n + 1>
-    ///
-    /// This function assumes that F is a field; otherwise the gcd will never end.
-    #[allow(dead_code)]
     pub(crate) fn cyclotomic_ring_inverse(&self, n: usize) -> Self {
         let mut cyclotomic_coefficients = vec![F::zero(); n + 1];
         cyclotomic_coefficients[0] = F::one();
@@ -238,13 +219,6 @@ impl<
         a
     }
 
-    /// Compute the field norm of the polynomial as an element of the cyclotomic
-    /// ring  F[ X ] / <X^n + 1 > relative to one of half the size, i.e.,
-    ///  F[ X ] / <X^(n/2) + 1> .
-    ///
-    /// Corresponds to formula 3.25 in the spec [1, p.30].
-    ///
-    /// [1]: https://falcon-sign.info/falcon.pdf
     pub fn field_norm(&self) -> Self {
         let n = self.coefficients.len();
         let mut f0_coefficients = vec![F::zero(); n / 2];
