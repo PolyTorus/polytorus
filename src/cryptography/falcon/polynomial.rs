@@ -211,7 +211,7 @@ impl<
             + PartialEq,
     > Polynomial<F>
 {
-    pub(crate) fn cyclotomic_ring_inverse(&self, n: usize) -> Self {
+    pub fn cyclotomic_ring_inverse(&self, n: usize) -> Self {
         let mut cyclotomic_coefficients = vec![F::zero(); n + 1];
         cyclotomic_coefficients[0] = F::one();
         cyclotomic_coefficients[n] = F::one();

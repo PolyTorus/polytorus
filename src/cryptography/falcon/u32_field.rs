@@ -12,7 +12,7 @@ use super::inverse::Inverse;
 const Q: u32 = 1073754113u32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct U32Field(pub(crate) u32);
+pub struct U32Field(pub u32);
 
 impl U32Field {
     pub const fn new(value: i32) -> Self {
