@@ -2,9 +2,8 @@ use std::f64::consts::PI;
 use std::ops::{Add, Mul, MulAssign, Sub};
 use num::{One, Zero};
 use num_complex::Complex64;
-use rand::CryptoRng;
 
-use super::inverse::{self, Inverse};
+use super::inverse::Inverse;
 
 pub trait CyclotomicFourier
 where
@@ -62,7 +61,7 @@ where
                 let h = m / 2;
                 let mut j1 = 0;
                 
-                for i in 0..h {
+                for _ in 0..h {
                     let j2 = j1 + t - 1;
                     let s = psi_powers[h + 1];
 
@@ -82,7 +81,7 @@ where
                 let h = m * 2;
                 let mut j1 = 0;
 
-                for i in 0..m {
+                for _ in 0..m {
                     let j2 = j1 + t - 1;
                     let s = psi_powers[h + 1];
 

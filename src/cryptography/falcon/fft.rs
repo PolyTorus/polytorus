@@ -1071,7 +1071,7 @@ impl FastFft for Polynomial<Complex64> {
             .take(n)
             .map(|c| Complex64::new(c.re, -c.im))
             .collect_vec();
-        let ninv = Complex64::new(1.0 / (n as f64), 0.0);
+        // let ninv = Complex64::new(1.0 / (n as f64), 0.0);
         Complex64::ifft(&mut self.coefficients, &psi_inv_rev);
     }
 
@@ -3150,17 +3150,17 @@ const FELT_BITREVERSED_POWERS_INVERSE_1024: [Felt; 1024] = [
     Felt::new(11260),
     Felt::new(10344),
 ];
-const FELT_NINV_1: Felt = Felt::new(1);
-const FELT_NINV_2: Felt = Felt::new(6145);
-const FELT_NINV_4: Felt = Felt::new(9217);
-const FELT_NINV_8: Felt = Felt::new(10753);
-const FELT_NINV_16: Felt = Felt::new(11521);
-const FELT_NINV_32: Felt = Felt::new(11905);
-const FELT_NINV_64: Felt = Felt::new(12097);
-const FELT_NINV_128: Felt = Felt::new(12193);
-const FELT_NINV_256: Felt = Felt::new(12241);
-const FELT_NINV_512: Felt = Felt::new(12265);
-const FELT_NINV_1024: Felt = Felt::new(12277);
+// const FELT_NINV_1: Felt = Felt::new(1);
+// const FELT_NINV_2: Felt = Felt::new(6145);
+// const FELT_NINV_4: Felt = Felt::new(9217);
+// const FELT_NINV_8: Felt = Felt::new(10753);
+// const FELT_NINV_16: Felt = Felt::new(11521);
+// const FELT_NINV_32: Felt = Felt::new(11905);
+// const FELT_NINV_64: Felt = Felt::new(12097);
+// const FELT_NINV_128: Felt = Felt::new(12193);
+// const FELT_NINV_256: Felt = Felt::new(12241);
+// const FELT_NINV_512: Felt = Felt::new(12265);
+// const FELT_NINV_1024: Felt = Felt::new(12277);
 
 impl FastFft for Polynomial<Felt> {
     type Field = Felt;
@@ -3170,21 +3170,21 @@ impl FastFft for Polynomial<Felt> {
     }
 
     fn ifft_inplace(&mut self) {
-        let n = self.coefficients.len();
-        let ninv = match n {
-            1 => FELT_NINV_1,
-            2 => FELT_NINV_2,
-            4 => FELT_NINV_4,
-            8 => FELT_NINV_8,
-            16 => FELT_NINV_16,
-            32 => FELT_NINV_32,
-            64 => FELT_NINV_64,
-            128 => FELT_NINV_128,
-            256 => FELT_NINV_256,
-            512 => FELT_NINV_512,
-            1024 => FELT_NINV_1024,
-            _ => panic!("vector length is not power of 2 or larger than 1024"),
-        };
+        // let n = self.coefficients.len();
+        // let ninv = match n {
+        //     1 => FELT_NINV_1,
+        //     2 => FELT_NINV_2,
+        //     4 => FELT_NINV_4,
+        //     8 => FELT_NINV_8,
+        //     16 => FELT_NINV_16,
+        //     32 => FELT_NINV_32,
+        //     64 => FELT_NINV_64,
+        //     128 => FELT_NINV_128,
+        //     256 => FELT_NINV_256,
+        //     512 => FELT_NINV_512,
+        //     1024 => FELT_NINV_1024,
+        //     _ => panic!("vector length is not power of 2 or larger than 1024"),
+        // };
         Felt::ifft(
             &mut self.coefficients,
             &FELT_BITREVERSED_POWERS_INVERSE_1024,
@@ -5262,16 +5262,16 @@ const U32_FIELD_PSI_REV_INV_1024: [U32Field; 1024] = [
     U32Field(874828739),
 ];
 
-const U32_FIELD_NINV_2: U32Field = U32Field(536877057);
-const U32_FIELD_NINV_4: U32Field = U32Field(805315585);
-const U32_FIELD_NINV_8: U32Field = U32Field(939534849);
-const U32_FIELD_NINV_16: U32Field = U32Field(1006644481);
-const U32_FIELD_NINV_32: U32Field = U32Field(1040199297);
-const U32_FIELD_NINV_64: U32Field = U32Field(1056976705);
-const U32_FIELD_NINV_128: U32Field = U32Field(1065365409);
-const U32_FIELD_NINV_256: U32Field = U32Field(1069559761);
-const U32_FIELD_NINV_512: U32Field = U32Field(1071656937);
-const U32_FIELD_NINV_1024: U32Field = U32Field(1072705525);
+// const U32_FIELD_NINV_2: U32Field = U32Field(536877057);
+// const U32_FIELD_NINV_4: U32Field = U32Field(805315585);
+// const U32_FIELD_NINV_8: U32Field = U32Field(939534849);
+// const U32_FIELD_NINV_16: U32Field = U32Field(1006644481);
+// const U32_FIELD_NINV_32: U32Field = U32Field(1040199297);
+// const U32_FIELD_NINV_64: U32Field = U32Field(1056976705);
+// const U32_FIELD_NINV_128: U32Field = U32Field(1065365409);
+// const U32_FIELD_NINV_256: U32Field = U32Field(1069559761);
+// const U32_FIELD_NINV_512: U32Field = U32Field(1071656937);
+// const U32_FIELD_NINV_1024: U32Field = U32Field(1072705525);
 
 impl FastFft for Polynomial<U32Field> {
     type Field = U32Field;
@@ -5296,20 +5296,20 @@ impl FastFft for Polynomial<U32Field> {
     }
 
     fn ifft_inplace(&mut self) {
-        let n = self.coefficients.len();
-        let ninv = match n {
-            2 => U32_FIELD_NINV_2,
-            4 => U32_FIELD_NINV_4,
-            8 => U32_FIELD_NINV_8,
-            16 => U32_FIELD_NINV_16,
-            32 => U32_FIELD_NINV_32,
-            64 => U32_FIELD_NINV_64,
-            128 => U32_FIELD_NINV_128,
-            256 => U32_FIELD_NINV_256,
-            512 => U32_FIELD_NINV_512,
-            1024 => U32_FIELD_NINV_1024,
-            _ => unreachable!(),
-        };
+        // let n = self.coefficients.len();
+        // let ninv = match n {
+        //     2 => U32_FIELD_NINV_2,
+        //     4 => U32_FIELD_NINV_4,
+        //     8 => U32_FIELD_NINV_8,
+        //     16 => U32_FIELD_NINV_16,
+        //     32 => U32_FIELD_NINV_32,
+        //     64 => U32_FIELD_NINV_64,
+        //     128 => U32_FIELD_NINV_128,
+        //     256 => U32_FIELD_NINV_256,
+        //     512 => U32_FIELD_NINV_512,
+        //     1024 => U32_FIELD_NINV_1024,
+        //     _ => unreachable!(),
+        // };
         U32Field::ifft(&mut self.coefficients, &U32_FIELD_PSI_REV_INV_1024);
     }
 }

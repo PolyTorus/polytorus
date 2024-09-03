@@ -9,7 +9,6 @@ use super::{
     cyclotomic_fourier::CyclotomicFourier,
     field::{Felt, Q},
     fft::FastFft,
-    inverse::Inverse,
     polynomial::Polynomial,
     sample::sampler_z,
     u32_field::U32Field,
@@ -298,7 +297,7 @@ pub fn ntru_solve_entrypoint(f: Polynomial<i32>, g: Polynomial<i32>,) -> Option<
 
     let psi_rev = U32Field::generate_powers(n, false);
     let psi_rev_inv = U32Field::generate_powers(n, true); 
-    let ninv = U32Field::new(n as i32).inverse_or_zero();
+    // let ninv = U32Field::new(n as i32).inverse_or_zero();
     let mut cfp_ntt = capital_f_prime_xsq.map(|c| U32Field::new(*c as i32));
     let mut cgp_ntt = capital_g_prime_xsq.map(|c| U32Field::new(*c as i32));
     let mut gm_ntt = g_minx.map(|c| U32Field::new(*c as i32));
