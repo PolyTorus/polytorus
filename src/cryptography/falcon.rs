@@ -9,3 +9,5 @@ pub mod math;
 pub mod encoding;
 pub mod falcon;
 pub mod sampling;
+pub mod falcon512;
+pub mod falcon1024;
