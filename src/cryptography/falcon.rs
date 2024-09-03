@@ -4,3 +4,4 @@ pub mod polynomial;
 pub mod field;
 pub mod fft;
 pub mod u32_field;
+pub mod sample;
