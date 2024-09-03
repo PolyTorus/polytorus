@@ -6,3 +6,4 @@ pub mod fft;
 pub mod u32_field;
 pub mod sample;
 pub mod math;
+pub mod encoding;
