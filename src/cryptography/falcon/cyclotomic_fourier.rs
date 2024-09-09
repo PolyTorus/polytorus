@@ -1,5 +1,8 @@
-use std::f64::consts::PI;
-use std::ops::{Add, Mul, MulAssign, Sub};
+use std::{
+    f64::consts::PI,
+    ops::{Add, Mul, MulAssign, Sub},
+};
+
 use num::{One, Zero};
 use num_complex::Complex64;
 
@@ -7,113 +10,117 @@ use super::inverse::Inverse;
 
 pub trait CyclotomicFourier
 where
-    Self: Copy + Sized + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + MulAssign + Inverse,
+    Self: Sized
+        + Copy
+        + One
+        + Zero
+        + Add<Output = Self>
+        + Sub<Output = Self>
+        + Mul<Output = Self>
+        + MulAssign
+        + Inverse,
 {
     fn primitive_root_of_unity(n: usize) -> Self;
 
-    fn bitreverse(arg: usize, n: usize) -> usize {
+    fn bitreverse_index(arg: usize, n: usize) -> usize {
         assert!(n > 0);
         assert_eq!(n & (n - 1), 0);
-        
-        (0..n.trailing_zeros()).fold(0, |rev, i| {
-            rev | (((arg & (1 << i)) != 0) as usize) << (n.trailing_zeros() - 1 - i)
-        })
+        let mut rev = 0;
+        let mut m = n >> 1;
+        let mut k = 1;
+        while m > 0 {
+            rev |= (((arg & m) != 0) as usize) * k;
+            k <<= 1;
+            m >>= 1;
+        }
+        rev
     }
 
-    fn bitreverse_array<T> (array: &mut [T]) {
-        let n = array.len();
-        let mut rev = vec![0; n];
-        for i in 0..n {
-            rev[i] = Self::bitreverse(i, n);
+    fn bitreversed_powers(n: usize) -> Vec<Self> {
+        let psi = Self::primitive_root_of_unity(2 * n);
+        let mut array = vec![Self::zero(); n];
+        let mut alpha = Self::one();
+        for a in array.iter_mut() {
+            *a = alpha;
+            alpha *= psi;
         }
-
-        for i in 0..n {
-            if i < rev[i] {
-                array.swap(i, rev[i]);
-            }
-        }
-    }
-
-    fn generate_powers(n: usize, inverse: bool) -> Vec<Self> {
-        let psi = if inverse {
-            Self::primitive_root_of_unity(2 * n).inverse_or_zero()
-        } else {
-            Self::primitive_root_of_unity(2 * n)
-        };
-
-        let mut array = vec![Self::one(); n];
-
-        for i in 1..n {
-            array[i] = array[i - 1] * psi;
-        }
-
         Self::bitreverse_array(&mut array);
         array
     }
 
-    fn fft_general(a: &mut [Self], psi_powers: &[Self], inverse: bool) {
-        let n = a.len();
-        let mut t = if inverse { 1 } else { n };
-        let mut m = if inverse { n } else { 1 };
+    fn bitreversed_powers_inverse(n: usize) -> Vec<Self> {
+        let psi = Self::primitive_root_of_unity(2 * n).inverse_or_zero();
+        let mut array = vec![Self::zero(); n];
+        let mut alpha = Self::one();
+        for a in array.iter_mut() {
+            *a = alpha;
+            alpha *= psi;
+        }
+        Self::bitreverse_array(&mut array);
+        array
+    }
 
-        while if inverse { m > 1} else { m < n } {
-            if inverse {
-                let h = m / 2;
-                let mut j1 = 0;
-                
-                for _ in 0..h {
-                    let j2 = j1 + t - 1;
-                    let s = psi_powers[h + 1];
-
-                    for j in j1..=j2 {
-                        let u = a[j];
-                        let v = a[j + h] * s;
-                        a[j] = u + v;
-                        a[j + h] = u - v;
-                    }
-
-                    j1 = j2 + t + 1;
-                }
-
-                t *= 2;
-                m /= 2;
-            } else {
-                let h = m * 2;
-                let mut j1 = 0;
-
-                for _ in 0..m {
-                    let j2 = j1 + t - 1;
-                    let s = psi_powers[h + 1];
-
-                    for j in j1..=j2 {
-                        let u = a[j];
-                        let v = a[j + t];
-                        a[j] = u + v;
-                        a[j + t] = (u - v) * s;
-                    }
-
-                    j1 = j2 + t + 1;
-                }
-
-                t /= 2;
-                m *= 2;
+    fn bitreverse_array<T>(array: &mut [T]) {
+        let n = array.len();
+        for i in 0..n {
+            let j = Self::bitreverse_index(i, n);
+            if i < j {
+                array.swap(i, j);
             }
         }
     }
 
     fn fft(a: &mut [Self], psi_rev: &[Self]) {
-        Self::fft_general(a, psi_rev, false);
+        let n = a.len();
+        let mut t = n;
+        let mut m = 1;
+        while m < n {
+            t >>= 1;
+            for i in 0..m {
+                let j1 = 2 * i * t;
+                let j2 = j1 + t - 1;
+                let s = psi_rev[m + i];
+                for j in j1..=j2 {
+                    let u = a[j];
+                    let v = a[j + t] * s;
+                    a[j] = u + v;
+                    a[j + t] = u - v;
+                }
+            }
+            m <<= 1;
+        }
     }
 
-    fn ifft(a: &mut [Self], psi_inv_rev: &[Self]) {
-        Self::fft_general(a, psi_inv_rev, false);
+    fn ifft(a: &mut [Self], psi_inv_rev: &[Self], ninv: Self) {
+        let n = a.len();
+        let mut t = 1;
+        let mut m = n;
+        while m > 1 {
+            let h = m / 2;
+            let mut j1 = 0;
+            for i in 0..h {
+                let j2 = j1 + t - 1;
+                let s = psi_inv_rev[h + i];
+                for j in j1..=j2 {
+                    let u = a[j];
+                    let v = a[j + t];
+                    a[j] = u + v;
+                    a[j + t] = (u - v) * s;
+                }
+                j1 += 2 * t;
+            }
+            t <<= 1;
+            m >>= 1;
+        }
+        for ai in a.iter_mut() {
+            *ai *= ninv;
+        }
     }
 
     fn split_fft(f: &[Self], psi_inv_rev: &[Self]) -> (Vec<Self>, Vec<Self>) {
         let n_over_2 = f.len() / 2;
         let mut f0 = vec![Self::zero(); n_over_2];
         let mut f1 = vec![Self::zero(); n_over_2];
-
         let two_inv = (Self::one() + Self::one()).inverse_or_zero();
         for i in 0..n_over_2 {
             let two_i = i * 2;
@@ -126,7 +133,8 @@ where
 
     fn merge_fft(f0: &[Self], f1: &[Self], psi_rev: &[Self]) -> Vec<Self> {
         let n_over_2 = f0.len();
-        let mut f = vec![Self::zero(); n_over_2 * 2];
+        let n = 2 * n_over_2;
+        let mut f = vec![Self::zero(); n];
         for i in 0..n_over_2 {
             let two_i = i * 2;
             f[two_i] = f0[i] + psi_rev[n_over_2 + i] * f1[i];
@@ -134,9 +142,6 @@ where
         }
         f
     }
-
-    fn from_usize(n: usize) -> Self;
-
 }
 
 impl CyclotomicFourier for Complex64 {
@@ -145,24 +150,25 @@ impl CyclotomicFourier for Complex64 {
         Complex64::new(f64::cos(angle), f64::sin(angle))
     }
 
-    fn generate_powers(n: usize, inverse: bool) -> Vec<Self> {
-        let mut array = vec![Complex64::zero(); n];
+    fn bitreversed_powers(n: usize) -> Vec<Self> {
+        let mut array = vec![Self::zero(); n];
         let half_circle = PI;
-
         for (i, a) in array.iter_mut().enumerate() {
             let angle = (i as f64) * half_circle / (n as f64);
-            *a = if inverse {
-                Complex64::new(f64::cos(angle), -f64::sin(angle))
-            } else {
-                Complex64::new(f64::cos(angle), f64::sin(angle))
-            };
+            *a = Self::new(f64::cos(angle), f64::sin(angle));
         }
-
         Self::bitreverse_array(&mut array);
         array
     }
 
-    fn from_usize(n: usize) -> Self {
-        Complex64::new(n as f64, 0.0)
+    fn bitreversed_powers_inverse(n: usize) -> Vec<Self> {
+        let mut array = vec![Self::zero(); n];
+        let half_circle = PI;
+        for (i, a) in array.iter_mut().enumerate() {
+            let angle = (i as f64) * half_circle / (n as f64);
+            *a = Self::new(f64::cos(angle), -f64::sin(angle));
+        }
+        Self::bitreverse_array(&mut array);
+        array
     }
 }

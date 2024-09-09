@@ -4,9 +4,11 @@ use sha3::Shake256;
 use std::default::Default;
 use std::fmt::{Debug, Display};
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+
 use itertools::Itertools;
-use super::inverse::Inverse;
+
 use super::field::{Felt, Q};
+use super::inverse::Inverse;
 
 #[doc(hidden)]
 #[derive(Debug, Clone)]
@@ -20,27 +22,6 @@ where
 {
     pub fn new(coefficients: Vec<F>) -> Self {
         Self { coefficients }
-    }
-}
-
-impl<F> Polynomial<F>
-where
-    F: Clone + Neg<Output = F>,
-{
-    #[allow(dead_code)]
-    pub fn hermitian_adjoint(&self) -> Polynomial<F> {
-        let coefficients = [
-            vec![self.coefficients[0].clone()],
-            self.coefficients
-                .iter()
-                .skip(1)
-                .cloned()
-                .map(|c| -c)
-                .rev()
-                .collect_vec(),
-        ]
-        .concat();
-        Polynomial { coefficients }
     }
 }
 
@@ -97,8 +78,10 @@ fn vector_karatsuba<
     product
 }
 
-#[allow(private_bounds)] 
-impl<F: Mul<Output = F> + Sub<Output = F> + AddAssign + Zero + Div<Output = F> + Inverse + Clone,> Polynomial<F>
+#[allow(private_bounds)]
+impl<
+        F: Mul<Output = F> + Sub<Output = F> + AddAssign + Zero + Div<Output = F> + Inverse + Clone,
+    > Polynomial<F>
 {
     pub fn hadamard_mul(&self, other: &Self) -> Self {
         Polynomial::new(
@@ -211,14 +194,6 @@ impl<
             + PartialEq,
     > Polynomial<F>
 {
-    pub fn cyclotomic_ring_inverse(&self, n: usize) -> Self {
-        let mut cyclotomic_coefficients = vec![F::zero(); n + 1];
-        cyclotomic_coefficients[0] = F::one();
-        cyclotomic_coefficients[n] = F::one();
-        let (_, a, _) = Polynomial::xgcd(self, &Polynomial::new(cyclotomic_coefficients));
-        a
-    }
-
     pub fn field_norm(&self) -> Self {
         let n = self.coefficients.len();
         let mut f0_coefficients = vec![F::zero(); n / 2];
@@ -302,7 +277,7 @@ impl<F: Clone + Into<f64>> Polynomial<F> {
             .sum::<f64>()
             .sqrt()
     }
-    pub fn l2_norm_squared(&self) -> f64 {
+    pub(crate) fn l2_norm_squared(&self) -> f64 {
         self.coefficients
             .iter()
             .map(|i| Into::<f64>::into(i.clone()))
@@ -353,7 +328,6 @@ where
         Self::Output { coefficients }
     }
 }
-
 impl<F> Add for Polynomial<F>
 where
     F: Add<Output = F> + AddAssign + Clone,
@@ -579,7 +553,6 @@ where
     }
 }
 
-
 pub fn hash_to_point(string: &[u8], n: usize) -> Polynomial<Felt> {
     const K: u32 = (1u32 << 16) / Q;
 
@@ -591,7 +564,6 @@ pub fn hash_to_point(string: &[u8], n: usize) -> Polynomial<Felt> {
     while coefficients.len() != n {
         let mut randomness = [0u8; 2];
         reader.read(&mut randomness);
-        // Arabic endianness but so be it
         let t = ((randomness[0] as u32) << 8) | (randomness[1] as u32);
         if t < K * Q {
             coefficients.push(Felt::new((t % Q) as i16));

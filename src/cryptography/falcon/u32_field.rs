@@ -148,7 +148,6 @@ impl Inverse for U32Field {
     }
 }
 
-#[allow(clippy::suspicious_arithmetic_impl)]
 impl Div for U32Field {
     type Output = U32Field;
 
@@ -173,10 +172,6 @@ impl CyclotomicFourier for U32Field {
             a *= a;
         }
         a
-    }
-    
-    fn from_usize(n: usize) -> Self {
-        U32Field::from_usize(n)
     }
 }
 

@@ -46,7 +46,7 @@ pub fn compress(v: &[i16], byte_length: usize) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-pub fn compress_coefficient(coeff: i16) -> (usize, u8) {
+fn compress_coefficient(coeff: i16) -> (usize, u8) {
     let sign = (coeff < 0) as u8;
     let abs = coeff.unsigned_abs();
     let low = abs as u8 & 127;

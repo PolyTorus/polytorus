@@ -9,6 +9,7 @@ use super::{
     cyclotomic_fourier::CyclotomicFourier,
     field::{Felt, Q},
     fft::FastFft,
+    inverse::Inverse,
     polynomial::Polynomial,
     sample::sampler_z,
     u32_field::U32Field,
@@ -107,7 +108,9 @@ pub fn babai_reduce_i32(
     let g_ntt: Polynomial<U32Field> = g.map(|&i| U32Field::new(i)).fft();
 
     let bitsize = |itr: IntoIter<i32>| {
-        ((itr.map(|i| i.abs()).max().unwrap() * 2).ilog2() as usize + 7) & !7
+        (itr.map(|i| i.abs()).max().unwrap() * 2)
+            .ilog2()
+            .next_multiple_of(8) as usize
     };
     let size = usize::max(
         bitsize(
@@ -210,7 +213,10 @@ fn xgcd(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
     (old_r, old_s, old_t)
 }
 
-pub fn ntru_solve(f: &Polynomial<BigInt>, g: &Polynomial<BigInt>,) -> Option<(Polynomial<BigInt>, Polynomial<BigInt>)> {
+fn ntru_solve(
+    f: &Polynomial<BigInt>,
+    g: &Polynomial<BigInt>,
+) -> Option<(Polynomial<BigInt>, Polynomial<BigInt>)> {
     let n = f.coefficients.len();
     if n == 1 {
         let (gcd, u, v) = xgcd(&f.coefficients[0], &g.coefficients[0]);
@@ -250,7 +256,10 @@ pub fn ntru_solve(f: &Polynomial<BigInt>, g: &Polynomial<BigInt>,) -> Option<(Po
     }
 }
 
-pub fn ntru_solve_entrypoint(f: Polynomial<i32>, g: Polynomial<i32>,) -> Option<(Polynomial<i32>, Polynomial<i32>)> {
+fn ntru_solve_entrypoint(
+    f: Polynomial<i32>,
+    g: Polynomial<i32>,
+) -> Option<(Polynomial<i32>, Polynomial<i32>)> {
     let n = f.coefficients.len();
 
     let g_prime = g.field_norm().map(|c| BigInt::from(*c));
@@ -293,9 +302,9 @@ pub fn ntru_solve_entrypoint(f: Polynomial<i32>, g: Polynomial<i32>,) -> Option<
     let f_minx = f.galois_adjoint();
     let g_minx = g.galois_adjoint();
 
-    let psi_rev = U32Field::generate_powers(n, false);
-    let psi_rev_inv = U32Field::generate_powers(n, true); 
-    // let ninv = U32Field::new(n as i32).inverse_or_zero();
+    let psi_rev = U32Field::bitreversed_powers(n);
+    let psi_rev_inv = U32Field::bitreversed_powers_inverse(n);
+    let ninv = U32Field::new(n as i32).inverse_or_zero();
     let mut cfp_ntt = capital_f_prime_xsq.map(|c| U32Field::new(*c as i32));
     let mut cgp_ntt = capital_g_prime_xsq.map(|c| U32Field::new(*c as i32));
     let mut gm_ntt = g_minx.map(|c| U32Field::new(*c as i32));
@@ -306,8 +315,8 @@ pub fn ntru_solve_entrypoint(f: Polynomial<i32>, g: Polynomial<i32>,) -> Option<
     U32Field::fft(&mut fm_ntt.coefficients, &psi_rev);
     let mut cf_ntt = cfp_ntt.hadamard_mul(&gm_ntt);
     let mut cg_ntt = cgp_ntt.hadamard_mul(&fm_ntt);
-    U32Field::ifft(&mut cf_ntt.coefficients, &psi_rev_inv);
-    U32Field::ifft(&mut cg_ntt.coefficients, &psi_rev_inv);
+    U32Field::ifft(&mut cf_ntt.coefficients, &psi_rev_inv, ninv);
+    U32Field::ifft(&mut cg_ntt.coefficients, &psi_rev_inv, ninv);
 
     let mut capital_f = cf_ntt.map(|c| c.balanced_value());
     let mut capital_g = cg_ntt.map(|c| c.balanced_value());
@@ -363,7 +372,7 @@ pub fn ntru_gen(
     }
 }
 
-pub fn gen_poly(n: usize, rng: &mut dyn RngCore) -> Polynomial<i16> {
+fn gen_poly(n: usize, rng: &mut dyn RngCore) -> Polynomial<i16> {
     let mu = 0.0;
     let sigma_star = 1.43300980528773;
     const NUM_COEFFICIENTS: usize = 4096;
@@ -377,8 +386,7 @@ pub fn gen_poly(n: usize, rng: &mut dyn RngCore) -> Polynomial<i16> {
     }
 }
 
-
-pub fn gram_schmidt_norm_squared(f: &Polynomial<i16>, g: &Polynomial<i16>) -> f64 {
+fn gram_schmidt_norm_squared(f: &Polynomial<i16>, g: &Polynomial<i16>) -> f64 {
     let n = f.coefficients.len();
     let norm_f_squared = f.l2_norm_squared();
     let norm_g_squared = g.l2_norm_squared();
