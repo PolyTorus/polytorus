@@ -174,13 +174,3 @@ impl CyclotomicFourier for U32Field {
         a
     }
 }
-
-trait FromUsize {
-    fn from_usize(value: usize) -> Self;
-}
-
-impl FromUsize for U32Field {
-    fn from_usize(value: usize) -> Self {
-        U32Field::from_usize(value)
-    }
-}
