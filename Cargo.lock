@@ -159,9 +159,9 @@ dependencies = [
 
 [[package]]
 name = "actix-web"
-version = "4.8.0"
+version = "4.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1988c02af8d2b718c05bc4aeb6a66395b7cdf32858c2c71131e5637a8c05a9ff"
+checksum = "9180d76e5cc7ccbc4d60a506f2c727730b154010262df5b910eb17dbe4b8cb38"
 dependencies = [
  "actix-codec",
  "actix-http",
@@ -181,6 +181,7 @@ dependencies = [
  "encoding_rs",
  "futures-core",
  "futures-util",
+ "impl-more",
  "itoa",
  "language-tags",
  "log",
@@ -439,12 +440,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3ac9f8b63eca6fd385229b3675f6cc0dc5c8a5c8a54a59d4f52ffd670d87b0c"
 
 [[package]]
-name = "bytemuck"
-version = "1.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "773d90827bc3feecfb67fab12e24de0749aad83c74b9504ecde46237b5cd24e2"
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -520,6 +515,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a97769d94ddab943e4510d138150169a2758b5ef3eb191a9ee688de3e23ef7b3"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "creusot-contracts"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "321f83d4df2cf221832db09e67ee590f7857e32081f73d1f34e42c40a31f11fc"
+dependencies = [
+ "creusot-contracts-dummy",
+ "creusot-contracts-proc",
+ "num-rational 0.3.2",
+]
+
+[[package]]
+name = "creusot-contracts-dummy"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f382fd4cd70aa17a38370c4247a1e6874ffc4f7ca0bee50aab98dc03741762db"
+dependencies = [
+ "quote",
+]
+
+[[package]]
+name = "creusot-contracts-proc"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ecb03a8df362063e867d5eb7e7e5aec435eed1dc2262565429b529f2a1925e"
+dependencies = [
+ "pearlite-syn",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+ "uuid",
 ]
 
 [[package]]
@@ -905,6 +933,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "impl-more"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "206ca75c9c03ba3d4ace2460e57b189f39f43de612c2f85836e65c929701bb2d"
+
+[[package]]
 name = "impl-trait-for-tuples"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1036,16 +1070,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
-name = "matrixmultiply"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9380b911e3e96d10c1f415da0876389aaf1b56759054eeb0de7df940c456ba1a"
-dependencies = [
- "autocfg",
- "rawpointer",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1091,43 +1115,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "nalgebra"
-version = "0.33.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c4b5f057b303842cf3262c27e465f4c303572e7f6b0648f60e16248ac3397f4"
-dependencies = [
- "approx",
- "matrixmultiply",
- "nalgebra-macros",
- "num-complex",
- "num-rational",
- "num-traits",
- "simba",
- "typenum",
-]
-
-[[package]]
-name = "nalgebra-macros"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "254a5372af8fc138e36684761d3c0cdb758a4410e938babcff1c860ce14ddbfc"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.72",
-]
-
-[[package]]
 name = "num"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.6",
  "num-complex",
  "num-integer",
  "num-iter",
- "num-rational",
+ "num-rational 0.4.2",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f6f7833f2cbf2360a6cfd58cd41a53aa7a90bd4c202f5b1c7dd2ed73c57b2c3"
+dependencies = [
+ "autocfg",
+ "num-integer",
  "num-traits",
 ]
 
@@ -1178,11 +1186,23 @@ dependencies = [
 
 [[package]]
 name = "num-rational"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
+dependencies = [
+ "autocfg",
+ "num-bigint 0.3.3",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-rational"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.4.6",
  "num-integer",
  "num-traits",
 ]
@@ -1268,6 +1288,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "pearlite-syn"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28a534fe1366f7d91cd5627415b794740bda1f7ab9ea48e55aa3199366c590ac"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1312,13 +1343,13 @@ dependencies = [
  "approx",
  "bincode",
  "bit-vec 0.8.0",
+ "creusot-contracts",
  "hex",
  "hex-literal",
  "itertools",
  "k256",
  "lazy_static",
  "log",
- "nalgebra",
  "num",
  "num-complex",
  "primitive-types",
@@ -1469,12 +1500,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rawpointer"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1581,15 +1606,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
-name = "safe_arch"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3460605018fdc9612bce72735cba0d27efbcd9904780d44c7e3a9948f96148a"
-dependencies = [
- "bytemuck",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1611,9 +1627,9 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.29.0"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e0cc0f1cf93f4969faf3ea1c7d8a9faed25918d96affa959720823dfe86d4f3"
+checksum = "9465315bc9d4566e1724f0fffcbcc446268cb522e60f9a27bcded6b19c108113"
 dependencies = [
  "bitcoin_hashes",
  "rand",
@@ -1728,19 +1744,6 @@ checksum = "77549399552de45a898a580c1b41d445bf730df867cc44e6c0233bbc4b8329de"
 dependencies = [
  "digest",
  "rand_core",
-]
-
-[[package]]
-name = "simba"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a386a501cd104797982c15ae17aafe8b9261315b5d07e3ec803f2ea26be0fa"
-dependencies = [
- "approx",
- "num-complex",
- "num-traits",
- "paste",
- "wide",
 ]
 
 [[package]]
@@ -2064,16 +2067,6 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-
-[[package]]
-name = "wide"
-version = "0.7.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b828f995bf1e9622031f8009f8481a85406ce1f4d4588ff746d872043e855690"
-dependencies = [
- "bytemuck",
- "safe_arch",
-]
 
 [[package]]
 name = "windows-sys"

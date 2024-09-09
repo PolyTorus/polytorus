@@ -2,7 +2,7 @@ use num_complex::{Complex, Complex64};
 use rand::RngCore;
 use rand_distr::num_traits::{One, Zero};
 
-use super::{falcon, fft::FastFft, polynomial::Polynomial, sample::sampler_z};
+use super::{base_falcon, fft::FastFft, polynomial::Polynomial, sample::sampler_z};
 
 pub fn gram(b: [Polynomial<Complex64>; 4]) -> [Polynomial<Complex64>; 4] {
     const N: usize = 2;
@@ -78,7 +78,7 @@ pub fn normalize_tree(tree: &mut LdlTree, sigma: f64) {
 pub fn ffsampling(
     t: &(Polynomial<Complex64>, Polynomial<Complex64>),
     tree: &LdlTree,
-    parameters: &falcon::FalconParameters,
+    parameters: &base_falcon::FalconParameters,
     rng: &mut dyn RngCore,
 ) -> (Polynomial<Complex64>, Polynomial<Complex64>) {
     match tree {
