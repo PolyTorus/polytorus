@@ -10,48 +10,39 @@ pub const Q: u32 = 12 * 1024 + 1;
 pub struct Felt(u32);
 
 impl Felt {
-    #[inline]
     pub const fn new(value: i16) -> Self {
-        let reduced = if value >= 0 {
-            value % (Q as i16)
-        } else {
-            (value % (Q as i16) + Q as i16) % (Q as i16)
-        };
-        Felt(reduced as u32)
+        let gtz_bool = value >= 0;
+        let gtz_int = gtz_bool as i16;
+        let gtz_sign = gtz_int - ((!gtz_bool) as i16);
+        let reduced = gtz_sign * ((gtz_sign * value) % (Q as i16));
+        let canonical_representative = (reduced + (Q as i16) * (1 - gtz_int)) as u32;
+        Felt(canonical_representative)
     }
 
-    #[inline]
     pub const fn value(&self) -> i16 {
         self.0 as i16
     }
 
-    #[inline]
     pub fn balanced_value(&self) -> i16 {
         let value = self.value();
-        if value > (Q as i16) / 2 {
-            value - Q as i16
-        } else {
-            value
-        }
+        let g = (value > ((Q as i16) / 2)) as i16;
+        value - (Q as i16) * g
     }
 
-    #[inline]
     pub const fn multiply(&self, other: Self) -> Self {
-        Felt((self.0 as u64 * other.0 as u64 % Q as u64) as u32)
+        Felt((self.0 * other.0) % Q)
     }
 }
 
 impl From<usize> for Felt {
-    #[inline]
     fn from(value: usize) -> Self {
-        Felt::new((value % Q as usize) as i16)
+        Felt::new(value as i16)
     }
 }
 
 impl Add for Felt {
     type Output = Self;
 
-    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         let sum = self.0 as u64 + rhs.0 as u64;
         Felt((sum % Q as u64) as u32)
@@ -68,14 +59,12 @@ impl AddAssign for Felt {
 impl Sub for Felt {
     type Output = Self;
 
-    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
     }
 }
 
 impl SubAssign for Felt {
-    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
@@ -84,7 +73,6 @@ impl SubAssign for Felt {
 impl Neg for Felt {
     type Output = Felt;
 
-    #[inline]
     fn neg(self) -> Self::Output {
         if self.0 == 0 {
             self
@@ -97,40 +85,34 @@ impl Neg for Felt {
 impl Mul for Felt {
     type Output = Self;
 
-    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         self.multiply(rhs)
     }
 }
 
 impl MulAssign for Felt {
-    #[inline]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs;
     }
 }
 
 impl Zero for Felt {
-    #[inline]
     fn zero() -> Self {
         Felt(0)
     }
 
-    #[inline]
     fn is_zero(&self) -> bool {
         self.0 == 0
     }
 }
 
 impl One for Felt {
-    #[inline]
     fn one() -> Self {
         Felt(1)
     }
 }
 
 impl Distribution<Felt> for Standard {
-    #[inline]
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Felt {
         Felt((rng.next_u32() % Q) as u32)
     }
@@ -165,7 +147,7 @@ impl Inverse for Felt {
         }
 
         if b != 1 {
-            return Felt::zero(); // No inverse exists
+            return Felt::zero();
         }
 
         Felt::new((y % Q as i64) as i16)
@@ -175,7 +157,6 @@ impl Inverse for Felt {
 impl Div for Felt {
     type Output = Felt;
 
-    #[inline]
     fn div(self, rhs: Self) -> Self::Output {
         if rhs.is_zero() {
             panic!("Cannot divide by zero");
@@ -189,16 +170,11 @@ impl CyclotomicFourier for Felt {
     fn primitive_root_of_unity(n: usize) -> Self {
         let log2n = n.ilog2();
         assert!(log2n <= 12);
-        // 1331 is a twelfth root of unity
+    
         let mut a = Felt::new(1331);
         for _ in 0..(12 - log2n) {
             a *= a;
         }
         a
-    }
-    
-    #[inline]
-    fn from_usize(n: usize) -> Self {
-        Felt::from(n)
     }
 }
