@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use actix_web::{web, HttpRequest, Responder};
 use actix_web_actors::ws;
-use crate::blockchain::chain::{self, Chain};
+use crate::blockchain::chain::Chain;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
