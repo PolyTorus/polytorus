@@ -60,31 +60,47 @@ impl P2p {
             println!("Socket connected");
         }
 
+        self.send_chain(ws_stream.clone()).await;
+        self.message_handler(ws_stream.clone(), chain.clone()).await;
+    }
+
+    async fn send_chain(&self, ws_stream: Arc<Mutex<WsStream>>) {
         let chain_json = {
-            let chain = chain.lock().await;
+            let chain = self.chain.lock().await;
             json!(&*chain).to_string()
         };
         
-        {
-            let mut ws_stream = ws_stream.lock().await;
-            ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(chain_json)).await.unwrap();
+        let mut ws_stream = ws_stream.lock().await;
+        if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(chain_json)).await {
+            eprintln!("Failed to send message: {}", e);
         }
+    }
 
-        let chain_for_message = chain.clone();
-        let ws_stream_clone = ws_stream.clone();
+    pub async fn sync_chain(&self) {
+        let sockets = self.sockets.lock().await;
+        for socket in sockets.iter() {
+            self.send_chain(socket.clone()).await;
+        }
+    }
+
+    async fn message_handler(&self, ws_stream: Arc<Mutex<WsStream>>, chain: Arc<Mutex<Chain>>) {
         tokio::spawn(async move {
             loop {
                 let msg = {
-                    let mut ws_stream = ws_stream_clone.lock().await;
+                    let mut ws_stream = ws_stream.lock().await;
                     ws_stream.next().await
                 };
 
                 match msg {
                     Some(Ok(tokio_tungstenite::tungstenite::Message::Text(text))) => {
-                        if let Ok(received_chain) = serde_json::from_str::<Chain>(&text) {
+                        if let Ok(received_chain) = serde_json::from_str::<Vec<serde_json::Value>>(&text) {
                             println!("Received chain: {:?}", received_chain);
-                            let mut current_chain = chain_for_message.lock().await;
-                            current_chain.replace_chain(&received_chain);
+                            let mut current_chain = chain.lock().await;
+                            if let Ok(new_chain) = serde_json::from_value::<Chain>(serde_json::Value::Array(received_chain)) {
+                                current_chain.replace_chain(&new_chain);
+                            } else {
+                                eprintln!("Failed to parse received chain");
+                            }
                         }
                     }
                     None => break,
@@ -92,20 +108,5 @@ impl P2p {
                 }
             }
         });
-    }
-
-    pub async fn broadcast_chain(&self) {
-        let chain_json = {
-            let chain = self.chain.lock().await;
-            json!(&*chain).to_string()
-        };
-        
-        let sockets = self.sockets.lock().await;
-        for socket in sockets.iter() {
-            let mut socket = socket.lock().await;
-            if let Err(e) = socket.send(tokio_tungstenite::tungstenite::Message::Text(chain_json.clone())).await {
-                eprintln!("Failed to send message: {}", e);
-            }
-        }
     }
 }
