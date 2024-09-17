@@ -1,4 +1,3 @@
-// blockをimport
 use super::block::Block;
 use serde::{Serialize, Deserialize};
 
