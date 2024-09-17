@@ -28,6 +28,8 @@ impl P2p {
         let addr = format!("127.0.0.1:{}", p2p_port);
         let listener = TcpListener::bind(&addr).await?;
         println!("Listening on: {}", addr);
+
+        self.connect_peers().await?;
         
         while let Ok((stream, _)) = listener.accept().await {
             let ws_stream = tokio_tungstenite::accept_async(tokio_tungstenite::MaybeTlsStream::Plain(stream)).await.expect("Failed to accept");
@@ -109,4 +111,9 @@ impl P2p {
             }
         });
     }
+}
+
+pub async fn run_p2p(chain: Chain) -> Result<(), Box<dyn std::error::Error>> {
+    let p2p = P2p::new(chain);
+    p2p.listen().await
 }
