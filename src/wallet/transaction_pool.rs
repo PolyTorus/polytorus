@@ -1,8 +1,9 @@
 use super::{transaction::{Input, Transaction}, wallets::Wallet};
 use std::fmt;
 
+#[derive(Debug, Clone)]
 pub struct Pool {
-    transactions: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
 }
 
 impl Pool {

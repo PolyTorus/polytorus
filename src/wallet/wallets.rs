@@ -6,12 +6,13 @@ use secp256k1::hashes::sha256;
 use lazy_static::lazy_static;
 use super::transaction::Transaction;
 use super::transaction_pool::Pool;
+use serde::{Serialize, Deserialize};
 
 lazy_static! {
     pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub struct Wallet {
     pub balance: u64,
     pub keypair: secp256k1::Keypair,

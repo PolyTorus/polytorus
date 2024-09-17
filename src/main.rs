@@ -4,6 +4,7 @@ use polytorus::app::route::index;
 use polytorus::app::show_block::block;
 use polytorus::blockchain::chain::Chain;
 use polytorus::app::mine::mine;
+use polytorus::app::transaction::transactions;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -42,6 +43,7 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(block)
             .service(mine)
+            .service(transactions)
             .service(web::redirect("/mine", "/block"))
     })
     .bind(format!("127.0.0.1:{}", http_port))?

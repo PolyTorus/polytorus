@@ -3,3 +3,4 @@ pub mod show_block;
 pub mod mine;
 pub mod global;
 pub mod p2p;
+pub mod transaction;
