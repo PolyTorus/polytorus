@@ -1,5 +1,6 @@
 use crate::blockchain::chain::Chain;
 use std::sync::Arc;
+use tokio::time::Duration as TokioDuration;
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
@@ -41,11 +42,32 @@ impl P2p {
 
     pub async fn connect_peers(&self) -> Result<(), Box<dyn std::error::Error>>{
         let peers = std::env::var("PEERS").unwrap_or_default();
+        let max_retries = 5;
+        let retry_delay = TokioDuration::from_secs(5);
 
         for peer in peers.split(",") {
             if !peer.is_empty() {
-                let (ws_stream, _) = connect_async(peer).await?;
-                self.connect_socket(ws_stream).await;
+                let mut retries = 0;
+                while retries < max_retries {
+                    match connect_async(peer).await {
+                        Ok((ws_stream, _)) => {
+                            self.connect_socket(ws_stream).await;
+                            break;
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to connect to peer: {}. Retrying in {} seconds. Error: {}", peer, retry_delay.as_secs(), e);
+                            retries += 1;
+                            if retries < max_retries {
+                                tokio::time::sleep(retry_delay).await;
+                            }
+                        }
+                    }
+                }
+                // let (ws_stream, _) = connect_async(peer).await?;
+                // self.connect_socket(ws_stream).await;
+                if retries == max_retries {
+                    eprint!("Failed to connect to peer: {}", peer);
+                }
             }
         }
         Ok(())
