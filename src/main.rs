@@ -20,20 +20,21 @@ async fn main() -> std::io::Result<()> {
     // let server_clone = server.clone();
     // let _ = server.lock().await.connect_peers().await;
 
-    let p2p_server = server.clone();
-    tokio::spawn(async move {
-        if let Err(e) = p2p_server.lock().await.listen().await {
-            eprintln!("Error listening: {}", e);
-        }
-    });
-
-    // let server_clone_for_spawn = server.clone();
+    // let p2p_server = server.clone();
     // tokio::spawn(async move {
-    //     if let Err(e) = server_clone_for_spawn.lock().await.connect_peers().await {
-    //         eprintln!("Error connecting to peers: {}", e);
+    //     if let Err(e) = p2p_server.lock().await.listen().await {
+    //         eprintln!("Error listening: {}", e);
     //     }
     // });
+
     start_p2p().await;
+
+    let server_clone_for_spawn = server.clone();
+    tokio::spawn(async move {
+        if let Err(e) = server_clone_for_spawn.lock().await.connect_peers().await {
+            eprintln!("Error connecting to peers: {}", e);
+        }
+    });
 
     println!("Start http server: http://localhost:{}", http_port);
     println!("Start p2p server: ws://localhost:{}", p2p_port);
