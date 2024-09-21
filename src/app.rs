@@ -5,3 +5,4 @@ pub mod global;
 pub mod p2p;
 pub mod transaction;
 pub mod transact;
+pub mod public_key;
