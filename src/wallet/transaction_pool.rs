@@ -24,6 +24,10 @@ impl Pool {
     pub fn exists(&self, address: Wallet) -> Option<Transaction> {
         self.transactions.iter().find(|t| <Vec<Input> as Clone>::clone(&t.input).into_iter().any(|i| i.address.public_key == address.public_key)).cloned()
     }
+
+    pub fn valid_transactions(&self) -> Vec<Transaction> {
+        self.transactions.clone().into_iter().filter(|t| t.is_valid()).collect()
+    }
 }
 
 impl fmt::Display for Pool {

@@ -50,7 +50,7 @@ impl Transaction {
 
         Ok(transaction)
     }
-   
+
 
     // sign transaction
     pub fn sign(&self, wallet: &Wallet) -> Self {
@@ -87,6 +87,12 @@ impl Transaction {
         });
         
         Ok(self.sign(&sender_wallet))
+    }
+
+    pub fn is_valid(&self) -> bool {
+        let output_amount: u64 = self.output.iter().map(|output| output.amount).sum();
+        let input_amount: u64 = self.input.iter().map(|input| input.amount).sum();
+        output_amount == input_amount
     }
 }
 
