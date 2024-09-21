@@ -3,15 +3,16 @@ use super::wallets::Wallet;
 use std::time::SystemTime;
 use secp256k1::hashes::{sha256, Hash};
 use bincode;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Transaction {
     pub id: Uuid,
     pub input: Vec<Input>,
     pub output: Vec<Output>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Input {
     pub timestamp: SystemTime,
     pub amount: u64,
@@ -19,7 +20,7 @@ pub struct Input {
     pub signature: secp256k1::ecdsa::Signature,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Output {
     pub amount: u64,
     pub address: String,
