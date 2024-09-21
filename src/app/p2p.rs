@@ -7,7 +7,6 @@ use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use crate::app::global::POOL;
 use crate::wallet::{transaction::Transaction, transaction_pool::Pool};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
