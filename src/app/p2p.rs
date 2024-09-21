@@ -7,20 +7,19 @@ use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use serde_json::json;
 use crate::app::global::POOL;
 use crate::wallet::{transaction::Transaction, transaction_pool::Pool};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 enum MessageType {
     CHAIN,
     TRANSACTION,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct Message {
     type_: MessageType,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -37,10 +36,10 @@ pub struct P2p {
 }
 
 impl P2p {
-    pub fn new(chain: Chain) -> Self {
+    pub fn new(chain: Chain, transaction_pool: Pool ) -> Self {
         P2p {
             chain: Arc::new(Mutex::new(chain)),
-            transaction_pool: Arc::new(Mutex::new(POOL.lock().unwrap().clone())),
+            transaction_pool: Arc::new(Mutex::new(transaction_pool)),
             sockets: Arc::new(Mutex::new(Vec::new()))        
         }
     }
@@ -95,7 +94,7 @@ impl P2p {
     }
 
     pub async fn connect_socket(&self, ws_stream: WsStream) {
-        let chain = self.chain.clone();
+        // let chain = self.chain.clone();
         let sockets = self.sockets.clone();
         let ws_stream = Arc::new(Mutex::new(ws_stream));
 
@@ -106,7 +105,7 @@ impl P2p {
         }
 
         self.send_chain(ws_stream.clone()).await;
-        self.message_handler(ws_stream.clone(), chain.clone()).await;
+        self.message_handler(ws_stream.clone()).await;
     }
 
     async fn send_chain(&self, ws_stream: Arc<Mutex<WsStream>>) {
@@ -151,7 +150,10 @@ impl P2p {
         }
     }
 
-    async fn message_handler(&self, ws_stream: Arc<Mutex<WsStream>>, chain: Arc<Mutex<Chain>>) {
+    async fn message_handler(&self, ws_stream: Arc<Mutex<WsStream>>) {
+        let blockchain = self.chain.clone();
+        let transaction_pool = self.transaction_pool.clone();
+
         tokio::spawn(async move {
             loop {
                 let msg = {
@@ -161,14 +163,22 @@ impl P2p {
 
                 match msg {
                     Some(Ok(tokio_tungstenite::tungstenite::Message::Text(text))) => {
-                        if let Ok(received_chain) = serde_json::from_str::<Vec<serde_json::Value>>(&text) {
-                            println!("Received chain: {:?}", received_chain);
-                            let mut current_chain = chain.lock().await;
-                            if let Ok(new_chain) = serde_json::from_value::<Chain>(serde_json::Value::Array(received_chain)) {
-                                current_chain.replace_chain(&new_chain);
-                            } else {
-                                eprintln!("Failed to parse received chain");
+                        if let Ok(message) = serde_json::from_str::<Message>(&text) {
+                            match message.type_ {
+                                MessageType::CHAIN => {
+                                    if let Some(chain) = message.chain {
+                                        let mut blockchain = blockchain.lock().await;
+                                        blockchain.replace_chain(&chain);
+                                    }
+                                },
+                                MessageType::TRANSACTION => {
+                                    if let Some(transaction) = message.transaction {
+                                        let mut transaction_pool = transaction_pool.lock().await;
+                                        transaction_pool.update_or_add_transaction(transaction);
+                                    }
+                                },
                             }
+                            println!("Received message type: {:?}", message.type_);
                         }
                     }
                     None => break,
@@ -177,9 +187,16 @@ impl P2p {
             }
         });
     }
+
+    pub async fn broadcast_transaction(&self, transaction: Transaction) {
+        let sockets = self.sockets.lock().await;
+        for socket in sockets.iter() {
+            self.send_transaction(socket.clone(), transaction.clone()).await;
+        }
+    }
 }
 
-pub async fn run_p2p(chain: Chain) -> Result<(), Box<dyn std::error::Error>> {
-    let p2p = P2p::new(chain);
+pub async fn run_p2p(chain: Chain, transaction_pool: Pool) -> Result<(), Box<dyn std::error::Error>> {
+    let p2p = P2p::new(chain, transaction_pool);
     p2p.listen().await
 }

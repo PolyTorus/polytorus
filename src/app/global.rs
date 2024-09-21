@@ -7,10 +7,11 @@ use crate::wallet::transaction_pool::Pool;
 use crate::app::p2p::P2p;
 
 lazy_static! {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
 	pub static ref CHAIN: Mutex<Chain> = Mutex::new(Chain::new());
     pub static ref WALLET: Wallet = Wallet::new();
     pub static ref POOL: Mutex<Pool> = Mutex::new(Pool::new());
-    pub static ref SERVER: P2p = P2p::new(CHAIN.lock().unwrap().clone());
+    pub static ref SERVER: P2p = P2p::new(CHAIN.lock().unwrap().clone(), POOL.lock().unwrap().clone());
 }
 
 // block struct to json
