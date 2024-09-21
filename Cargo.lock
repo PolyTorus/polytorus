@@ -2390,6 +2390,7 @@ dependencies = [
  "log",
  "num",
  "num-complex",
+ "once_cell",
  "primitive-types",
  "proptest",
  "rand 0.8.5",

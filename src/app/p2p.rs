@@ -1,5 +1,6 @@
 use crate::blockchain::chain::Chain;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 use tokio::time::Duration as TokioDuration;
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
@@ -7,12 +8,31 @@ use tokio::sync::Mutex;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use serde_json::json;
+use crate::app::global::POOL;
+use crate::wallet::{transaction::Transaction, transaction_pool::Pool};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum MessageType {
+    CHAIN,
+    TRANSACTION,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Message {
+    type_: MessageType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chain: Option<Chain>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    transaction: Option<Transaction>,
+}
 
 #[derive(Debug, Clone)]
 pub struct P2p {
     chain: Arc<Mutex<Chain>>,
+    transaction_pool: Arc<Mutex<Pool>>,
     sockets: Arc<Mutex<Vec<Arc<Mutex<WsStream>>>>>,
 }
 
@@ -20,6 +40,7 @@ impl P2p {
     pub fn new(chain: Chain) -> Self {
         P2p {
             chain: Arc::new(Mutex::new(chain)),
+            transaction_pool: Arc::new(Mutex::new(POOL.lock().unwrap().clone())),
             sockets: Arc::new(Mutex::new(Vec::new()))        
         }
     }
@@ -89,14 +110,37 @@ impl P2p {
     }
 
     async fn send_chain(&self, ws_stream: Arc<Mutex<WsStream>>) {
-        let chain_json = {
+        let chain = {
             let chain = self.chain.lock().await;
-            json!(&*chain).to_string()
+            chain.clone()
+        };
+
+        let message = Message {
+            type_: MessageType::CHAIN,
+            chain: Some(chain),
+            transaction: None,
         };
         
+        let json = serde_json::to_string(&message).unwrap();
+        
         let mut ws_stream = ws_stream.lock().await;
-        if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(chain_json)).await {
+        if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(json)).await {
             eprintln!("Failed to send message: {}", e);
+        }
+    }
+
+    async fn send_transaction(&self, ws_stream: Arc<Mutex<WsStream>>, transaction: Transaction) {
+        let message = Message {
+            type_: MessageType::TRANSACTION,
+            chain: None,
+            transaction: Some(transaction),
+        };
+
+        let json = serde_json::to_string(&message).unwrap();
+
+        let mut ws_stream = ws_stream.lock().await;
+        if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(json)).await {
+            eprintln!("Failed to send transaction message: {}", e);
         }
     }
 
