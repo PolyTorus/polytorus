@@ -7,6 +7,7 @@ use polytorus::app::mine::mine;
 use polytorus::app::transaction::transactions;
 use polytorus::app::transact::transact;
 use polytorus::app::global::start_p2p;
+use polytorus::app::public_key::public_key;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -49,6 +50,7 @@ async fn main() -> std::io::Result<()> {
             .service(mine)
             .service(transactions)
             .service(transact)
+            .service(public_key)
             .service(web::redirect("/mine", "/block"))
             .service(web::redirect("/trasact", "/transactions"))
     })
