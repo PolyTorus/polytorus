@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use secp256k1::hashes::{sha256, Hash};
 use bincode;
 use serde::{Serialize, Deserialize};
+use crate::blockchain::config::MINING_REWARD;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Transaction {
@@ -50,7 +51,7 @@ impl Transaction {
 
         Ok(transaction)
     }
-   
+
 
     // sign transaction
     pub fn sign(&self, wallet: &Wallet) -> Self {
@@ -87,6 +88,29 @@ impl Transaction {
         });
         
         Ok(self.sign(&sender_wallet))
+    }
+
+    pub fn is_valid(&self) -> bool {
+        let output_amount: u64 = self.output.iter().map(|output| output.amount).sum();
+        let input_amount: u64 = self.input.iter().map(|input| input.amount).sum();
+        output_amount == input_amount
+    }
+
+    pub fn reward(&self, miner: Wallet, blockchain: Wallet) -> Self {
+        self.without_outputs(miner, vec![Output {
+            amount: MINING_REWARD,
+            address: blockchain.public_key.to_string(),
+        }])
+    }
+
+    pub fn without_outputs(&self, sender: Wallet, outputs: Vec<Output>) -> Self {
+        let mut transaction = self.clone();
+        transaction.output.push(Output {
+            amount: sender.balance - outputs.iter().map(|output| output.amount).sum::<u64>(),
+            address: sender.public_key.to_string(),
+        });
+        transaction.sign(&sender);
+        transaction
     }
 }
 

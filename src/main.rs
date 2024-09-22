@@ -6,6 +6,7 @@ use polytorus::app::mine::mine;
 use polytorus::app::transaction::transactions;
 use polytorus::app::transact::transact;
 use polytorus::app::public_key::public_key;
+use polytorus::app::miner_transactions::miner_transactions;
 use polytorus::app::global::{CHAIN, start_p2p, SERVER};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -43,8 +44,10 @@ async fn main() -> std::io::Result<()> {
             .service(transactions)
             .service(transact)
             .service(public_key)
+            .service(miner_transactions)
             .service(web::redirect("/mine", "/block"))
             .service(web::redirect("/trasact", "/transactions"))
+            .service(web::redirect("/miner-transactions", "/block"))
     })
     .bind(format!("0.0.0.0:{}", http_port))?
     .run()

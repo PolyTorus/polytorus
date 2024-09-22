@@ -1,6 +1,7 @@
 use std::fmt;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{Secp256k1, Message};
+use crate::blockchain::chain::Chain;
 use crate::blockchain::config::INITIAL_BALANCE;
 use secp256k1::hashes::sha256;
 use lazy_static::lazy_static;
@@ -62,6 +63,45 @@ impl Wallet {
         }
         Ok(transaction.unwrap())
     }
+
+    pub fn blockchain_wallet() -> Wallet {
+        let (secret_key, public_key) = SECP.generate_keypair(&mut OsRng);
+        Wallet {
+            balance: 0,
+            keypair: secp256k1::Keypair::from_secret_key(&SECP, &secret_key),
+            public_key,
+        }
+    }
+
+    pub fn calc_balance(&self, chain: &Chain) -> u64 {
+        let mut balance = self.balance;
+        let mut transactions = Vec::new();
+        
+        for block in &chain.chain {
+            if let Ok(trans) = serde_json::from_str::<Vec<Transaction>>(&block.data) {
+                transactions.extend(trans);
+            }
+        }
+
+        let wallet_input_ts: Vec<&Transaction> = transactions.iter().filter(|t| t.input.iter().any(|i| i.address.public_key == self.public_key)).collect();
+
+        if !wallet_input_ts.is_empty() {
+            let recent_input_t = wallet_input_ts.into_iter().max_by(|a, b| {
+                a.input.iter().map(|i| i.timestamp).max().cmp(&b.input.iter().map(|i| i.timestamp).max())
+            }).unwrap();
+            balance = recent_input_t.output.iter().find(|o| o.address == self.public_key.to_string()).map(|o| o.amount).unwrap_or(0);
+
+            let start_time = recent_input_t.input.iter().map(|i| i.timestamp).max().unwrap();
+            for t in transactions {
+                if t.input.iter().any(|input| input.timestamp > start_time) {
+                    if let Some(output) = t.output.iter().find(|o| o.address == self.public_key.to_string()) {
+                        balance += output.amount;
+                    }
+                }
+            }
+        }
+        balance
+    }
 }
 
 impl fmt::Display for Wallet {
@@ -108,5 +148,11 @@ mod tests {
         let amount = 10;
         let transaction = wallet.create_transaction(recipient.clone(), amount, &mut pool).unwrap();
         println!("{:?}", transaction);
+    }
+
+    #[test]
+    fn test_wallet_blockchain_wallet() {
+        let wallet = Wallet::blockchain_wallet();
+        println!("{}", wallet);
     }
 }
