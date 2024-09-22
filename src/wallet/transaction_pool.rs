@@ -55,4 +55,16 @@ mod tests {
         pool.update_or_add_transaction(transaction);
         println!("{}", pool);
     }
+
+    #[test]
+    fn test_valid_transactions() {
+        let mut pool = Pool::new();
+        let wallet = Wallet::new();
+        let recipient = "recipient".to_string();
+        let amount = 10;
+        let transaction = Transaction::new(wallet.clone(), recipient.clone(), amount).unwrap();
+        pool.update_or_add_transaction(transaction);
+        let valid_transactions = pool.valid_transactions();
+        println!("{:?}", valid_transactions);
+    }
 }
