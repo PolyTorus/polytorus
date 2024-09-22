@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chain {
-    chain: Vec<Block>,
+    pub chain: Vec<Block>,
 }
 
 impl Chain {
