@@ -62,6 +62,16 @@ impl Wallet {
         }
         Ok(transaction.unwrap())
     }
+
+    pub fn blockchain_wallet() -> Wallet {
+        let (secret_key, public_key) = SECP.generate_keypair(&mut OsRng);
+        Wallet {
+            balance: 0,
+            keypair: secp256k1::Keypair::from_secret_key(&SECP, &secret_key),
+            public_key,
+        }
+    }
+
 }
 
 impl fmt::Display for Wallet {
@@ -108,5 +118,11 @@ mod tests {
         let amount = 10;
         let transaction = wallet.create_transaction(recipient.clone(), amount, &mut pool).unwrap();
         println!("{:?}", transaction);
+    }
+
+    #[test]
+    fn test_wallet_blockchain_wallet() {
+        let wallet = Wallet::blockchain_wallet();
+        println!("{}", wallet);
     }
 }
