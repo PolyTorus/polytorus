@@ -20,7 +20,18 @@ impl Minner {
         }
     }
 
-    pub fn mine(&self) -> Vec<Transaction> {
-        self.transaction_pool.valid_transactions()
+    pub async fn mine(&mut self) {
+        let mut valid_transaction: Vec<Transaction> = self.transaction_pool.valid_transactions();
+
+        let rewards: Vec<Transaction> = valid_transaction.iter().map(|transaction| {
+            transaction.reward(self.wallet.clone(), Wallet::blockchain_wallet())
+        }).collect();
+        valid_transaction.extend(rewards);
+
+        let transactions_json = serde_json::to_string(&valid_transaction).expect("Failed to serialize transactions");
+        let _block = self.chain.add_block(transactions_json);
+        self.p2p.sync_chain().await;
+
+        self.transaction_pool.clear();
     }
 }

@@ -28,6 +28,10 @@ impl Pool {
     pub fn valid_transactions(&self) -> Vec<Transaction> {
         self.transactions.clone().into_iter().filter(|t| t.is_valid()).collect()
     }
+
+    pub fn clear(&mut self) {
+        self.transactions.clear();
+    }
 }
 
 impl fmt::Display for Pool {
