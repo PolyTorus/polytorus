@@ -10,13 +10,13 @@ use crate::app::minner::Minner;
 lazy_static! {
     #[derive(Debug, Clone, Serialize, Deserialize)]
 	pub static ref CHAIN: Mutex<Chain> = Mutex::new(Chain::new());
-    pub static ref WALLET: Wallet = Wallet::new();
+    pub static ref WALLET: Mutex<Wallet> = Mutex::new(Wallet::new());
     pub static ref POOL: Mutex<Pool> = Mutex::new(Pool::new());
     pub static ref SERVER: P2p = P2p::new(CHAIN.lock().unwrap().clone(), POOL.lock().unwrap().clone());
     pub static ref MINER: Arc<Mutex<Minner>> = Arc::new(Mutex::new(Minner::new(
         CHAIN.lock().unwrap().clone(),
         POOL.lock().unwrap().clone(),
-        WALLET.clone(),
+        WALLET.lock().unwrap().clone(),
         SERVER.clone()
     )));
 }

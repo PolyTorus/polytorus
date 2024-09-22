@@ -45,9 +45,10 @@ impl Wallet {
         SECP.verify_ecdsa(&message, &signature, &self.public_key).is_ok()
     }
 
-    pub fn create_transaction(&self, recipient: String, amount: u64, pool: &mut Pool) -> Result<Transaction, String> {
+    pub fn create_transaction(&mut self, recipient: String, amount: u64, chain: Chain, pool: &mut Pool) -> Result<Transaction, String> {
+        self.balance = self.calc_balance(&chain);
         if amount > self.balance {
-            return Err("Amount exceeds balance".to_string());
+            println!("{:?} is exceed price", self.balance);
         }
     
         let mut transaction = pool.exists(self.clone());
@@ -143,10 +144,10 @@ mod tests {
     #[test]
     fn test_wallet_create_transaction() {
         let mut pool = Pool::new();
-        let wallet = Wallet::new();
+        let mut wallet = Wallet::new();
         let recipient = "recipient".to_string();
         let amount = 10;
-        let transaction = wallet.create_transaction(recipient.clone(), amount, &mut pool).unwrap();
+        let transaction = wallet.create_transaction(recipient, amount, Chain::new(), &mut pool).unwrap();
         println!("{:?}", transaction);
     }
 
