@@ -16,6 +16,7 @@ type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 enum MessageType {
     CHAIN,
     TRANSACTION,
+    ClearTransaction,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -25,6 +26,8 @@ struct Message {
     chain: Option<Chain>,
     #[serde(skip_serializing_if = "Option::is_none")]
     transaction: Option<Transaction>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    clear_transaction: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +120,7 @@ impl P2p {
             type_: MessageType::CHAIN,
             chain: Some(chain),
             transaction: None,
+            clear_transaction: None,
         };
         
         let json = serde_json::to_string(&message).unwrap();
@@ -132,6 +136,7 @@ impl P2p {
             type_: MessageType::TRANSACTION,
             chain: None,
             transaction: Some(transaction),
+            clear_transaction: None,
         };
 
         let json = serde_json::to_string(&message).unwrap();
@@ -176,6 +181,10 @@ impl P2p {
                                         transaction_pool.update_or_add_transaction(transaction);
                                     }
                                 },
+                                MessageType::ClearTransaction => {
+                                    let mut transaction_pool = transaction_pool.lock().await;
+                                    transaction_pool.clear();
+                                }
                             }
                             println!("Received message type: {:?}", message.type_);
                         }
@@ -191,6 +200,24 @@ impl P2p {
         let sockets = self.sockets.lock().await;
         for socket in sockets.iter() {
             self.send_transaction(socket.clone(), transaction.clone()).await;
+        }
+    }
+
+    pub async fn broadcast_clear_transactions(&self) {
+        let sockets = self.sockets.lock().await;
+        for socket in sockets.iter() {
+            let message = Message {
+                type_: MessageType::TRANSACTION,
+                chain: None,
+                transaction: None,
+                clear_transaction: Some(true),
+            };
+
+            let json = serde_json::to_string(&message).unwrap();
+            let mut ws_stream = socket.lock().await;
+            if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(json)).await {
+                eprintln!("Failed to send clear transaction message: {}", e);
+            }
         }
     }
 }

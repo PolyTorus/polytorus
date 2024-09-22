@@ -7,3 +7,4 @@ pub mod transaction;
 pub mod transact;
 pub mod public_key;
 pub mod minner;
+pub mod miner_transactions;

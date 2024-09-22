@@ -1,3 +1,4 @@
+use crate::blockchain::block::Block;
 use crate::blockchain::chain::Chain;
 use crate::wallet::transaction::Transaction;
 use crate::wallet::{transaction_pool::Pool, wallets::Wallet};
@@ -20,7 +21,7 @@ impl Minner {
         }
     }
 
-    pub async fn mine(&mut self) {
+    pub async fn mine(&mut self) -> Block {
         let mut valid_transaction: Vec<Transaction> = self.transaction_pool.valid_transactions();
 
         let rewards: Vec<Transaction> = valid_transaction.iter().map(|transaction| {
@@ -29,9 +30,11 @@ impl Minner {
         valid_transaction.extend(rewards);
 
         let transactions_json = serde_json::to_string(&valid_transaction).expect("Failed to serialize transactions");
-        let _block = self.chain.add_block(transactions_json);
+        let block = self.chain.add_block(transactions_json);
         self.p2p.sync_chain().await;
 
         self.transaction_pool.clear();
+        self.p2p.broadcast_clear_transactions().await;
+        block.clone()
     }
 }
