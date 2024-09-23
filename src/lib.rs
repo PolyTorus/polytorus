@@ -1,4 +1,4 @@
-pub mod blockchain;
 pub mod app;
-pub mod wallet;
+pub mod blockchain;
 pub mod cryptography;
+pub mod wallet;

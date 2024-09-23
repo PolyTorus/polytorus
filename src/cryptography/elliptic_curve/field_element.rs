@@ -1,5 +1,5 @@
-use std::ops::{Add, Sub, Mul, Div, Rem};
 use std::fmt::Debug;
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FieldElement<T>
@@ -12,7 +12,14 @@ where
 
 impl<T> FieldElement<T>
 where
-    T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Rem<Output = T> + Copy,
+    T: PartialOrd
+        + Debug
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Rem<Output = T>
+        + Copy,
 {
     pub fn new(num: T, prime: T) -> Result<Self, String> {
         if num >= prime {
@@ -39,7 +46,14 @@ where
 
 impl<T> Add for FieldElement<T>
 where
-T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Rem<Output = T> + Copy,
+    T: PartialOrd
+        + Debug
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Rem<Output = T>
+        + Copy,
 {
     type Output = Self;
 
@@ -57,7 +71,14 @@ T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Di
 
 impl<T> Sub for FieldElement<T>
 where
-T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Rem<Output = T> + Copy,
+    T: PartialOrd
+        + Debug
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Rem<Output = T>
+        + Copy,
 {
     type Output = Self;
 
@@ -75,7 +96,14 @@ T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Di
 
 impl<T> Mul for FieldElement<T>
 where
-T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Rem<Output = T> + Copy,
+    T: PartialOrd
+        + Debug
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Rem<Output = T>
+        + Copy,
 {
     type Output = Self;
 
@@ -100,7 +128,14 @@ T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Di
 
 impl<T> Div for FieldElement<T>
 where
-T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Rem<Output = T> + Copy,
+    T: PartialOrd
+        + Debug
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Rem<Output = T>
+        + Copy,
 {
     type Output = Self;
 
@@ -110,8 +145,6 @@ T: PartialOrd + Debug + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Di
         self * FieldElement::new(other.num, p).unwrap().pow(p - one - one)
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -130,7 +163,10 @@ mod tests {
     fn field_element_new_invalid() {
         let field_element = FieldElement::new(5, 5);
 
-        assert_eq!(field_element, Err("Num 5 not in field range 0 to 5".to_string()));
+        assert_eq!(
+            field_element,
+            Err("Num 5 not in field range 0 to 5".to_string())
+        );
     }
 
     #[test]

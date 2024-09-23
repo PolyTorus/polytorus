@@ -1,17 +1,33 @@
 use super::point::Point;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 
 impl<T> Add for Point<T>
 where
-    T: PartialEq + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + std::fmt::Debug,
+    T: PartialEq
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Copy
+        + std::fmt::Debug,
 {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
         match (self, other) {
             (
-                Point::Coordinate { x: x0, y: y0, a: a0, b: b0 },
-                Point::Coordinate { x: x1, y: y1, a: a1, b: b1 },
+                Point::Coordinate {
+                    x: x0,
+                    y: y0,
+                    a: a0,
+                    b: b0,
+                },
+                Point::Coordinate {
+                    x: x1,
+                    y: y1,
+                    a: a1,
+                    b: b1,
+                },
             ) => {
                 if a0 != a1 || b0 != b1 {
                     panic!("Points are not on the same curve")
@@ -54,7 +70,13 @@ where
 
 impl<T, U> Mul<U> for Point<T>
 where
-    T: Add<Output = T> + Sub<Output = T> + Div<Output = T> + Mul<Output = T> + PartialOrd + Copy + std::fmt::Debug,
+    T: Add<Output = T>
+        + Sub<Output = T>
+        + Div<Output = T>
+        + Mul<Output = T>
+        + PartialOrd
+        + Copy
+        + std::fmt::Debug,
     U: Sub<Output = U> + Div<Output = U> + Mul<Output = U> + PartialOrd + Copy + std::fmt::Debug,
 {
     type Output = Point<T>;
@@ -77,9 +99,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use primitive_types::U256;
     use super::super::field_element::FieldElement;
     use super::super::point::Point;
+    use primitive_types::U256;
 
     #[test]
     fn point_on_elliptic_curve() {
@@ -109,7 +131,6 @@ mod tests {
         let y3 = FieldElement::new(U256::from(142), U256::from(223)).unwrap();
 
         assert_eq!(p3, Point::Coordinate { x: x3, y: y3, a, b });
-
     }
 
     #[test]

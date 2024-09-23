@@ -1,9 +1,9 @@
 use std::fmt;
 use std::time::SystemTime;
 // use sha2::{Digest, Sha256};
-use serde::{Serialize, Deserialize};
 use super::config::{DIFFICULTY, MINE_RATE};
 use secp256k1::hashes::{sha256, Hash};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Block {
@@ -16,7 +16,14 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(timestamp: u64, last_hash: String, hash: String, nonce: u64, data: String, difficulty: u32) -> Block {
+    pub fn new(
+        timestamp: u64,
+        last_hash: String,
+        hash: String,
+        nonce: u64,
+        data: String,
+        difficulty: u32,
+    ) -> Block {
         Block {
             timestamp,
             last_hash,
@@ -28,7 +35,14 @@ impl Block {
     }
 
     pub fn genesis() -> Block {
-        Block::new(0, "genesis_last_hash".to_string(), "genesis_hash".to_string(), 0,"genesis_data".to_string(), DIFFICULTY)
+        Block::new(
+            0,
+            "genesis_last_hash".to_string(),
+            "genesis_hash".to_string(),
+            0,
+            "genesis_data".to_string(),
+            DIFFICULTY,
+        )
     }
 
     pub fn mine_block(last_block: &Block, data: String) -> Block {
@@ -39,29 +53,63 @@ impl Block {
             .as_secs();
         let mut nonce = 0;
         let mut difficulty = last_block.difficulty;
-    
-        let mut hash = Block::hash(timestamp, last_hash.clone(), nonce, data.clone(), difficulty);
-        while !hash.to_string().starts_with(&"0".repeat(difficulty as usize)) {
+
+        let mut hash = Block::hash(
+            timestamp,
+            last_hash.clone(),
+            nonce,
+            data.clone(),
+            difficulty,
+        );
+        while !hash
+            .to_string()
+            .starts_with(&"0".repeat(difficulty as usize))
+        {
             nonce += 1;
             timestamp = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
             difficulty = Block::adjust_difficulty(last_block, timestamp);
-            hash = Block::hash(timestamp, last_hash.clone(), nonce, data.clone(), difficulty);
+            hash = Block::hash(
+                timestamp,
+                last_hash.clone(),
+                nonce,
+                data.clone(),
+                difficulty,
+            );
         }
-    
-        Block::new(timestamp, last_hash, hash.to_string(), nonce, data, last_block.difficulty)
+
+        Block::new(
+            timestamp,
+            last_hash,
+            hash.to_string(),
+            nonce,
+            data,
+            last_block.difficulty,
+        )
     }
 
-    pub fn hash(timestamp: u64, last_hash: String, nonce: u64, data: String, difficulty: u32) -> sha256::Hash {
-        let input = format!("{}{}{}{}{}", timestamp, last_hash, nonce, data, difficulty);        
+    pub fn hash(
+        timestamp: u64,
+        last_hash: String,
+        nonce: u64,
+        data: String,
+        difficulty: u32,
+    ) -> sha256::Hash {
+        let input = format!("{}{}{}{}{}", timestamp, last_hash, nonce, data, difficulty);
         let hash = sha256::Hash::hash(input.as_bytes());
         hash
     }
 
     pub fn hash_block(block: &Block) -> sha256::Hash {
-        Block::hash(block.timestamp, block.last_hash.clone(),  block.nonce, block.data.clone(), block.difficulty)
+        Block::hash(
+            block.timestamp,
+            block.last_hash.clone(),
+            block.nonce,
+            block.data.clone(),
+            block.difficulty,
+        )
     }
 
     pub fn adjust_difficulty(last_block: &Block, current_time: u64) -> u32 {
@@ -94,7 +142,14 @@ mod tests {
 
     #[test]
     fn block_new() {
-        let block = Block::new(0, "foo".to_string(), "bar".to_string(), 0, "baz".to_string(), 0);
+        let block = Block::new(
+            0,
+            "foo".to_string(),
+            "bar".to_string(),
+            0,
+            "baz".to_string(),
+            0,
+        );
 
         assert_eq!(block.timestamp, 0);
         assert_eq!(block.last_hash, "foo".to_string());
@@ -106,7 +161,14 @@ mod tests {
 
     #[test]
     fn block_display() {
-        let block = Block::new(0, "foo".to_string(), "bar".to_string(), 0, "baz".to_string(), 0);
+        let block = Block::new(
+            0,
+            "foo".to_string(),
+            "bar".to_string(),
+            0,
+            "baz".to_string(),
+            0,
+        );
 
         assert_eq!(
             format!("{}", block),
@@ -133,5 +195,4 @@ mod tests {
         assert_eq!(mined_block.last_hash, last_block.hash);
         assert_eq!(mined_block.data, data);
     }
-
 }

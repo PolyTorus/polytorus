@@ -5,10 +5,8 @@ use num::{One, Zero};
 use num_complex::Complex64;
 
 use super::{
-    cyclotomic_fourier::CyclotomicFourier, field::Felt, polynomial::Polynomial,
-    u32_field::U32Field,
+    cyclotomic_fourier::CyclotomicFourier, field::Felt, polynomial::Polynomial, u32_field::U32Field,
 };
-
 
 pub trait FastFft: Sized + Clone {
     type Field: Add + Mul + AddAssign + MulAssign + Neg + Sub + SubAssign + One + Zero;

@@ -1,5 +1,5 @@
 use super::block::Block;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Chain {
@@ -29,7 +29,9 @@ impl Chain {
             let block = &self.chain[i];
             let last_block = &self.chain[i - 1];
 
-            if block.last_hash != last_block.hash || block.hash != Block::hash_block(block).to_string() {
+            if block.last_hash != last_block.hash
+                || block.hash != Block::hash_block(block).to_string()
+            {
                 return false;
             }
         }
@@ -87,9 +89,10 @@ mod tests {
         assert!(!chain.is_valid_chain());
 
         chain.chain[0].data = "genesis_data".to_string();
-        chain.chain.push(Block::mine_block(&chain.chain[
-            chain.chain.len() - 1
-        ], "foo".to_string()));
+        chain.chain.push(Block::mine_block(
+            &chain.chain[chain.chain.len() - 1],
+            "foo".to_string(),
+        ));
 
         assert!(!chain.is_valid_chain());
     }

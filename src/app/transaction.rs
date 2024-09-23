@@ -1,5 +1,5 @@
-use actix_web::{get, HttpResponse, Responder};
 use crate::app::global::POOL;
+use actix_web::{get, HttpResponse, Responder};
 
 #[get("/transactions")]
 async fn transactions() -> impl Responder {

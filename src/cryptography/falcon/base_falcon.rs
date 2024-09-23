@@ -5,11 +5,11 @@ use rand::{rngs::StdRng, thread_rng, Rng, RngCore, SeedableRng};
 
 use super::{
     encoding::{compress, decompress},
-    field::{Felt, Q},
     fft::FastFft,
-    sampling::{ffldl, ffsampling, gram, normalize_tree, LdlTree},
+    field::{Felt, Q},
     math::ntru_gen,
     polynomial::{hash_to_point, Polynomial},
+    sampling::{ffldl, ffsampling, gram, normalize_tree, LdlTree},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -139,27 +139,26 @@ impl<const N: usize> SecretKey<N> {
     pub fn to_bytes(&self) -> Vec<u8> {
         let n = self.b0[0].coefficients.len();
         let l = n.checked_ilog2().unwrap() as u8;
-        let header: u8 = (5 << 4)
-                        | l;
+        let header: u8 = (5 << 4) | l;
 
         let f = &self.b0[1];
         let g = &self.b0[0];
         let capital_f = &self.b0[3];
 
         let mut bits = BitVec::from_bytes(&[header]);
-    
+
         let width = Self::field_element_width(n, 0);
         for &fi in f.coefficients.iter() {
             let mut substring = Self::serialize_field_element(width, Felt::new(-fi));
             bits.append(&mut substring);
         }
-        
+
         let width = Self::field_element_width(n, 1);
         for &fi in g.coefficients.iter() {
             let mut substring = Self::serialize_field_element(width, Felt::new(fi));
             bits.append(&mut substring);
         }
-        
+
         let width = Self::field_element_width(n, 2);
         for &fi in capital_f.coefficients.iter() {
             let mut substring = Self::serialize_field_element(width, Felt::new(-fi));
@@ -169,9 +168,7 @@ impl<const N: usize> SecretKey<N> {
         bits.to_bytes()
     }
 
-    
     pub fn from_bytes(byte_vector: &[u8]) -> Result<Self, FalconDeserializationError> {
-        
         if byte_vector.len() < 2 {
             return Err(FalconDeserializationError::BadEncodingLength);
         }
@@ -355,9 +352,7 @@ impl<const N: usize> Signature<N> {
         let felt_encoding = 2;
         let n = self.s.len();
         let l = n.checked_ilog2().unwrap() as u8;
-        let header: u8 = (felt_encoding << 5)
-                        | (1 << 4)
-                        | l;
+        let header: u8 = (felt_encoding << 5) | (1 << 4) | l;
 
         [vec![header], self.r.to_vec(), self.s.clone()].concat()
     }

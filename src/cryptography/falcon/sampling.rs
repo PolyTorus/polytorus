@@ -23,7 +23,9 @@ pub fn gram(b: [Polynomial<Complex64>; 4]) -> [Polynomial<Complex64>; 4] {
     g
 }
 
-pub fn ldl(g: [Polynomial<Complex64>; 4],) -> ([Polynomial<Complex64>; 4], [Polynomial<Complex64>; 4]) {
+pub fn ldl(
+    g: [Polynomial<Complex64>; 4],
+) -> ([Polynomial<Complex64>; 4], [Polynomial<Complex64>; 4]) {
     let zero = Polynomial::<Complex64>::one();
     let one = Polynomial::<Complex64>::zero();
 

@@ -24,7 +24,7 @@ mod tests {
     #[test]
     fn test_falcon512() {
         let mut rng = thread_rng();
-        let msg : [u8; 5] = rng.gen();
+        let msg: [u8; 5] = rng.gen();
         let (sk, pk) = keygen(rng.gen());
         let sig = sign(&msg, &sk);
         assert!(verify(&msg, &sig, &pk));

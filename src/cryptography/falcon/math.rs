@@ -7,8 +7,8 @@ use rand::RngCore;
 
 use super::{
     cyclotomic_fourier::CyclotomicFourier,
-    field::{Felt, Q},
     fft::FastFft,
+    field::{Felt, Q},
     inverse::Inverse,
     polynomial::Polynomial,
     sample::sampler_z,

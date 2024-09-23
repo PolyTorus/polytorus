@@ -1,17 +1,16 @@
-use actix_web::{App, HttpServer, web};
+use actix_web::{web, App, HttpServer};
+use polytorus::app::global::{start_p2p, CHAIN, SERVER};
+use polytorus::app::mine::mine;
+use polytorus::app::miner_transactions::miner_transactions;
 use polytorus::app::p2p::P2p;
+use polytorus::app::public_key::public_key;
 use polytorus::app::route::index;
 use polytorus::app::show_block::block;
-use polytorus::app::mine::mine;
-use polytorus::app::transaction::transactions;
 use polytorus::app::transact::transact;
-use polytorus::app::public_key::public_key;
-use polytorus::app::miner_transactions::miner_transactions;
-use polytorus::app::global::{CHAIN, start_p2p, SERVER};
+use polytorus::app::transaction::transactions;
+use std::clone::Clone;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use std::clone::Clone;
-
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -32,7 +31,6 @@ async fn main() -> std::io::Result<()> {
 
     println!("Start http server: http://localhost:{}", http_port);
     println!("Start p2p server: ws://localhost:{}", p2p_port);
-
 
     HttpServer::new(move || {
         App::new()

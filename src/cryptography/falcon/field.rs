@@ -1,8 +1,11 @@
-use std::fmt::Display;
-use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
-use rand_distr::{num_traits::{One, Zero}, Distribution, Standard};
 use super::cyclotomic_fourier::CyclotomicFourier;
 use super::inverse::Inverse;
+use rand_distr::{
+    num_traits::{One, Zero},
+    Distribution, Standard,
+};
+use std::fmt::Display;
+use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub const Q: u32 = 12 * 1024 + 1;
 
@@ -170,7 +173,7 @@ impl CyclotomicFourier for Felt {
     fn primitive_root_of_unity(n: usize) -> Self {
         let log2n = n.ilog2();
         assert!(log2n <= 12);
-    
+
         let mut a = Felt::new(1331);
         for _ in 0..(12 - log2n) {
             a *= a;

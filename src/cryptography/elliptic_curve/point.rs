@@ -1,11 +1,9 @@
 #[derive(Clone, PartialEq, Eq, Copy)]
-pub enum Point<T> where T: std::fmt::Debug {
-    Coordinate {
-        x: T,
-        y: T,
-        a: T,
-        b: T,
-    },
+pub enum Point<T>
+where
+    T: std::fmt::Debug,
+{
+    Coordinate { x: T, y: T, a: T, b: T },
     Infinity,
 }
 
@@ -15,7 +13,9 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Point::Coordinate { x, y, a, b } => write!(f, "Point({:?}, {:?})_({:?}, {:?})", x, y, a, b),
+            Point::Coordinate { x, y, a, b } => {
+                write!(f, "Point({:?}, {:?})_({:?}, {:?})", x, y, a, b)
+            }
             Point::Infinity => write!(f, "Point(Infinity)"),
         }
     }
@@ -26,8 +26,13 @@ where
     T: std::ops::Add<Output = T> + std::ops::Mul<Output = T> + std::fmt::Debug + PartialEq + Clone,
 {
     pub fn new(x: T, y: T, a: T, b: T) -> Self {
-        if y.clone() * y.clone() != x.clone() * x.clone() * x.clone() + a.clone() * x.clone() + b.clone() {
-            panic!("({:?}, {:?}) is not on the curve y^2 = x^3 + {:?}x + {:?}", x, y, a, b);
+        if y.clone() * y.clone()
+            != x.clone() * x.clone() * x.clone() + a.clone() * x.clone() + b.clone()
+        {
+            panic!(
+                "({:?}, {:?}) is not on the curve y^2 = x^3 + {:?}x + {:?}",
+                x, y, a, b
+            );
         }
         Point::Coordinate { x, y, a, b }
     }

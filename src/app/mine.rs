@@ -1,6 +1,6 @@
-use super::global::{CHAIN, BlockJson, PostBlockJson};
-use actix_web::{post, HttpResponse, Responder, web};
+use super::global::{BlockJson, PostBlockJson, CHAIN};
 use crate::app::global::SERVER;
+use actix_web::{post, web, HttpResponse, Responder};
 
 #[post("/mine")]
 async fn mine(data: web::Json<PostBlockJson>) -> impl Responder {

@@ -1,5 +1,5 @@
-use actix_web::{get, HttpResponse, Responder};
 use crate::app::global::WALLET;
+use actix_web::{get, HttpResponse, Responder};
 
 #[get("/public-key")]
 async fn public_key() -> impl Responder {

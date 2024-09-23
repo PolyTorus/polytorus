@@ -160,12 +160,11 @@ impl Div for U32Field {
     }
 }
 
-
 impl CyclotomicFourier for U32Field {
     fn primitive_root_of_unity(n: usize) -> Self {
         let log2n = n.ilog2();
         assert!(log2n <= 12);
-        
+
         let mut a = U32Field::new(48440i32);
         let num_squarings = 12 - n.ilog2();
         for _ in 0..num_squarings {

@@ -1,16 +1,15 @@
 use crate::blockchain::chain::Chain;
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use tokio::time::Duration as TokioDuration;
-use futures::{SinkExt, StreamExt};
-use tokio::net::TcpListener;
-use tokio::sync::Mutex;
-use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use crate::wallet::{transaction::Transaction, transaction_pool::Pool};
+use futures::{SinkExt, StreamExt};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::net::TcpListener;
+use tokio::net::TcpStream;
+use tokio::sync::Mutex;
+use tokio::time::Duration as TokioDuration;
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 enum MessageType {
@@ -38,11 +37,11 @@ pub struct P2p {
 }
 
 impl P2p {
-    pub fn new(chain: Chain, transaction_pool: Pool ) -> Self {
+    pub fn new(chain: Chain, transaction_pool: Pool) -> Self {
         P2p {
             chain: Arc::new(Mutex::new(chain)),
             transaction_pool: Arc::new(Mutex::new(transaction_pool)),
-            sockets: Arc::new(Mutex::new(Vec::new()))        
+            sockets: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -53,16 +52,19 @@ impl P2p {
         println!("Listening on: {}", addr);
 
         self.connect_peers().await?;
-        
+
         while let Ok((stream, _)) = listener.accept().await {
-            let ws_stream = tokio_tungstenite::accept_async(tokio_tungstenite::MaybeTlsStream::Plain(stream)).await.expect("Failed to accept");
+            let ws_stream =
+                tokio_tungstenite::accept_async(tokio_tungstenite::MaybeTlsStream::Plain(stream))
+                    .await
+                    .expect("Failed to accept");
             self.connect_socket(ws_stream).await;
         }
 
         Ok(())
     }
 
-    pub async fn connect_peers(&self) -> Result<(), Box<dyn std::error::Error>>{
+    pub async fn connect_peers(&self) -> Result<(), Box<dyn std::error::Error>> {
         let peers = std::env::var("PEERS").unwrap_or_default();
         let max_retries = 5;
         let retry_delay = TokioDuration::from_secs(5);
@@ -77,7 +79,12 @@ impl P2p {
                             break;
                         }
                         Err(e) => {
-                            eprintln!("Failed to connect to peer: {}. Retrying in {} seconds. Error: {}", peer, retry_delay.as_secs(), e);
+                            eprintln!(
+                                "Failed to connect to peer: {}. Retrying in {} seconds. Error: {}",
+                                peer,
+                                retry_delay.as_secs(),
+                                e
+                            );
                             retries += 1;
                             if retries < max_retries {
                                 tokio::time::sleep(retry_delay).await;
@@ -122,11 +129,14 @@ impl P2p {
             transaction: None,
             clear_transaction: None,
         };
-        
+
         let json = serde_json::to_string(&message).unwrap();
-        
+
         let mut ws_stream = ws_stream.lock().await;
-        if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(json)).await {
+        if let Err(e) = ws_stream
+            .send(tokio_tungstenite::tungstenite::Message::Text(json))
+            .await
+        {
             eprintln!("Failed to send message: {}", e);
         }
     }
@@ -142,7 +152,10 @@ impl P2p {
         let json = serde_json::to_string(&message).unwrap();
 
         let mut ws_stream = ws_stream.lock().await;
-        if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(json)).await {
+        if let Err(e) = ws_stream
+            .send(tokio_tungstenite::tungstenite::Message::Text(json))
+            .await
+        {
             eprintln!("Failed to send transaction message: {}", e);
         }
     }
@@ -174,13 +187,13 @@ impl P2p {
                                         let mut blockchain = blockchain.lock().await;
                                         blockchain.replace_chain(&chain);
                                     }
-                                },
+                                }
                                 MessageType::TRANSACTION => {
                                     if let Some(transaction) = message.transaction {
                                         let mut transaction_pool = transaction_pool.lock().await;
                                         transaction_pool.update_or_add_transaction(transaction);
                                     }
-                                },
+                                }
                                 MessageType::ClearTransaction => {
                                     let mut transaction_pool = transaction_pool.lock().await;
                                     transaction_pool.clear();
@@ -199,7 +212,8 @@ impl P2p {
     pub async fn broadcast_transaction(&self, transaction: Transaction) {
         let sockets = self.sockets.lock().await;
         for socket in sockets.iter() {
-            self.send_transaction(socket.clone(), transaction.clone()).await;
+            self.send_transaction(socket.clone(), transaction.clone())
+                .await;
         }
     }
 
@@ -215,14 +229,20 @@ impl P2p {
 
             let json = serde_json::to_string(&message).unwrap();
             let mut ws_stream = socket.lock().await;
-            if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(json)).await {
+            if let Err(e) = ws_stream
+                .send(tokio_tungstenite::tungstenite::Message::Text(json))
+                .await
+            {
                 eprintln!("Failed to send clear transaction message: {}", e);
             }
         }
     }
 }
 
-pub async fn run_p2p(chain: Chain, transaction_pool: Pool) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_p2p(
+    chain: Chain,
+    transaction_pool: Pool,
+) -> Result<(), Box<dyn std::error::Error>> {
     let p2p = P2p::new(chain, transaction_pool);
     p2p.listen().await
 }

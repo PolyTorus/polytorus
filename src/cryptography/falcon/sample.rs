@@ -60,7 +60,6 @@ pub fn approx_exp(x: f64, ccs: f64) -> u64 {
     (((z as u128) * (y as u128)) >> 63) as u64
 }
 
-
 pub fn ber_exp(x: f64, ccs: f64, random_bytes: [u8; 7]) -> bool {
     let s = f64::floor(x / LN_2) as usize;
     let r = x - LN_2 * (s as f64);

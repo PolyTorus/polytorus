@@ -1,6 +1,6 @@
-use std::ops::{Mul, MulAssign};
 use num::{One, Zero};
 use num_complex::Complex64;
+use std::ops::{Mul, MulAssign};
 
 pub trait Inverse: Copy + Zero + MulAssign + One + Mul<Output = Self> {
     fn inverse_or_zero(self) -> Self;

@@ -1,13 +1,13 @@
-use std::fmt;
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, Message};
-use crate::blockchain::chain::Chain;
-use crate::blockchain::config::INITIAL_BALANCE;
-use secp256k1::hashes::sha256;
-use lazy_static::lazy_static;
 use super::transaction::Transaction;
 use super::transaction_pool::Pool;
-use serde::{Serialize, Deserialize};
+use crate::blockchain::chain::Chain;
+use crate::blockchain::config::INITIAL_BALANCE;
+use lazy_static::lazy_static;
+use secp256k1::hashes::sha256;
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::{Message, Secp256k1};
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 lazy_static! {
     pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
@@ -40,19 +40,30 @@ impl Wallet {
         SECP.sign_ecdsa(&message, &self.keypair.secret_key())
     }
 
-    pub fn verify(&self, message_hash: sha256::Hash, signature: secp256k1::ecdsa::Signature) -> bool {
+    pub fn verify(
+        &self,
+        message_hash: sha256::Hash,
+        signature: secp256k1::ecdsa::Signature,
+    ) -> bool {
         let message = Message::from_digest_slice(message_hash.as_ref()).unwrap();
-        SECP.verify_ecdsa(&message, &signature, &self.public_key).is_ok()
+        SECP.verify_ecdsa(&message, &signature, &self.public_key)
+            .is_ok()
     }
 
-    pub fn create_transaction(&mut self, recipient: String, amount: u64, chain: Chain, pool: &mut Pool) -> Result<Transaction, String> {
+    pub fn create_transaction(
+        &mut self,
+        recipient: String,
+        amount: u64,
+        chain: Chain,
+        pool: &mut Pool,
+    ) -> Result<Transaction, String> {
         self.balance = self.calc_balance(&chain);
         if amount > self.balance {
             println!("{:?} is exceed price", self.balance);
         }
-    
+
         let mut transaction = pool.exists(self.clone());
-    
+
         if transaction.is_none() {
             transaction = Some(Transaction::new(self.clone(), recipient.clone(), amount)?);
         } else {
@@ -77,25 +88,53 @@ impl Wallet {
     pub fn calc_balance(&self, chain: &Chain) -> u64 {
         let mut balance = self.balance;
         let mut transactions = Vec::new();
-        
+
         for block in &chain.chain {
             if let Ok(trans) = serde_json::from_str::<Vec<Transaction>>(&block.data) {
                 transactions.extend(trans);
             }
         }
 
-        let wallet_input_ts: Vec<&Transaction> = transactions.iter().filter(|t| t.input.iter().any(|i| i.address.public_key == self.public_key)).collect();
+        let wallet_input_ts: Vec<&Transaction> = transactions
+            .iter()
+            .filter(|t| {
+                t.input
+                    .iter()
+                    .any(|i| i.address.public_key == self.public_key)
+            })
+            .collect();
 
         if !wallet_input_ts.is_empty() {
-            let recent_input_t = wallet_input_ts.into_iter().max_by(|a, b| {
-                a.input.iter().map(|i| i.timestamp).max().cmp(&b.input.iter().map(|i| i.timestamp).max())
-            }).unwrap();
-            balance = recent_input_t.output.iter().find(|o| o.address == self.public_key.to_string()).map(|o| o.amount).unwrap_or(0);
+            let recent_input_t = wallet_input_ts
+                .into_iter()
+                .max_by(|a, b| {
+                    a.input
+                        .iter()
+                        .map(|i| i.timestamp)
+                        .max()
+                        .cmp(&b.input.iter().map(|i| i.timestamp).max())
+                })
+                .unwrap();
+            balance = recent_input_t
+                .output
+                .iter()
+                .find(|o| o.address == self.public_key.to_string())
+                .map(|o| o.amount)
+                .unwrap_or(0);
 
-            let start_time = recent_input_t.input.iter().map(|i| i.timestamp).max().unwrap();
+            let start_time = recent_input_t
+                .input
+                .iter()
+                .map(|i| i.timestamp)
+                .max()
+                .unwrap();
             for t in transactions {
                 if t.input.iter().any(|input| input.timestamp > start_time) {
-                    if let Some(output) = t.output.iter().find(|o| o.address == self.public_key.to_string()) {
+                    if let Some(output) = t
+                        .output
+                        .iter()
+                        .find(|o| o.address == self.public_key.to_string())
+                    {
                         balance += output.amount;
                     }
                 }
@@ -107,8 +146,11 @@ impl Wallet {
 
 impl fmt::Display for Wallet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Wallet {{ balance: {}, keypair: {:?}, public_key: {} }}",
-            self.balance, self.keypair, self.public_key)
+        write!(
+            f,
+            "Wallet {{ balance: {}, keypair: {:?}, public_key: {} }}",
+            self.balance, self.keypair, self.public_key
+        )
     }
 }
 
@@ -147,7 +189,9 @@ mod tests {
         let mut wallet = Wallet::new();
         let recipient = "recipient".to_string();
         let amount = 10;
-        let transaction = wallet.create_transaction(recipient, amount, Chain::new(), &mut pool).unwrap();
+        let transaction = wallet
+            .create_transaction(recipient, amount, Chain::new(), &mut pool)
+            .unwrap();
         println!("{:?}", transaction);
     }
 

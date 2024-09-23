@@ -1,4 +1,7 @@
-use super::{transaction::{Input, Transaction}, wallets::Wallet};
+use super::{
+    transaction::{Input, Transaction},
+    wallets::Wallet,
+};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -14,7 +17,10 @@ impl Pool {
     }
 
     pub fn update_or_add_transaction(&mut self, transaction: Transaction) {
-        let index = self.transactions.iter().position(|t| t.id == transaction.id);
+        let index = self
+            .transactions
+            .iter()
+            .position(|t| t.id == transaction.id);
         match index {
             Some(i) => self.transactions[i] = transaction,
             None => self.transactions.push(transaction),
@@ -22,11 +28,22 @@ impl Pool {
     }
 
     pub fn exists(&self, address: Wallet) -> Option<Transaction> {
-        self.transactions.iter().find(|t| <Vec<Input> as Clone>::clone(&t.input).into_iter().any(|i| i.address.public_key == address.public_key)).cloned()
+        self.transactions
+            .iter()
+            .find(|t| {
+                <Vec<Input> as Clone>::clone(&t.input)
+                    .into_iter()
+                    .any(|i| i.address.public_key == address.public_key)
+            })
+            .cloned()
     }
 
     pub fn valid_transactions(&self) -> Vec<Transaction> {
-        self.transactions.clone().into_iter().filter(|t| t.is_valid()).collect()
+        self.transactions
+            .clone()
+            .into_iter()
+            .filter(|t| t.is_valid())
+            .collect()
     }
 
     pub fn clear(&mut self) {
@@ -45,7 +62,7 @@ mod tests {
     use crate::wallet::wallets::Wallet;
 
     use super::*;
-    
+
     #[test]
     fn test_pool_new() {
         let pool = Pool::new();
