@@ -1,7 +1,6 @@
-use super::{
-    transaction::{Input, Transaction},
-    wallets::Wallet,
-};
+use secp256k1::PublicKey;
+
+use super::transaction::Transaction;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -12,30 +11,23 @@ pub struct Pool {
 impl Pool {
     pub fn new() -> Pool {
         Pool {
-            transactions: vec![],
+            transactions: Vec::new(),
         }
     }
 
     pub fn update_or_add_transaction(&mut self, transaction: Transaction) {
-        let index = self
-            .transactions
-            .iter()
-            .position(|t| t.id == transaction.id);
-        match index {
-            Some(i) => self.transactions[i] = transaction,
-            None => self.transactions.push(transaction),
+        if let Some(index) = self.transactions.iter().position(|t| t.id == transaction.id) {
+            self.transactions[index] = transaction;
+        } else {
+            self.transactions.push(transaction);
         }
     }
 
-    pub fn exists(&self, address: Wallet) -> Option<Transaction> {
+    pub fn exists(&self, address: PublicKey) -> Option<Transaction> {
         self.transactions
-            .iter()
-            .find(|t| {
-                <Vec<Input> as Clone>::clone(&t.input)
-                    .into_iter()
-                    .any(|i| i.address.public_key == address.public_key)
-            })
-            .cloned()
+            .clone()
+            .into_iter()
+            .find(|t| t.input.iter().any(|i| i.address.public_key == address))
     }
 
     pub fn valid_transactions(&self) -> Vec<Transaction> {
@@ -85,6 +77,7 @@ mod tests {
         let amount = 10;
         let transaction = Transaction::new(wallet.clone(), recipient.clone(), amount).unwrap();
         pool.update_or_add_transaction(transaction);
+        println!("{}", pool);
         let valid_transactions = pool.valid_transactions();
         println!("{:?}", valid_transactions);
     }

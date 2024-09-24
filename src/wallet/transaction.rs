@@ -35,9 +35,18 @@ impl Transaction {
 
         let mut transaction = Transaction {
             id: Uuid::new_v4(),
-            input: vec![],
-            output: vec![],
+            input: Vec::new(),
+            output: Vec::new(),
         };
+
+        transaction.input.push(Input {
+            timestamp: SystemTime::now(),
+            amount: sender.balance,
+            address: sender.clone(),
+            signature: sender.sign(sha256::Hash::hash(
+                &bincode::serialize(&transaction.output).unwrap(),
+            )),
+        });
 
         transaction.output.push(Output {
             amount: sender.balance - amount,
@@ -79,7 +88,7 @@ impl Transaction {
     pub fn update(
         &mut self,
         sender_wallet: Wallet,
-        receipient: String,
+        recipient: String,
         amount: u64,
     ) -> Result<Self, String> {
         let sender_output = self
@@ -94,7 +103,7 @@ impl Transaction {
         sender_output.amount -= amount;
         self.output.push(Output {
             amount,
-            address: receipient,
+            address: recipient.to_string(),
         });
 
         Ok(self.sign(&sender_wallet))
@@ -135,8 +144,17 @@ mod tests {
     fn test_transaction() {
         let wallet = Wallet::new();
         let transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 10).unwrap();
+        println!("{:?}", transaction);
         let signed_transaction = transaction.sign(&wallet);
         println!("{:?}", signed_transaction);
+    }
+
+    #[test]
+    fn test_transaction_update() {
+        let wallet = Wallet::new();
+        let mut transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 10).unwrap();
+        let updated_transaction = transaction.update(wallet.clone(), "recipient".to_string(), 5).unwrap();
+        println!("{:?}", updated_transaction);
     }
 
     #[test]

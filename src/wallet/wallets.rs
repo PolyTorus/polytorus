@@ -59,10 +59,10 @@ impl Wallet {
     ) -> Result<Transaction, String> {
         self.balance = self.calc_balance(&chain);
         if amount > self.balance {
-            println!("{:?} is exceed price", self.balance);
+            return Err("Amount exceeds balance".to_string());
         }
 
-        let transaction = pool.exists(self.clone());
+        let transaction = pool.exists(self.clone().public_key);
 
         let transaction = if let Some(mut tx) = transaction {
             tx.update(self.clone(), recipient, amount)?
