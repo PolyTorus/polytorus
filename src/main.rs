@@ -14,8 +14,8 @@ use tokio::sync::Mutex;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let blockchain: Arc<CHAIN> = Arc::new(CHAIN.clone());
-    let server: Arc<Mutex<P2p>> = Arc::new(Mutex::new(SERVER.clone()));
+    let blockchain = Arc::new(Mutex::new(CHAIN.lock().await.clone()));
+    let server: Arc<Mutex<Option<P2p>>> = SERVER.clone();
 
     let p2p_port: String = std::env::var("P2P_PORT").unwrap_or_else(|_| "5001".to_string());
     let http_port: String = std::env::var("HTTP_PORT").unwrap_or_else(|_| "3001".to_string());
@@ -24,8 +24,10 @@ async fn main() -> std::io::Result<()> {
 
     let server_clone_for_spawn = server.clone();
     tokio::spawn(async move {
-        if let Err(e) = server_clone_for_spawn.lock().await.connect_peers().await {
-            eprintln!("Error connecting to peers: {}", e);
+        if let Some(p2p) = &mut *server_clone_for_spawn.lock().await {
+            if let Err(e) = p2p.connect_peers().await {
+                eprintln!("Error connecting to peers: {}", e);
+            }
         }
     });
 

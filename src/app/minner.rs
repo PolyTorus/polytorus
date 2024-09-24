@@ -4,6 +4,7 @@ use crate::blockchain::chain::Chain;
 use crate::wallet::transaction::Transaction;
 use crate::wallet::{transaction_pool::Pool, wallets::Wallet};
 
+#[derive(Clone)]
 pub struct Minner {
     pub chain: Chain,
     pub transaction_pool: Pool,

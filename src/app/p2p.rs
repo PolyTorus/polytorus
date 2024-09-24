@@ -37,11 +37,11 @@ pub struct P2p {
 }
 
 impl P2p {
-    pub fn new(chain: Chain, transaction_pool: Pool) -> Self {
+    pub fn new(chain: Arc<Mutex<Chain>>, transaction_pool: Arc<Mutex<Pool>>) -> Self {
         P2p {
-            chain: Arc::new(Mutex::new(chain)),
-            transaction_pool: Arc::new(Mutex::new(transaction_pool)),
-            sockets: Arc::new(Mutex::new(Vec::new())),
+            chain,
+            transaction_pool,
+            sockets: Arc::new(Mutex::new(vec![])),
         }
     }
 
@@ -243,6 +243,8 @@ pub async fn run_p2p(
     chain: Chain,
     transaction_pool: Pool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let chain = Arc::new(Mutex::new(chain));
+    let transaction_pool = Arc::new(Mutex::new(transaction_pool));
     let p2p = P2p::new(chain, transaction_pool);
     p2p.listen().await
 }

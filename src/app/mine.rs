@@ -4,10 +4,12 @@ use actix_web::{post, web, HttpResponse, Responder};
 
 #[post("/mine")]
 async fn mine(data: web::Json<PostBlockJson>) -> impl Responder {
-    let mut chain = CHAIN.lock().unwrap();
+    let mut chain = CHAIN.lock().await.clone();
     let block = chain.add_block(data.data.clone());
 
-    SERVER.sync_chain().await;
+    if let Some(server) = SERVER.lock().await.as_ref() {
+        server.sync_chain().await;
+    }
     println!("New block: {:?}", &block);
 
     let block_json = BlockJson {
