@@ -62,18 +62,16 @@ impl Wallet {
             println!("{:?} is exceed price", self.balance);
         }
 
-        let mut transaction = pool.exists(self.clone());
+        let transaction = pool.exists(self.clone());
 
-        if transaction.is_none() {
-            transaction = Some(Transaction::new(self.clone(), recipient.clone(), amount)?);
+        let transaction = if let Some(mut tx) = transaction {
+            tx.update(self.clone(), recipient, amount)?
         } else {
-            let mut transaction = transaction.take().unwrap();
-            transaction.output.push(super::transaction::Output {
-                amount: amount,
-                address: recipient,
-            });
-        }
-        Ok(transaction.unwrap())
+            let new_tx = Transaction::new(self.clone(), recipient, amount)?;
+            pool.update_or_add_transaction(new_tx.clone());
+            new_tx
+        };
+        Ok(transaction)
     }
 
     pub fn blockchain_wallet() -> Wallet {
