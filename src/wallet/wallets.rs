@@ -194,6 +194,16 @@ mod tests {
     }
 
     #[test]
+    fn test_update_wallet() {
+        let wallet = Wallet::new();
+        let recipient = "recipient".to_string();
+        let amount = 10;
+        let mut transaction = Transaction::new(wallet.clone(), recipient.clone(), amount).unwrap();
+        let updated_transaction = transaction.update(wallet.clone(), recipient.clone(), amount).unwrap();
+        println!("{:?}", updated_transaction);
+    }
+
+    #[test]
     fn test_wallet_blockchain_wallet() {
         let wallet = Wallet::blockchain_wallet();
         println!("{}", wallet);
