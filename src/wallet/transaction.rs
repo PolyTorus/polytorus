@@ -63,15 +63,15 @@ impl Transaction {
 
     // sign transaction
     pub fn sign(&self, wallet: &Wallet) -> Self {
+        let message_hash = sha256::Hash::hash(&bincode::serialize(&self.output).unwrap());
+        let signature = wallet.sign(message_hash);
         let mut transaction = self.clone();
-        transaction.input.push(Input {
+        transaction.input = vec![Input {
             timestamp: SystemTime::now(),
             amount: wallet.balance,
             address: wallet.clone(),
-            signature: wallet.sign(sha256::Hash::hash(
-                &bincode::serialize(&transaction.output).unwrap(),
-            )),
-        });
+            signature,
+        }];
         transaction
     }
 
