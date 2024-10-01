@@ -16,7 +16,11 @@ impl Pool {
     }
 
     pub fn update_or_add_transaction(&mut self, transaction: Transaction) {
-        if let Some(index) = self.transactions.iter().position(|t| t.id == transaction.id) {
+        if let Some(index) = self
+            .transactions
+            .iter()
+            .position(|t| t.id == transaction.id)
+        {
             self.transactions[index] = transaction;
         } else {
             self.transactions.push(transaction);

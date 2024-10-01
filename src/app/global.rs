@@ -3,10 +3,10 @@ use crate::app::p2p::P2p;
 use crate::blockchain::chain::Chain;
 use crate::wallet::transaction_pool::Pool;
 use crate::wallet::wallets::Wallet;
-use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub static CHAIN: Lazy<Arc<Mutex<Chain>>> = Lazy::new(|| Arc::new(Mutex::new(Chain::new())));
 pub static WALLET: Lazy<Arc<Mutex<Wallet>>> = Lazy::new(|| Arc::new(Mutex::new(Wallet::new())));

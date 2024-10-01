@@ -152,8 +152,11 @@ mod tests {
     #[test]
     fn test_transaction_update() {
         let wallet = Wallet::new();
-        let mut transaction = Transaction::new(wallet.clone(), "recipient".to_string(), 10).unwrap();
-        let updated_transaction = transaction.update(wallet.clone(), "recipient".to_string(), 5).unwrap();
+        let mut transaction =
+            Transaction::new(wallet.clone(), "recipient".to_string(), 10).unwrap();
+        let updated_transaction = transaction
+            .update(wallet.clone(), "recipient".to_string(), 5)
+            .unwrap();
         println!("{:?}", updated_transaction);
     }
 

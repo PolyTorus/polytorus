@@ -209,7 +209,10 @@ impl P2p {
         });
     }
 
-    pub async fn broadcast_transaction(&self, transaction: Transaction) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn broadcast_transaction(
+        &self,
+        transaction: Transaction,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let sockets = self.sockets.lock().await;
         for socket in sockets.iter() {
             let message = Message {
@@ -218,7 +221,7 @@ impl P2p {
                 transaction: Some(transaction.clone()),
                 clear_transaction: None,
             };
-    
+
             let json = serde_json::to_string(&message)?;
             let mut ws_stream = socket.lock().await;
             ws_stream
