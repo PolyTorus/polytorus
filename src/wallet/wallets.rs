@@ -8,6 +8,7 @@ use secp256k1::rand::rngs::OsRng;
 use secp256k1::{Message, Secp256k1};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use tokio::sync::MutexGuard;
 
 lazy_static! {
     pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
@@ -54,8 +55,8 @@ impl Wallet {
         &mut self,
         recipient: String,
         amount: u64,
-        chain: Chain,
-        pool: &mut Pool,
+        chain: &MutexGuard<'_, Chain>,
+        pool: &mut MutexGuard<'_, Pool>,
     ) -> Result<Transaction, String> {
         self.balance = self.calc_balance(&chain);
         if amount > self.balance {
@@ -181,14 +182,19 @@ mod tests {
         assert!(wallet.verify(message_hash, signature));
     }
 
-    #[test]
-    fn test_wallet_create_transaction() {
-        let mut pool = Pool::new();
+    #[tokio::test]
+    async fn test_wallet_create_transaction() {
+        let pool = Pool::new();
         let mut wallet = Wallet::new();
         let recipient = "recipient".to_string();
         let amount = 10;
+        let chain = tokio::sync::Mutex::new(Chain::new());
+        let chain_guard = chain.lock().await;
+        let binding = tokio::sync::Mutex::new(pool);
+        let mut pool_guard = binding.lock().await;
+
         let transaction = wallet
-            .create_transaction(recipient, amount, Chain::new(), &mut pool)
+            .create_transaction(recipient, amount, &chain_guard, &mut pool_guard)
             .unwrap();
         println!("{:?}", transaction);
     }
