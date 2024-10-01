@@ -209,12 +209,23 @@ impl P2p {
         });
     }
 
-    pub async fn broadcast_transaction(&self, transaction: Transaction) {
+    pub async fn broadcast_transaction(&self, transaction: Transaction) -> Result<(), Box<dyn std::error::Error>> {
         let sockets = self.sockets.lock().await;
         for socket in sockets.iter() {
-            self.send_transaction(socket.clone(), transaction.clone())
-                .await;
+            let message = Message {
+                type_: MessageType::TRANSACTION,
+                chain: None,
+                transaction: Some(transaction.clone()),
+                clear_transaction: None,
+            };
+    
+            let json = serde_json::to_string(&message)?;
+            let mut ws_stream = socket.lock().await;
+            ws_stream
+                .send(tokio_tungstenite::tungstenite::Message::Text(json))
+                .await?;
         }
+        Ok(())
     }
 
     pub async fn broadcast_clear_transactions(&self) {
