@@ -76,7 +76,7 @@ struct ServerInner {
     mempool: HashMap<String, Transaction>,
 }
 
-const KNOWN_NODE1: &str = "localhost:3000";
+const KNOWN_NODE1: &str = "0.0.0.0:3000";
 const CMD_LEN: usize = 12;
 const VERSION: i32 = 1;
 
@@ -85,7 +85,7 @@ impl Server {
         let mut node_set = HashSet::new();
         node_set.insert(String::from(KNOWN_NODE1));
         Ok(Server {
-            node_address: String::from("localhost:") + port,
+            node_address: String::from("0.0.0.0:") + port,
             mining_address: miner_address.to_string(),
             inner: Arc::new(Mutex::new(ServerInner {
                 known_nodes: node_set,
