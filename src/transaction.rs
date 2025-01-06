@@ -4,12 +4,18 @@ use crate::wallets::*;
 use bincode::serialize;
 use bitcoincash_addr::Address;
 use crypto::digest::Digest;
-use crypto::ed25519;
 use crypto::sha2::Sha256;
 use failure::format_err;
+use fn_dsa::{
+    signature_size,
+    SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE,
+    HASH_ID_RAW,
+};
 use rand::Rng;
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::vec;
 
 const SUBSIDY: i32 = 10;
 
@@ -99,8 +105,8 @@ impl Transaction {
         info!("new coinbase Transaction to: {}", to);
         let mut key: [u8; 32] = [0; 32];
         if data.is_empty() {
-            let mut rand = rand::OsRng::new().unwrap();
-            rand.fill_bytes(&mut key);
+            let mut rand = rand::thread_rng();
+            key = rand.gen();
             data = format!("Reward to '{}'", to);
         }
         let mut pub_key = Vec::from(data.as_bytes());
@@ -148,11 +154,23 @@ impl Transaction {
             tx_copy.id = tx_copy.hash()?;
             tx_copy.vin[in_id].pub_key = Vec::new();
 
-            if !ed25519::verify(
-                &tx_copy.id.as_bytes(),
-                &self.vin[in_id].pub_key,
-                &self.vin[in_id].signature,
-            ) {
+            // if !ed25519::verify(
+            //     &tx_copy.id.as_bytes(), // message
+            //     &self.vin[in_id].pub_key, // public key
+            //     &self.vin[in_id].signature, // signature
+            // ) {
+            //     return Ok(false);
+            // }
+
+            if !VerifyingKeyStandard::decode(&self.vin[in_id].pub_key)
+                .unwrap()
+                .verify(
+                    &self.vin[in_id].signature,
+                    &DOMAIN_NONE,
+                    &HASH_ID_RAW,
+                    &tx_copy.id.as_bytes(),
+                )
+            {
                 return Ok(false);
             }
         }
@@ -186,7 +204,16 @@ impl Transaction {
                 .clone();
             tx_copy.id = tx_copy.hash()?;
             tx_copy.vin[in_id].pub_key = Vec::new();
-            let signature = ed25519::signature(tx_copy.id.as_bytes(), private_key);
+            // let signature = ed25519::signature(tx_copy.id.as_bytes(), private_key);
+            let mut sk = SigningKeyStandard::decode(private_key).unwrap();
+            let mut signature = vec![0u8; signature_size(sk.get_logn())];
+            sk.sign(
+                &mut OsRng,
+                &DOMAIN_NONE,
+                &HASH_ID_RAW,
+                tx_copy.id.as_bytes(),
+                &mut signature,
+            );
             self.vin[in_id].signature = signature.to_vec();
         }
 
@@ -271,7 +298,22 @@ mod test {
         let tx = Transaction::new_coinbase(wa1, data).unwrap();
         assert!(tx.is_coinbase());
 
-        let signature = ed25519::signature(tx.id.as_bytes(), &w.secret_key);
-        assert!(ed25519::verify(tx.id.as_bytes(), &w.public_key, &signature));
+        // let signature = ed25519::signature(tx.id.as_bytes(), &w.secret_key);
+        // assert!(ed25519::verify(tx.id.as_bytes(), &w.public_key, &signature));
+        let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
+        let mut signature = vec![0u8; signature_size(sk.get_logn())];
+        sk.sign(
+            &mut OsRng,
+            &DOMAIN_NONE,
+            &HASH_ID_RAW,
+            tx.id.as_bytes(),
+            &mut signature,
+        );
+        assert!(VerifyingKeyStandard::decode(&w.public_key).unwrap().verify(
+            &signature,
+            &DOMAIN_NONE,
+            &HASH_ID_RAW,
+            tx.id.as_bytes()
+        ));
     }
 }

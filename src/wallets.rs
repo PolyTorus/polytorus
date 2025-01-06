@@ -4,17 +4,14 @@ use bitcoincash_addr::*;
 use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
+use fn_dsa::{
+    sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard,
+    FN_DSA_LOGN_512, 
+};
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
-use rand_core::OsRng;
-use fn_dsa::{
-    sign_key_size, vrfy_key_size, signature_size, FN_DSA_LOGN_512,
-    KeyPairGenerator, KeyPairGeneratorStandard,
-    SigningKey, SigningKeyStandard,
-    VerifyingKey, VerifyingKeyStandard,
-    DOMAIN_NONE, HASH_ID_RAW,
-};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -34,7 +31,6 @@ impl Wallet {
             secret_key: sign_key.to_vec(),
             public_key: vrfy_key.to_vec(),
         }
-
     }
 
     /// GetAddress returns wallet address
@@ -125,7 +121,11 @@ impl Wallets {
 #[cfg(test)]
 mod test {
     use super::*;
-
+    use fn_dsa::{
+        signature_size,
+        SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE,
+        HASH_ID_RAW,
+    };
     #[test]
     fn test_create_wallet_and_hash() {
         let w1 = Wallet::new();
@@ -166,7 +166,7 @@ mod test {
         let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
         let mut sig = vec![0u8; signature_size(sk.get_logn())];
         sk.sign(&mut OsRng, &DOMAIN_NONE, &HASH_ID_RAW, b"message", &mut sig);
-        
+
         match VerifyingKeyStandard::decode(&w.public_key) {
             Some(vk) => {
                 assert!(vk.verify(&sig, &DOMAIN_NONE, &HASH_ID_RAW, b"message"));
