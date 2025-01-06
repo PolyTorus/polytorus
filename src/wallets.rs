@@ -2,7 +2,6 @@ use super::*;
 use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
 use crypto::digest::Digest;
-use crypto::ed25519;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
 use serde::{Deserialize, Serialize};
@@ -164,11 +163,17 @@ mod test {
     #[test]
     fn test_signature() {
         let w = Wallet::new();
-        let signature = ed25519::signature("test".as_bytes(), &w.secret_key);
-        assert!(ed25519::verify(
-            "test".as_bytes(),
-            &w.public_key,
-            &signature
-        ));
+        let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
+        let mut sig = vec![0u8; signature_size(sk.get_logn())];
+        sk.sign(&mut OsRng, &DOMAIN_NONE, &HASH_ID_RAW, b"message", &mut sig);
+        
+        match VerifyingKeyStandard::decode(&w.public_key) {
+            Some(vk) => {
+                assert!(vk.verify(&sig, &DOMAIN_NONE, &HASH_ID_RAW, b"message"));
+            }
+            None => {
+                panic!("failed to decode verifying key");
+            }
+        }
     }
 }
