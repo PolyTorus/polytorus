@@ -5,10 +5,17 @@ use crypto::digest::Digest;
 use crypto::ed25519;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
+use rand_core::OsRng;
+use fn_dsa::{
+    sign_key_size, vrfy_key_size, signature_size, FN_DSA_LOGN_512,
+    KeyPairGenerator, KeyPairGeneratorStandard,
+    SigningKey, SigningKeyStandard,
+    VerifyingKey, VerifyingKeyStandard,
+    DOMAIN_NONE, HASH_ID_RAW,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -19,16 +26,16 @@ pub struct Wallet {
 impl Wallet {
     /// NewWallet creates and returns a Wallet
     fn new() -> Self {
-        let mut key: [u8; 32] = [0; 32];
-        let mut rand = rand::OsRng::new().unwrap();
-        rand.fill_bytes(&mut key);
-        let (secret_key, public_key) = ed25519::keypair(&key);
-        let secret_key = secret_key.to_vec();
-        let public_key = public_key.to_vec();
+        let mut kg = KeyPairGeneratorStandard::default();
+        let mut sign_key = [0u8; sign_key_size(FN_DSA_LOGN_512)];
+        let mut vrfy_key = [0u8; vrfy_key_size(FN_DSA_LOGN_512)];
+        kg.keygen(FN_DSA_LOGN_512, &mut OsRng, &mut sign_key, &mut vrfy_key);
+
         Wallet {
-            secret_key,
-            public_key,
+            secret_key: sign_key.to_vec(),
+            public_key: vrfy_key.to_vec(),
         }
+
     }
 
     /// GetAddress returns wallet address
