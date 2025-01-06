@@ -9,11 +9,19 @@
 * Explore novel consensus algorithms
 * Conduct formal verification of the blockchain's security
 
-## Run
+## Usage
 
+- Create Wallet
 ```bash
-cargo run
+cargo run createwallet
 ```
+
+- Create Blockchain
+```bash
+cargo run createblockchain <address>
+```
+
+
 
 ## License
 
