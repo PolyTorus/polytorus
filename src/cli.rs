@@ -30,7 +30,20 @@ impl Cli {
             .subcommand(
                 App::new("startnode")
                     .about("start the node server")
-                    .arg(Arg::from_usage("<port> 'the port server bind to locally'")),
+                    .arg(Arg::from_usage("<port> 'the port server bind to locally'"))
+                    .arg(
+                        Arg::with_name("host")
+                            .long("host")
+                            .takes_value(true)
+                            .default_value("0.0.0.0")
+                            .help("the host IP to bind for inbound connections"),
+                    )
+                    .arg(
+                        Arg::with_name("bootstrap")
+                            .long("bootstrap")
+                            .takes_value(true)
+                            .help("the address of an existing node (host:port) to connect first"),
+                    ),
             )
             .subcommand(
                 App::new("startminer")
@@ -107,7 +120,7 @@ impl Cli {
                 println!("Start node...");
                 let bc = Blockchain::new()?;
                 let utxo_set = UTXOSet { blockchain: bc };
-                let server = Server::new(port, "", utxo_set)?;
+                let server = Server::new(matches.value_of("host").unwrap_or("0.0.0.0"), port, "", matches.value_of("bootstrap"), utxo_set)?;
                 server.start_server()?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
@@ -126,7 +139,7 @@ impl Cli {
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
-            let server = Server::new(port, address, utxo_set)?;
+            let server = Server::new(matches.value_of("host").unwrap_or("0.0.0.0"), port, "", matches.value_of("bootstrap"), utxo_set)?;
             server.start_server()?;
         }
 

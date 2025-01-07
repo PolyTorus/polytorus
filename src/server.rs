@@ -76,16 +76,18 @@ struct ServerInner {
     mempool: HashMap<String, Transaction>,
 }
 
-const KNOWN_NODE1: &str = "0.0.0.0:3000";
 const CMD_LEN: usize = 12;
 const VERSION: i32 = 1;
 
 impl Server {
-    pub fn new(port: &str, miner_address: &str, utxo: UTXOSet) -> Result<Server> {
+    pub fn new(host: &str, port: &str, miner_address: &str, bootstap: Option<&str>, utxo: UTXOSet) -> Result<Server> {
         let mut node_set = HashSet::new();
-        node_set.insert(String::from(KNOWN_NODE1));
+        // node_set.insert(String::from(KNOWN_NODE1));
+        if let Some(bn) = bootstap {
+            node_set.insert(bn.to_string());
+        }
         Ok(Server {
-            node_address: String::from("0.0.0.0:") + port,
+            node_address: format!("{}:{}", host, port),
             mining_address: miner_address.to_string(),
             inner: Arc::new(Mutex::new(ServerInner {
                 known_nodes: node_set,
@@ -112,7 +114,11 @@ impl Server {
             if server1.get_best_height()? == -1 {
                 server1.request_blocks()
             } else {
-                server1.send_version(KNOWN_NODE1)
+                let nodes = server1.get_known_nodes();
+                Ok(if !nodes.is_empty() {
+                    let first = nodes.iter().next().unwrap();
+                    server1.send_version(first)?;
+                })
             }
         });
 
@@ -133,8 +139,8 @@ impl Server {
     }
 
     pub fn send_transaction(tx: &Transaction, utxoset: UTXOSet) -> Result<()> {
-        let server = Server::new("7000", "", utxoset)?;
-        server.send_tx(KNOWN_NODE1, tx)?;
+        let server = Server::new("0.0.0.0", "7000", "", None, utxoset)?;
+        server.send_tx("0.0.0.0:7000", tx)?;
         Ok(())
     }
 
@@ -426,16 +432,18 @@ impl Server {
         self.insert_mempool(msg.transaction.clone());
 
         let known_nodes = self.get_known_nodes();
-        if self.node_address == KNOWN_NODE1 {
-            for node in known_nodes {
-                if node != self.node_address && node != msg.addr_from {
-                    self.send_inv(&node, "tx", vec![msg.transaction.id.clone()])?;
-                }
+
+        for node in known_nodes {
+            if node != self.node_address && node != msg.addr_from {
+                self.send_inv(&node, "tx", vec![msg.transaction.id.clone()])?;
             }
-        } else {
-            let mut mempool = self.get_mempool();
+        }
+
+        if !self.mining_address.is_empty() {
+            let mut mempool  = self.get_mempool();
             debug!("Current mempool: {:#?}", &mempool);
-            if mempool.len() >= 1 && !self.mining_address.is_empty() {
+
+            if mempool.len() >= 1 {
                 loop {
                     let mut txs = Vec::new();
 
@@ -473,7 +481,7 @@ impl Server {
                 self.clear_mempool();
             }
         }
-
+        
         Ok(())
     }
 
@@ -555,7 +563,7 @@ mod test {
         let wa1 = ws.create_wallet();
         let bc = Blockchain::create_blockchain(wa1).unwrap();
         let utxo_set = UTXOSet { blockchain: bc };
-        let server = Server::new("7878", "localhost:3001", utxo_set).unwrap();
+        let server = Server::new("localhost", "7878", "", None, utxo_set).unwrap();
 
         let vmsg = Versionmsg {
             addr_from: server.node_address.clone(),
