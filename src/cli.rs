@@ -124,7 +124,7 @@ impl Cli {
                 server.start_server()?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
-            let address = if let Some(address) = matches.value_of("address") {
+            let _address = if let Some(address) = matches.value_of("address") {
                 address
             } else {
                 println!("address not supply!: usage\n{}", matches.usage());
