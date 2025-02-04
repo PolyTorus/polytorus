@@ -7,9 +7,13 @@ use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
 use fn_dsa::{
-    signature_size,
-    SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE,
-    HASH_ID_RAW,
+    signature_size, SigningKey as FnDsaSigningKey, SigningKeyStandard as FnDsaSigningKeyStandard,
+    VerifyingKey as FnDsaVerifyingKey, VerifyingKeyStandard, DOMAIN_NONE, HASH_ID_RAW,
+};
+use p256::ecdsa::signature::Signer;
+use p256::ecdsa::{
+    signature::SignatureEncoding, Signature, SigningKey as EcdsaSigningKey,
+    VerifyingKey as EcdsaVerifyingKey,
 };
 use rand::Rng;
 use rand_core::OsRng;
@@ -21,6 +25,12 @@ const SUBSIDY: i32 = 10;
 
 /// TXInput represents a transaction input
 #[derive(Serialize, Deserialize, Debug, Clone)]
+
+pub enum SignatureAlgorithm {
+    FnDsa,
+    Ecdsa,
+}
+
 pub struct TXInput {
     pub txid: String,
     pub vout: i32,
@@ -47,6 +57,7 @@ pub struct Transaction {
     pub id: String,
     pub vin: Vec<TXInput>,
     pub vout: Vec<TXOutput>,
+    pub sig_algo: SignatureAlgorithm,
 }
 
 impl Transaction {
@@ -93,6 +104,7 @@ impl Transaction {
             id: String::new(),
             vin,
             vout,
+            sig_algo: SignatureAlgorithm::FnDsa,
         };
         tx.id = tx.hash()?;
         utxo.blockchain
@@ -121,6 +133,7 @@ impl Transaction {
                 pub_key,
             }],
             vout: vec![TXOutput::new(SUBSIDY, to)?],
+            sig_algo: SignatureAlgorithm::FnDsa,
         };
         tx.id = tx.hash()?;
         Ok(tx)
@@ -205,15 +218,27 @@ impl Transaction {
             tx_copy.id = tx_copy.hash()?;
             tx_copy.vin[in_id].pub_key = Vec::new();
             // let signature = ed25519::signature(tx_copy.id.as_bytes(), private_key);
-            let mut sk = SigningKeyStandard::decode(private_key).unwrap();
-            let mut signature = vec![0u8; signature_size(sk.get_logn())];
-            sk.sign(
-                &mut OsRng,
-                &DOMAIN_NONE,
-                &HASH_ID_RAW,
-                tx_copy.id.as_bytes(),
-                &mut signature,
-            );
+            let signature = match self.sig_algo {
+                SignatureAlgorithm::FnDsa => {
+                    let mut sk = FnDsaSigningKeyStandard::decode(private_key).unwrap();
+                    let mut signature = vec![0u8; signature_size(sk.get_logn())];
+                    sk.sign(
+                        &mut OsRng,
+                        &DOMAIN_NONE,
+                        &HASH_ID_RAW,
+                        tx_copy.id.as_bytes(),
+                        &mut signature,
+                    );
+                    signature.to_vec()
+                }
+                SignatureAlgorithm::Ecdsa => {
+                    let key_bytes: [u8; 32] = private_key.try_into().unwrap();
+                    let sk: EcdsaSigningKey =
+                        EcdsaSigningKey::from_bytes(&key_bytes.into()).unwrap();
+                    let signature: Signature = sk.sign(&tx_copy.id.as_bytes());
+                    signature.to_bytes().to_vec()
+                }
+            };
             self.vin[in_id].signature = signature.to_vec();
         }
 
@@ -255,6 +280,7 @@ impl Transaction {
             id: self.id.clone(),
             vin,
             vout,
+            sig_algo: self.sig_algo.clone(),
         }
     }
 }
@@ -300,20 +326,35 @@ mod test {
 
         // let signature = ed25519::signature(tx.id.as_bytes(), &w.secret_key);
         // assert!(ed25519::verify(tx.id.as_bytes(), &w.public_key, &signature));
-        let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
-        let mut signature = vec![0u8; signature_size(sk.get_logn())];
-        sk.sign(
-            &mut OsRng,
-            &DOMAIN_NONE,
-            &HASH_ID_RAW,
-            tx.id.as_bytes(),
-            &mut signature,
-        );
-        assert!(VerifyingKeyStandard::decode(&w.public_key).unwrap().verify(
-            &signature,
-            &DOMAIN_NONE,
-            &HASH_ID_RAW,
-            tx.id.as_bytes()
-        ));
+        match tx.sig_algo {
+            SignatureAlgorithm::FnDsa => {
+                let mut sk = FnDsaSigningKeyStandard::decode(&w.secret_key).unwrap();
+                let mut signature = vec![0u8; signature_size(sk.get_logn())];
+                sk.sign(
+                    &mut OsRng,
+                    &DOMAIN_NONE,
+                    &HASH_ID_RAW,
+                    tx.id.as_bytes(),
+                    &mut signature,
+                );
+                assert!(VerifyingKeyStandard::decode(&w.public_key).unwrap().verify(
+                    &signature,
+                    &DOMAIN_NONE,
+                    &HASH_ID_RAW,
+                    tx.id.as_bytes()
+                ));
+            }
+            SignatureAlgorithm::Ecdsa => {
+                let key_bytes: [u8; 32] = w.secret_key.as_slice()[..32].try_into().unwrap();
+                let sk: EcdsaSigningKey = EcdsaSigningKey::from_bytes(&key_bytes.into()).unwrap();
+                let signature: Signature = sk.sign(&tx.id.as_bytes());
+                assert!(VerifyingKeyStandard::decode(&w.public_key).unwrap().verify(
+                    &signature.to_bytes().to_vec(),
+                    &DOMAIN_NONE,
+                    &HASH_ID_RAW,
+                    tx.id.as_bytes()
+                ));
+            }
+        }
     }
 }
