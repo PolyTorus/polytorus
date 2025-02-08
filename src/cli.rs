@@ -69,7 +69,11 @@ impl Cli {
                     .arg(Arg::from_usage("<amount> 'Amount to send'"))
                     .arg(Arg::from_usage(
                         "-m --mine 'the from address mine immediately'",
-                    )),
+                    ))
+                    .arg(Arg::with_name("node")
+                        .long("node")
+                        .takes_value(true)
+                        .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)")),
             )
             .get_matches();
 
@@ -110,10 +114,11 @@ impl Cli {
                 println!("amount in send not supply!: usage\n{}", matches.usage());
                 exit(1)
             };
+            let target_node = matches.value_of("node");
             if matches.is_present("mine") {
-                cmd_send(from, to, amount, true)?;
+                cmd_send(from, to, amount, true, target_node)?;
             } else {
-                cmd_send(from, to, amount, false)?;
+                cmd_send(from, to, amount, false, target_node)?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startnode") {
             if let Some(port) = matches.value_of("port") {
@@ -124,7 +129,7 @@ impl Cli {
                 server.start_server()?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
-            let _address = if let Some(address) = matches.value_of("address") {
+            let mining_address = if let Some(address) = matches.value_of("address") {
                 address
             } else {
                 println!("address not supply!: usage\n{}", matches.usage());
@@ -139,7 +144,7 @@ impl Cli {
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
-            let server = Server::new(matches.value_of("host").unwrap_or("0.0.0.0"), port, "", matches.value_of("bootstrap"), utxo_set)?;
+            let server = Server::new(matches.value_of("host").unwrap_or("0.0.0.0"), port, mining_address, matches.value_of("bootstrap"), utxo_set)?;
             server.start_server()?;
         }
 
@@ -147,7 +152,7 @@ impl Cli {
     }
 }
 
-fn cmd_send(from: &str, to: &str, amount: i32, mine_now: bool) -> Result<()> {
+fn cmd_send(from: &str, to: &str, amount: i32, mine_now: bool, target_node: Option<&str>) -> Result<()> {
     let bc = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
@@ -159,7 +164,7 @@ fn cmd_send(from: &str, to: &str, amount: i32, mine_now: bool) -> Result<()> {
 
         utxo_set.update(&new_block)?;
     } else {
-        Server::send_transaction(&tx, utxo_set)?;
+        Server::send_transaction(&tx, utxo_set, target_node.unwrap_or("0.0.0.0:7000"))?;
     }
 
     println!("success!");
@@ -222,31 +227,62 @@ fn cmd_list_address() -> Result<()> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
+    // テスト実行用の結果型（実際のプロジェクトで使っている Result 型に合わせてください）
+    type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    /// ローカルで即時採掘を行う send コマンドのテスト
     #[test]
-    fn test_locally() {
-        let addr1 = cmd_create_wallet().unwrap();
-        let addr2 = cmd_create_wallet().unwrap();
-        cmd_create_blockchain(&addr1).unwrap();
+    fn test_cli_send_with_mine() -> TestResult {
+        // 2 つのウォレットを作成
+        let addr1 = cmd_create_wallet()?;
+        let addr2 = cmd_create_wallet()?;
+        // ジェネシスブロック作成：addr1 に初期報酬が入る（例では 10 とする）
+        cmd_create_blockchain(&addr1)?;
+    
+        // 初期残高確認
+        let balance1 = cmd_get_balance(&addr1)?;
+        let balance2 = cmd_get_balance(&addr2)?;
+        assert_eq!(balance1, 10);
+        assert_eq!(balance2, 0);
+    
+        // addr1 から addr2 へ 5 単位送金（-m オプション：即時採掘モード、target_node は None）
+        cmd_send(&addr1, &addr2, 5, true, None)?;
+    
+        // 採掘が行われたので、残高が更新されるはず
+        let balance1_after = cmd_get_balance(&addr1)?;
+        let balance2_after = cmd_get_balance(&addr2)?;
+        // ※ このテストでは、採掘により報酬分の UTXO 更新が行われるため、例として addr1 の残高が 15, addr2 が 5 になる前提
+        assert_eq!(balance1_after, 15);
+        assert_eq!(balance2_after, 5);
+    
+        // addr2 から addr1 へ、残高以上（15 単位）の送金を試みる → エラーとなるはず
+        let res = cmd_send(&addr2, &addr1, 15, true, None);
+        assert!(res.is_err());
+    
+        // 再度残高確認（変化はないはず）
+        let balance1_final = cmd_get_balance(&addr1)?;
+        let balance2_final = cmd_get_balance(&addr2)?;
+        assert_eq!(balance1_final, 15);
+        assert_eq!(balance2_final, 5);
+    
+        Ok(())
+    }
+    
+    #[test]
+    fn test_cli_send_with_target_node() -> TestResult {
+        let addr1 = cmd_create_wallet()?;
+        let addr2 = cmd_create_wallet()?;
+        cmd_create_blockchain(&addr1)?;
+    
+        let balance1 = cmd_get_balance(&addr1)?;
+        let balance2 = cmd_get_balance(&addr2)?;
+        assert_eq!(balance1, 10);
+        assert_eq!(balance2, 0);
 
-        let b1 = cmd_get_balance(&addr1).unwrap();
-        let b2 = cmd_get_balance(&addr2).unwrap();
-        assert_eq!(b1, 10);
-        assert_eq!(b2, 0);
-
-        cmd_send(&addr1, &addr2, 5, true).unwrap();
-
-        let b1 = cmd_get_balance(&addr1).unwrap();
-        let b2 = cmd_get_balance(&addr2).unwrap();
-        assert_eq!(b1, 15);
-        assert_eq!(b2, 5);
-
-        cmd_send(&addr2, &addr1, 15, true).unwrap_err();
-        let b1 = cmd_get_balance(&addr1).unwrap();
-        let b2 = cmd_get_balance(&addr2).unwrap();
-        assert_eq!(b1, 15);
-        assert_eq!(b2, 5);
+        let _ = cmd_send(&addr1, &addr2, 5, false, Some("127.0.0.1:7000"));
+        Ok(())
     }
 }

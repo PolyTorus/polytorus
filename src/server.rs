@@ -138,9 +138,9 @@ impl Server {
         Ok(())
     }
 
-    pub fn send_transaction(tx: &Transaction, utxoset: UTXOSet) -> Result<()> {
+    pub fn send_transaction(tx: &Transaction, utxoset: UTXOSet, target_addr: &str) -> Result<()> {
         let server = Server::new("0.0.0.0", "7000", "", None, utxoset)?;
-        server.send_tx("0.0.0.0:7000", tx)?;
+        server.send_tx(target_addr, tx)?;
         Ok(())
     }
 
