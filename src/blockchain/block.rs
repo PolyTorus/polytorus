@@ -1,7 +1,7 @@
 //! Block implement of blockchain
 
-use super::*;
-use crate::transaction::Transaction;
+use crate::Result;
+use crate::crypto::transaction::*;
 use bincode::serialize;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;

@@ -1,4 +1,4 @@
-use super::*;
+use crate::Result;
 use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
 use crypto::digest::Digest;

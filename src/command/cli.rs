@@ -1,11 +1,11 @@
 //! cli process
 
-use super::*;
-use crate::blockchain::*;
-use crate::server::*;
-use crate::transaction::*;
-use crate::utxoset::*;
-use crate::wallets::*;
+use crate::Result;
+use crate::blockchain::blockchain::*;
+use crate::network::server::Server;
+use crate::crypto::transaction::*;
+use crate::blockchain::utxoset::*;
+use crate::crypto::wallets::*;
 use bitcoincash_addr::Address;
 use clap::{App, Arg};
 use std::process::exit;

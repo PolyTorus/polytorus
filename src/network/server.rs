@@ -1,9 +1,8 @@
 //! server of Blockchain
-
-use super::*;
-use crate::block::*;
-use crate::transaction::*;
-use crate::utxoset::*;
+use crate::Result;
+use crate::blockchain::block::*;
+use crate::crypto::transaction::*;
+use crate::blockchain::utxoset::*;
 use bincode::{deserialize, serialize};
 use failure::format_err;
 use serde::{Deserialize, Serialize};
@@ -554,8 +553,8 @@ fn bytes_to_cmd(bytes: &[u8]) -> Result<Message> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::blockchain::*;
-    use crate::wallets::*;
+    use crate::blockchain::blockchain::*;
+    use crate::crypto::wallets::*;
 
     #[test]
     fn test_cmd() {

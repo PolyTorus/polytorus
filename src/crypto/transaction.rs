@@ -1,6 +1,6 @@
-use super::*;
-use crate::utxoset::*;
-use crate::wallets::*;
+use crate::Result;
+use crate::blockchain::utxoset::*;
+use crate::crypto::wallets::*;
 use bincode::serialize;
 use bitcoincash_addr::Address;
 use crypto::digest::Digest;
