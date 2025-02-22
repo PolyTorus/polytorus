@@ -3,6 +3,7 @@
 use crate::Result;
 use crate::blockchain::block::*;
 use crate::crypto::transaction::*;
+use crate::crypto::traits::CryptoProvider;
 use bincode::{deserialize, serialize};
 use failure::format_err;
 use sled;
@@ -164,9 +165,14 @@ impl Blockchain {
     }
 
     /// SignTransaction signs inputs of a Transaction
-    pub fn sign_transacton(&self, tx: &mut Transaction, private_key: &[u8]) -> Result<()> {
+    pub fn sign_transacton(
+        &self,
+        tx: &mut Transaction,
+        private_key: &[u8],
+        crypto: &dyn CryptoProvider,
+    ) -> Result<()> {
         let prev_TXs = self.get_prev_TXs(tx)?;
-        tx.sign(private_key, prev_TXs)?;
+        tx.sign(private_key, prev_TXs, crypto)?;
         Ok(())
     }
 

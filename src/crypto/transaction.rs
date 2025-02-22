@@ -5,6 +5,7 @@ use bincode::serialize;
 use bitcoincash_addr::Address;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use crate::crypto::traits::CryptoProvider;
 use failure::format_err;
 use fn_dsa::{
     signature_size,
@@ -51,7 +52,13 @@ pub struct Transaction {
 
 impl Transaction {
     /// NewUTXOTransaction creates a new transaction
-    pub fn new_UTXO(wallet: &Wallet, to: &str, amount: i32, utxo: &UTXOSet) -> Result<Transaction> {
+    pub fn new_UTXO(
+        wallet: &Wallet,
+        to: &str,
+        amount: i32,
+        utxo: &UTXOSet,
+        crypto: &dyn CryptoProvider,
+    ) -> Result<Transaction> {
         info!(
             "new UTXO Transaction from: {} to: {}",
             wallet.get_address(),
@@ -96,7 +103,7 @@ impl Transaction {
         };
         tx.id = tx.hash()?;
         utxo.blockchain
-            .sign_transacton(&mut tx, &wallet.secret_key)?;
+            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
         Ok(tx)
     }
 
@@ -183,6 +190,7 @@ impl Transaction {
         &mut self,
         private_key: &[u8],
         prev_TXs: HashMap<String, Transaction>,
+        crypto: &dyn CryptoProvider,
     ) -> Result<()> {
         if self.is_coinbase() {
             return Ok(());
@@ -205,15 +213,7 @@ impl Transaction {
             tx_copy.id = tx_copy.hash()?;
             tx_copy.vin[in_id].pub_key = Vec::new();
             // let signature = ed25519::signature(tx_copy.id.as_bytes(), private_key);
-            let mut sk = SigningKeyStandard::decode(private_key).unwrap();
-            let mut signature = vec![0u8; signature_size(sk.get_logn())];
-            sk.sign(
-                &mut OsRng,
-                &DOMAIN_NONE,
-                &HASH_ID_RAW,
-                tx_copy.id.as_bytes(),
-                &mut signature,
-            );
+            let signature = crypto.sign(private_key, tx_copy.id.as_bytes());
             self.vin[in_id].signature = signature.to_vec();
         }
 
