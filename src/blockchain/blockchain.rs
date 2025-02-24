@@ -1,8 +1,8 @@
 //! Blockchain
 
-use crate::Result;
 use crate::blockchain::block::*;
 use crate::crypto::transaction::*;
+use crate::Result;
 use bincode::{deserialize, serialize};
 use failure::format_err;
 use sled;
