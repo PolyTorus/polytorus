@@ -124,7 +124,7 @@ impl Block {
         } else if time_diff > DESIRED_BLOCK_TIME && new_difficulty > 1 {
             new_difficulty -= 1;
         }
-        
+
         new_difficulty
     }
 }

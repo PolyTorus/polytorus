@@ -74,7 +74,6 @@ impl Blockchain {
             }
         }
 
-
         let lasthash = self.db.get("LAST")?.unwrap();
         let prev_hash = String::from_utf8(lasthash.to_vec())?;
         let prev_block = self.get_block(&prev_hash)?;
