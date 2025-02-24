@@ -1,14 +1,15 @@
+use crate::Result;
 use crate::blockchain::utxoset::*;
 use crate::crypto::wallets::*;
-use crate::Result;
 use bincode::serialize;
 use bitcoincash_addr::Address;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
 use fn_dsa::{
-    signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
-    DOMAIN_NONE, HASH_ID_RAW,
+    signature_size,
+    SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE,
+    HASH_ID_RAW,
 };
 use rand::Rng;
 use rand_core::OsRng;

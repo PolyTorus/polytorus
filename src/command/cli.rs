@@ -1,11 +1,11 @@
 //! cli process
 
-use crate::blockchain::blockchain::*;
-use crate::blockchain::utxoset::*;
-use crate::crypto::transaction::*;
-use crate::crypto::wallets::*;
-use crate::network::server::Server;
 use crate::Result;
+use crate::blockchain::blockchain::*;
+use crate::network::server::Server;
+use crate::crypto::transaction::*;
+use crate::blockchain::utxoset::*;
+use crate::crypto::wallets::*;
 use bitcoincash_addr::Address;
 use clap::{App, Arg};
 use std::process::exit;
@@ -70,12 +70,10 @@ impl Cli {
                     .arg(Arg::from_usage(
                         "-m --mine 'the from address mine immediately'",
                     ))
-                    .arg(
-                        Arg::with_name("node")
-                            .long("node")
-                            .takes_value(true)
-                            .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)"),
-                    ),
+                    .arg(Arg::with_name("node")
+                        .long("node")
+                        .takes_value(true)
+                        .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)")),
             )
             .get_matches();
 
@@ -127,13 +125,7 @@ impl Cli {
                 println!("Start node...");
                 let bc = Blockchain::new()?;
                 let utxo_set = UTXOSet { blockchain: bc };
-                let server = Server::new(
-                    matches.value_of("host").unwrap_or("0.0.0.0"),
-                    port,
-                    "",
-                    matches.value_of("bootstrap"),
-                    utxo_set,
-                )?;
+                let server = Server::new(matches.value_of("host").unwrap_or("0.0.0.0"), port, "", matches.value_of("bootstrap"), utxo_set)?;
                 server.start_server()?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
@@ -152,13 +144,7 @@ impl Cli {
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
-            let server = Server::new(
-                matches.value_of("host").unwrap_or("0.0.0.0"),
-                port,
-                mining_address,
-                matches.value_of("bootstrap"),
-                utxo_set,
-            )?;
+            let server = Server::new(matches.value_of("host").unwrap_or("0.0.0.0"), port, mining_address, matches.value_of("bootstrap"), utxo_set)?;
             server.start_server()?;
         }
 
@@ -166,13 +152,7 @@ impl Cli {
     }
 }
 
-fn cmd_send(
-    from: &str,
-    to: &str,
-    amount: i32,
-    mine_now: bool,
-    target_node: Option<&str>,
-) -> Result<()> {
+fn cmd_send(from: &str, to: &str, amount: i32, mine_now: bool, target_node: Option<&str>) -> Result<()> {
     let bc = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
@@ -261,42 +241,42 @@ mod tests {
         let addr2 = cmd_create_wallet()?;
         // ジェネシスブロック作成：addr1 に初期報酬が入る（例では 10 とする）
         cmd_create_blockchain(&addr1)?;
-
+    
         // 初期残高確認
         let balance1 = cmd_get_balance(&addr1)?;
         let balance2 = cmd_get_balance(&addr2)?;
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
-
+    
         // addr1 から addr2 へ 5 単位送金（-m オプション：即時採掘モード、target_node は None）
         cmd_send(&addr1, &addr2, 5, true, None)?;
-
+    
         // 採掘が行われたので、残高が更新されるはず
         let balance1_after = cmd_get_balance(&addr1)?;
         let balance2_after = cmd_get_balance(&addr2)?;
         // ※ このテストでは、採掘により報酬分の UTXO 更新が行われるため、例として addr1 の残高が 15, addr2 が 5 になる前提
         assert_eq!(balance1_after, 15);
         assert_eq!(balance2_after, 5);
-
+    
         // addr2 から addr1 へ、残高以上（15 単位）の送金を試みる → エラーとなるはず
         let res = cmd_send(&addr2, &addr1, 15, true, None);
         assert!(res.is_err());
-
+    
         // 再度残高確認（変化はないはず）
         let balance1_final = cmd_get_balance(&addr1)?;
         let balance2_final = cmd_get_balance(&addr2)?;
         assert_eq!(balance1_final, 15);
         assert_eq!(balance2_final, 5);
-
+    
         Ok(())
     }
-
+    
     #[test]
     fn test_cli_send_with_target_node() -> TestResult {
         let addr1 = cmd_create_wallet()?;
         let addr2 = cmd_create_wallet()?;
         cmd_create_blockchain(&addr1)?;
-
+    
         let balance1 = cmd_get_balance(&addr1)?;
         let balance2 = cmd_get_balance(&addr2)?;
         assert_eq!(balance1, 10);

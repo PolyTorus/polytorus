@@ -1,7 +1,7 @@
+use crate::Result;
 use crate::blockchain::block::*;
 use crate::blockchain::blockchain::*;
 use crate::crypto::transaction::*;
-use crate::Result;
 use bincode::{deserialize, serialize};
 use sled;
 use std::collections::HashMap;
