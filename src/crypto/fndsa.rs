@@ -1,8 +1,7 @@
 use super::traits::CryptoProvider;
 use fn_dsa::{
-    signature_size,
-    SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE,
-    HASH_ID_RAW,
+    signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
+    DOMAIN_NONE, HASH_ID_RAW,
 };
 use rand_core::OsRng;
 

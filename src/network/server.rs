@@ -1,8 +1,8 @@
 //! server of Blockchain
-use crate::Result;
 use crate::blockchain::block::*;
-use crate::crypto::transaction::*;
 use crate::blockchain::utxoset::*;
+use crate::crypto::transaction::*;
+use crate::Result;
 use bincode::{deserialize, serialize};
 use failure::format_err;
 use serde::{Deserialize, Serialize};
@@ -79,7 +79,13 @@ const CMD_LEN: usize = 12;
 const VERSION: i32 = 1;
 
 impl Server {
-    pub fn new(host: &str, port: &str, miner_address: &str, bootstap: Option<&str>, utxo: UTXOSet) -> Result<Server> {
+    pub fn new(
+        host: &str,
+        port: &str,
+        miner_address: &str,
+        bootstap: Option<&str>,
+        utxo: UTXOSet,
+    ) -> Result<Server> {
         let mut node_set = HashSet::new();
         // node_set.insert(String::from(KNOWN_NODE1));
         if let Some(bn) = bootstap {
@@ -439,7 +445,7 @@ impl Server {
         }
 
         if !self.mining_address.is_empty() {
-            let mut mempool  = self.get_mempool();
+            let mut mempool = self.get_mempool();
             debug!("Current mempool: {:#?}", &mempool);
 
             if mempool.len() >= 1 {
@@ -480,7 +486,7 @@ impl Server {
                 self.clear_mempool();
             }
         }
-        
+
         Ok(())
     }
 

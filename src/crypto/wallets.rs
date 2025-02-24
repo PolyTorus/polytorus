@@ -5,8 +5,7 @@ use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
 use fn_dsa::{
-    sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard,
-    FN_DSA_LOGN_512, 
+    sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
 };
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
@@ -122,9 +121,8 @@ impl Wallets {
 mod test {
     use super::*;
     use fn_dsa::{
-        signature_size,
-        SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE,
-        HASH_ID_RAW,
+        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
+        DOMAIN_NONE, HASH_ID_RAW,
     };
     #[test]
     fn test_create_wallet_and_hash() {
