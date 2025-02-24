@@ -2,7 +2,7 @@ name: Format by `cargo fmt`
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/cargo-fmt-ci" ]
 
 jobs:
   format:
