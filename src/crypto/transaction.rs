@@ -7,12 +7,8 @@ use bitcoincash_addr::Address;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
-use fn_dsa::{
-    signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
-    DOMAIN_NONE, HASH_ID_RAW,
-};
+use fn_dsa::{VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE, HASH_ID_RAW};
 use rand::Rng;
-use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::vec;
@@ -284,6 +280,11 @@ impl TXOutput {
 #[cfg(test)]
 mod test {
     use super::*;
+    use fn_dsa::{
+        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
+        DOMAIN_NONE, HASH_ID_RAW,
+    };
+    use rand_core::OsRng;
 
     #[test]
     fn test_signature() {
