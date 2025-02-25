@@ -2,7 +2,7 @@ use crate::blockchain::utxoset::*;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::wallets::*;
 use crate::Result;
-use bincode::serialize;
+use bincode::serialize_into;
 use bitcoincash_addr::Address;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
@@ -216,19 +216,20 @@ impl Transaction {
     }
 
     /// Hash returns the hash of the Transaction
+    #[inline]
     pub fn hash(&self) -> Result<String> {
-        let mut copy = self.clone();
-        copy.id = String::new();
-        let data = serialize(&copy)?;
+        let mut buf = Vec::new();
+        serialize_into(&mut buf, &self.vin)?;
+        serialize_into(&mut buf, &self.vout)?;
         let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
+        hasher.input(&buf);
         Ok(hasher.result_str())
     }
 
     /// TrimmedCopy creates a trimmed copy of Transaction to be used in signing
     fn trim_copy(&self) -> Transaction {
-        let mut vin = Vec::new();
-        let mut vout = Vec::new();
+        let mut vin = Vec::with_capacity(self.vin.len());
+        let mut vout = Vec::with_capacity(self.vout.len());
 
         for v in &self.vin {
             vin.push(TXInput {
@@ -247,7 +248,7 @@ impl Transaction {
         }
 
         Transaction {
-            id: self.id.clone(),
+            id: String::new(),
             vin,
             vout,
         }
