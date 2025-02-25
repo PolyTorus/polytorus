@@ -248,7 +248,7 @@ impl Transaction {
         }
 
         Transaction {
-            id: self.id.clone(),
+            id: String::new(),
             vin,
             vout,
         }
