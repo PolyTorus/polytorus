@@ -10,8 +10,8 @@ use merkle_cbt::merkle_tree::CBMT;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
-const TARGET_HEXS: usize = 4;
-
+const INITIAL_DIFFICULTY: usize = 4;
+const DESIRED_BLOCK_TIME: u128 = 10_000;
 /// Block keeps block headers
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
@@ -21,6 +21,7 @@ pub struct Block {
     hash: String,
     nonce: i32,
     height: i32,
+    difficulty: usize,
 }
 
 impl Block {
@@ -45,6 +46,7 @@ impl Block {
         transactions: Vec<Transaction>,
         prev_block_hash: String,
         height: i32,
+        difficulty: usize,
     ) -> Result<Block> {
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
@@ -56,6 +58,7 @@ impl Block {
             hash: String::new(),
             nonce: 0,
             height,
+            difficulty,
         };
         block.run_proof_of_work()?;
         Ok(block)
@@ -63,7 +66,7 @@ impl Block {
 
     /// NewGenesisBlock creates and returns genesis Block
     pub fn new_genesis_block(coinbase: Transaction) -> Block {
-        Block::new_block(vec![coinbase], String::new(), 0).unwrap()
+        Block::new_block(vec![coinbase], String::new(), 0, INITIAL_DIFFICULTY).unwrap()
     }
 
     /// Run performs a proof-of-work
@@ -95,7 +98,7 @@ impl Block {
             self.prev_block_hash.clone(),
             self.hash_transactions()?,
             self.timestamp,
-            TARGET_HEXS,
+            self.difficulty,
             self.nonce,
         );
         let bytes = serialize(&content)?;
@@ -107,9 +110,22 @@ impl Block {
         let data = self.prepare_hash_data()?;
         let mut hasher = Sha256::new();
         hasher.input(&data[..]);
-        let mut vec1: Vec<u8> = Vec::new();
-        vec1.resize(TARGET_HEXS, '0' as u8);
-        Ok(&hasher.result_str()[0..TARGET_HEXS] == String::from_utf8(vec1)?)
+        let hash_str = hasher.result_str();
+        let prefix = "0".repeat(self.difficulty);
+        Ok(hash_str.starts_with(&prefix))
+    }
+
+    pub fn adjust_difficulty(prev_block: &Block, current_timestamp: u128) -> usize {
+        let time_diff = current_timestamp - prev_block.timestamp;
+        let mut new_difficulty = prev_block.difficulty;
+
+        if time_diff < DESIRED_BLOCK_TIME {
+            new_difficulty += 1;
+        } else if time_diff > DESIRED_BLOCK_TIME && new_difficulty > 1 {
+            new_difficulty -= 1;
+        }
+
+        new_difficulty
     }
 }
 

@@ -8,6 +8,7 @@ use bincode::{deserialize, serialize};
 use failure::format_err;
 use sled;
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 const GENESIS_COINBASE_DATA: &str =
     "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
@@ -74,11 +75,18 @@ impl Blockchain {
         }
 
         let lasthash = self.db.get("LAST")?.unwrap();
+        let prev_hash = String::from_utf8(lasthash.to_vec())?;
+        let prev_block = self.get_block(&prev_hash)?;
+        let current_timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_millis();
+        let new_difficulty = Block::adjust_difficulty(&prev_block, current_timestamp);
 
         let newblock = Block::new_block(
             transactions,
-            String::from_utf8(lasthash.to_vec())?,
+            prev_hash,
             self.get_best_height()? + 1,
+            new_difficulty,
         )?;
         self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
         self.db.insert("LAST", newblock.get_hash().as_bytes())?;
