@@ -228,8 +228,8 @@ impl Transaction {
 
     /// TrimmedCopy creates a trimmed copy of Transaction to be used in signing
     fn trim_copy(&self) -> Transaction {
-        let mut vin = Vec::new();
-        let mut vout = Vec::new();
+        let mut vin = Vec::with_capacity(self.vin.len());
+        let mut vout = Vec::with_capacity(self.vout.len());
 
         for v in &self.vin {
             vin.push(TXInput {
