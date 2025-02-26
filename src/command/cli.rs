@@ -21,7 +21,7 @@ impl Cli {
     pub fn run(&mut self) -> Result<()> {
         info!("run app");
         let matches = App::new("polytorus")
-            .version("0.1")
+            .version(env!("CARGO_PKG_VERSION"))
             .author("quantumshiro")
             .about("post quantum blockchain")
             .subcommand(App::new("printchain").about("print all the chain blocks"))
