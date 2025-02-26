@@ -21,7 +21,7 @@ impl Cli {
     pub fn run(&mut self) -> Result<()> {
         info!("run app");
         let matches = App::new("polytorus")
-            .version("0.1")
+            .version(env!("CARGO_PKG_VERSION"))
             .author("quantumshiro")
             .about("post quantum blockchain")
             .subcommand(App::new("printchain").about("print all the chain blocks"))
@@ -224,10 +224,7 @@ fn cmd_get_balance(address: &str) -> Result<i32> {
     let utxo_set = UTXOSet { blockchain: bc };
     let utxos = utxo_set.find_UTXO(&pub_key_hash)?;
 
-    let mut balance = 0;
-    for out in utxos.outputs {
-        balance += out.value;
-    }
+    let balance = utxos.outputs.iter().map(|out| out.value).sum();
     Ok(balance)
 }
 
