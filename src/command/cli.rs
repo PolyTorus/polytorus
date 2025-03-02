@@ -10,6 +10,7 @@ use crate::Result;
 use bitcoincash_addr::Address;
 use clap::{App, Arg};
 use std::process::exit;
+use std::vec;
 
 pub struct Cli {}
 
@@ -279,11 +280,7 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, mine_now: bool
     
     let signed_tx = server.send_sign_request(node, from, &tx)?;
     
-    if mine_now {
-        server.send_tx(node, &signed_tx)?;
-    } else {
-        server.send_tx(node, &signed_tx)?;
-    }
+    server.send_tx(node, &signed_tx)?;
     
     println!("Transaction sent successfully!");
     Ok(())
