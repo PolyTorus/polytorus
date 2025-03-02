@@ -82,7 +82,6 @@ struct SignResponseMsg {
     error_message: String,
 }
 
-
 pub struct Server {
     node_address: String,
     mining_address: String,
@@ -511,7 +510,12 @@ impl Server {
         Ok(())
     }
 
-    pub fn send_sign_request(&self, addr: &str, wallet_addr: &str, tx: &Transaction) -> Result<Transaction> {
+    pub fn send_sign_request(
+        &self,
+        addr: &str,
+        wallet_addr: &str,
+        tx: &Transaction,
+    ) -> Result<Transaction> {
         info!("send sign request to: {} for wallet: {}", addr, wallet_addr);
         let data = SignRequestMsg {
             addr_from: self.node_address.clone(),
@@ -552,7 +556,10 @@ impl Server {
                 if res.success {
                     Ok(res.transaction)
                 } else {
-                    Err(format_err!("Transaction sign failed: {}", res.error_message))
+                    Err(format_err!(
+                        "Transaction sign failed: {}",
+                        res.error_message
+                    ))
                 }
             }
             _ => Err(format_err!("Unexpected response from server")),
@@ -560,8 +567,11 @@ impl Server {
     }
 
     fn handle_sign_request(&self, msg: SignRequestMsg) -> Result<()> {
-        info!("receive sign request from: {} for wallet: {}", msg.addr_from, msg.address);
-        
+        info!(
+            "receive sign request from: {} for wallet: {}",
+            msg.addr_from, msg.address
+        );
+
         let wallets = Wallets::new()?;
         let wallet = match wallets.get_wallet(&msg.address) {
             Some(w) => w,
@@ -581,7 +591,11 @@ impl Server {
         let mut tx = msg.transaction.clone();
         let crypto = FnDsaCrypto;
 
-        match self.inner.lock().unwrap().utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, &crypto) {
+        match self.inner.lock().unwrap().utxo.blockchain.sign_transacton(
+            &mut tx,
+            &wallet.secret_key,
+            &crypto,
+        ) {
             Ok(_) => {
                 // 署名成功
                 let response = SignResponseMsg {
@@ -592,7 +606,7 @@ impl Server {
                 };
                 let data = serialize(&(cmd_to_bytes("signres"), response))?;
                 self.send_data(&msg.addr_from, &data)?;
-            },
+            }
             Err(e) => {
                 // 署名失敗
                 let response = SignResponseMsg {
