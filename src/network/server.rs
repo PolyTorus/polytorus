@@ -14,6 +14,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::*;
 use std::thread;
 use std::time::Duration;
+use std::vec;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum Message {
@@ -525,18 +526,28 @@ impl Server {
 
         let mut stream = match TcpStream::connect(addr) {
             Ok(s) => s,
-            Err(_) => {
+            Err(e) => {
+                error!("Connection failed: {}", e);
                 self.remove_node(addr);
-                return Err(format_err!("Connection failed"));
+                return Err(format_err!("Connection failed: {}", e));
             }
         };
 
-        stream.write(&data)?;
+        stream.set_read_timeout(Some(Duration::from_secs(30)))?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer)?;
+        info!("Writing request data: {} bytes", data.len());
 
-        if buffer.is_empty() {
+        stream.write_all(&data)?;
+        stream.flush()?;
+
+        let mut buffer = vec![0; 10240];
+        info!("Waiting for response...");
+        let count = stream.read(&mut buffer)?;
+        buffer.truncate(count);
+
+        info!("Received response: {} bytes", buffer.len());
+
+        if count == 0 {
             return Err(format_err!("Empty response from server"));
         }
 
@@ -613,8 +624,13 @@ impl Server {
     }
 
     fn handle_connection(&self, mut stream: TcpStream) -> Result<()> {
-        let mut buffer = Vec::new();
+
+        info!("Accepting connection from {:?}", stream.peer_addr()?);
+
+        let mut buffer = vec![0; 4096];
         let count = stream.read_to_end(&mut buffer)?;
+        buffer.truncate(count);
+
         info!("Accept request: length {}", count);
 
         let cmd = bytes_to_cmd(&buffer)?;
@@ -627,11 +643,70 @@ impl Server {
             Message::GetData(data) => self.handle_get_data(data)?,
             Message::Tx(data) => self.handle_tx(data)?,
             Message::Version(data) => self.handle_version(data)?,
-            Message::SignRequest(data) => self.handle_sign_request(data)?,
-            Message::SignResponse(_) => {}
+            Message::SignRequest(data) => {
+                info!("Processing sign request from: {}", data.addr_from);
+                let response = self.prepare_sign_response(data)?;
+                let response_data = serialize(&(cmd_to_bytes("signres"), response))?;
+
+                info!("Sending response: size {}", response_data.len());
+                stream.write_all(&response_data)?;
+                stream.flush()?;
+
+                drop(stream);
+            }
+            Message::SignResponse(_) => {},
         }
 
         Ok(())
+    }
+
+    pub fn prepare_sign_response(&self, msg: SignRequestMsg) -> Result<SignResponseMsg> {
+        info!("receive sign request from: {} for wallet: {}", msg.addr_from, msg.address);
+
+        let wallets = Wallets::new()?;
+        let wallet = match wallets.get_wallet(&msg.address) {
+            Some(w) => w,
+            None => {
+                return Ok(SignResponseMsg {
+                    addr_from: self.node_address.clone(),
+                    transaction: msg.transaction.clone(),
+                    success: false,
+                    error_message: format!("Wallet not found: {}", msg.address),
+                });
+            }
+        };
+
+        let mut tx = msg.transaction.clone();
+        let crypto = FnDsaCrypto;
+
+        match self.inner.lock().unwrap().utxo.blockchain.sign_transacton(
+            &mut tx,
+            &wallet.secret_key,
+            &crypto,
+        ) {
+            Ok(_) => {
+                info!("Transaction signed successfully for wallet {}", msg.address);
+
+                Ok(SignResponseMsg {
+                    addr_from: self.node_address.clone(),
+                    transaction: tx,
+                    success: true,
+                    error_message: String::new(),
+                })
+            }
+
+            Err(e) => {
+                info!("Transaction signing failed for wallet {}: {}", msg.address, e);
+
+                Ok(SignResponseMsg {
+                    addr_from: self.node_address.clone(),
+                    transaction: msg.transaction,
+                    success: false,
+                    error_message: format!("Signing error: {}", e),
+                })
+            }
+        }
+
     }
 }
 
