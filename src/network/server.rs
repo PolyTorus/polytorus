@@ -624,7 +624,6 @@ impl Server {
     }
 
     fn handle_connection(&self, mut stream: TcpStream) -> Result<()> {
-
         info!("Accepting connection from {:?}", stream.peer_addr()?);
 
         let mut buffer = vec![0; 4096];
@@ -654,14 +653,17 @@ impl Server {
 
                 drop(stream);
             }
-            Message::SignResponse(_) => {},
+            Message::SignResponse(_) => {}
         }
 
         Ok(())
     }
 
     pub fn prepare_sign_response(&self, msg: SignRequestMsg) -> Result<SignResponseMsg> {
-        info!("receive sign request from: {} for wallet: {}", msg.addr_from, msg.address);
+        info!(
+            "receive sign request from: {} for wallet: {}",
+            msg.addr_from, msg.address
+        );
 
         let wallets = Wallets::new()?;
         let wallet = match wallets.get_wallet(&msg.address) {
@@ -696,7 +698,10 @@ impl Server {
             }
 
             Err(e) => {
-                info!("Transaction signing failed for wallet {}: {}", msg.address, e);
+                info!(
+                    "Transaction signing failed for wallet {}: {}",
+                    msg.address, e
+                );
 
                 Ok(SignResponseMsg {
                     addr_from: self.node_address.clone(),
@@ -706,7 +711,6 @@ impl Server {
                 })
             }
         }
-
     }
 }
 
