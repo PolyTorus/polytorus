@@ -1,7 +1,9 @@
 //! server of Blockchain
 use crate::blockchain::block::*;
 use crate::blockchain::utxoset::*;
+use crate::crypto::fndsa::FnDsaCrypto;
 use crate::crypto::transaction::*;
+use crate::crypto::wallets::Wallets;
 use crate::Result;
 use bincode::{deserialize, serialize};
 use failure::format_err;
@@ -22,6 +24,8 @@ enum Message {
     GetBlock(GetBlocksmsg),
     Inv(Invmsg),
     Block(Blockmsg),
+    SignRequest(SignRequestMsg),
+    SignResponse(SignResponseMsg),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -61,6 +65,22 @@ struct Versionmsg {
     version: i32,
     best_height: i32,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct SignRequestMsg {
+    addr_from: String,
+    address: String,
+    transaction: Transaction,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct SignResponseMsg {
+    addr_from: String,
+    transaction: Transaction,
+    success: bool,
+    error_message: String,
+}
+
 
 pub struct Server {
     node_address: String,
@@ -490,6 +510,94 @@ impl Server {
         Ok(())
     }
 
+    pub fn send_sign_request(&self, addr: &str, wallet_addr: &str, tx: &Transaction) -> Result<Transaction> {
+        info!("send sign request to: {} for wallet: {}", addr, wallet_addr);
+        let data = SignRequestMsg {
+            addr_from: self.node_address.clone(),
+            address: wallet_addr.to_string(),
+            transaction: tx.clone(),
+        };
+        let data = serialize(&(cmd_to_bytes("signreq"), data))?;
+
+        let mut stream = match TcpStream::connect(addr) {
+            Ok(s) => s,
+            Err(_) => {
+                self.remove_node(addr);
+                return Err(format_err!("Connection failed"));
+            }
+        };
+
+        stream.write(&data)?;
+
+        let mut buffer = Vec::new();
+        stream.read_to_end(&mut buffer)?;
+
+        if buffer.is_empty() {
+            return Err(format_err!("Empty response from server"));
+        }
+
+        match bytes_to_cmd(&buffer)? {
+            Message::SignResponse(res) => {
+                if res.success {
+                    Ok(res.transaction)
+                } else {
+                    Err(format_err!("Transaction sign failed: {}", res.error_message))
+                }
+            }
+            _ => Err(format_err!("Unexpected response from server")),
+        }
+    }
+
+    fn handle_sign_request(&self, msg: SignRequestMsg) -> Result<()> {
+        info!("receive sign request from: {} for wallet: {}", msg.addr_from, msg.address);
+        
+        let wallets = Wallets::new()?;
+        let wallet = match wallets.get_wallet(&msg.address) {
+            Some(w) => w,
+            None => {
+                let response = SignResponseMsg {
+                    addr_from: self.node_address.clone(),
+                    transaction: msg.transaction.clone(),
+                    success: false,
+                    error_message: format!("Wallet not found: {}", msg.address),
+                };
+                let data = serialize(&(cmd_to_bytes("signres"), response))?;
+                self.send_data(&msg.addr_from, &data)?;
+                return Ok(());
+            }
+        };
+
+        let mut tx = msg.transaction.clone();
+        let crypto = FnDsaCrypto;
+
+        match self.inner.lock().unwrap().utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, &crypto) {
+            Ok(_) => {
+                // 署名成功
+                let response = SignResponseMsg {
+                    addr_from: self.node_address.clone(),
+                    transaction: tx,
+                    success: true,
+                    error_message: String::new(),
+                };
+                let data = serialize(&(cmd_to_bytes("signres"), response))?;
+                self.send_data(&msg.addr_from, &data)?;
+            },
+            Err(e) => {
+                // 署名失敗
+                let response = SignResponseMsg {
+                    addr_from: self.node_address.clone(),
+                    transaction: msg.transaction,
+                    success: false,
+                    error_message: format!("Signing error: {}", e),
+                };
+                let data = serialize(&(cmd_to_bytes("signres"), response))?;
+                self.send_data(&msg.addr_from, &data)?;
+            }
+        }
+
+        Ok(())
+    }
+
     fn handle_connection(&self, mut stream: TcpStream) -> Result<()> {
         let mut buffer = Vec::new();
         let count = stream.read_to_end(&mut buffer)?;
@@ -505,6 +613,8 @@ impl Server {
             Message::GetData(data) => self.handle_get_data(data)?,
             Message::Tx(data) => self.handle_tx(data)?,
             Message::Version(data) => self.handle_version(data)?,
+            Message::SignRequest(data) => self.handle_sign_request(data)?,
+            Message::SignResponse(_) => {},
         }
 
         Ok(())
@@ -551,6 +661,12 @@ fn bytes_to_cmd(bytes: &[u8]) -> Result<Message> {
     } else if cmd == "version".as_bytes() {
         let data: Versionmsg = deserialize(data)?;
         Ok(Message::Version(data))
+    } else if cmd == "signreq".as_bytes() {
+        let data: SignRequestMsg = deserialize(data)?;
+        Ok(Message::SignRequest(data))
+    } else if cmd == "signres".as_bytes() {
+        let data: SignResponseMsg = deserialize(data)?;
+        Ok(Message::SignResponse(data))
     } else {
         Err(format_err!("Unknown command in the server"))
     }
@@ -560,7 +676,7 @@ fn bytes_to_cmd(bytes: &[u8]) -> Result<Message> {
 mod test {
     use super::*;
     use crate::blockchain::blockchain::*;
-    use crate::crypto::wallets::*;
+    // use crate::crypto::wallets::*;
 
     #[test]
     fn test_cmd() {
