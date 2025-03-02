@@ -78,6 +78,17 @@ impl Cli {
                             .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)"),
                     ),
             )
+            .subcommand(
+                App::new("remotesend")
+                .about("send transaction using remote wallet")
+                .arg(Arg::from_usage("<from> 'Source wallet address on remote node'"))
+                .arg(Arg::from_usage("<to> 'Destination wallet address'"))
+                .arg(Arg::from_usage("<amount> 'Amount to send'"))
+                .arg(Arg::from_usage("<node> 'Remote node address (host:port)'"))
+                .arg(Arg::from_usage(
+                    "-m --mine 'mine immediately on the remote node'",
+                )),
+            )
             .get_matches();
 
         if let Some(ref matches) = matches.subcommand_matches("getbalance") {
@@ -161,6 +172,14 @@ impl Cli {
                 utxo_set,
             )?;
             server.start_server()?;
+        } else if let Some(ref matches) = matches.subcommand_matches("remotesend") {
+            let from = matches.value_of("from").unwrap();
+            let to = matches.value_of("to").unwrap();
+            let amount: i32 = matches.value_of("amount").unwrap().parse()?;
+            let node = matches.value_of("node").unwrap();
+            let mine = matches.is_present("mine");
+            
+            cmd_remote_send(from, to, amount, node, mine)?;
         }
 
         Ok(())
@@ -243,6 +262,30 @@ fn cmd_list_address() -> Result<()> {
     for ad in addresses {
         println!("{}", ad);
     }
+    Ok(())
+}
+
+fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, mine_now: bool) -> Result<()> {
+    let bc = Blockchain::new()?;
+    let utxo_set = UTXOSet { blockchain: bc };
+    
+    let tx = Transaction {
+        id: String::new(),
+        vin: Vec::new(),
+        vout: vec![TXOutput::new(amount, to.to_string())?],
+    };
+    
+    let server = Server::new("0.0.0.0", "0", "", None, utxo_set)?;
+    
+    let signed_tx = server.send_sign_request(node, from, &tx)?;
+    
+    if mine_now {
+        server.send_tx(node, &signed_tx)?;
+    } else {
+        server.send_tx(node, &signed_tx)?;
+    }
+    
+    println!("Transaction sent successfully!");
     Ok(())
 }
 
