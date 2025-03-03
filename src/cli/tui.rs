@@ -25,7 +25,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
-  // 繝悶Ο繝・け繝√ぉ繝ｼ繝ｳ蜈ｨ菴薙ｒ蜿門ｾ暦ｼ・ter() 縺ｯ tip 縺九ｉ繧ｸ繧ｧ繝阪す繧ｹ譁ｹ蜷代∈騾ｲ繧縺溘ａ縲〉everse 縺励※陦ｨ遉ｺ鬆・ｒ謨ｴ縺医ｋ・・
+  // ブロックチェーン全体を取得！Eter() は tip からジェネシス方向へ進むため、reverse して表示頁E??整える?E?E
   let bc = Blockchain::new()?;
   let mut blocks: Vec<_> = bc.iter().collect();
   blocks.reverse();
@@ -47,23 +47,23 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
       })
       .collect();
 
-  // 繝ｪ繧ｹ繝磯∈謚樒憾諷・
+  // リスト選択状態
   let mut list_state = ListState::default();
   list_state.select(Some(0));
-  // 隧ｳ邏ｰ繝代ロ繝ｫ縺ｮ讓ｪ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ菴咲ｽｮ
+  // 詳細パネルの横スクロール位置
   let mut detail_scroll_x: u16 = 0;
 
   loop {
       terminal.draw(|f| {
           let size = f.area();
-          // 逕ｻ髱｢繧貞ｷｦ蜿ｳ縺ｫ蛻・牡・壼ｷｦ縺ｯ繝悶Ο繝・け荳隕ｧ縲∝承縺ｯ隧ｳ邏ｰ諠・ｱ
+          // 画面を左右に分割 左はブロックチェーン一覧 右は詳細画面
           let chunks = Layout::default()
               .direction(Direction::Horizontal)
               .margin(2)
               .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref())
               .split(size);
 
-          // 蟾ｦ蛛ｴ・壹ヶ繝ｭ繝・け荳隕ｧ
+          // 左側のブロックチェーン一覧
           let items: Vec<ListItem> = block_summaries
               .iter()
               .map(|s| ListItem::new(s.clone()))
@@ -74,7 +74,7 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
               .highlight_symbol(">> ");
           f.render_stateful_widget(list, chunks[0], &mut list_state);
 
-          // 蜿ｳ蛛ｴ・夐∈謚樔ｸｭ繝悶Ο繝・け縺ｮ隧ｳ邏ｰ・医ョ繝舌ャ繧ｰ蠖｢蠑擾ｼ・
+          // 右側の選択中のブロックチェーンの詳細(デバッグ形式)
           let detail = if let Some(selected) = list_state.selected() {
               format!("{:#?}", blocks[selected])
           } else {
@@ -102,7 +102,7 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                               selected + 1
                           };
                           list_state.select(Some(next));
-                          detail_scroll_x = 0; // 驕ｸ謚槫､画峩譎ゅ・繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ菴咲ｽｮ繧偵Μ繧ｻ繝・ヨ
+                          detail_scroll_x = 0; // 選択変更時にスクロール位置をリセット
                       }
                   }
                   KeyCode::Up => {
@@ -113,10 +113,10 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                               selected - 1
                           };
                           list_state.select(Some(prev));
-                          detail_scroll_x = 0; // 驕ｸ謚槫､画峩譎ゅ・繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ菴咲ｽｮ繧偵Μ繧ｻ繝・ヨ
+                          detail_scroll_x = 0; // 選択変更時にスクロール位置をリセット
                       }
                   }
-                  // 隧ｳ邏ｰ繝代ロ繝ｫ縺ｮ讓ｪ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ
+                  // 詳細パネルの横スクロール
                   KeyCode::Left => {
                       if detail_scroll_x > 0 {
                           detail_scroll_x -= 1;
@@ -161,12 +161,12 @@ pub fn tui_create_wallet<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
 }
 
 pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
-  // 繧ｦ繧ｩ繝ｬ繝・ヨ蜀・・蜈ｨ繧｢繝峨Ξ繧ｹ繧貞叙蠕・
+  // ウォレットの全アドレスを取得
   let ws = Wallets::new()?;
   let addresses = ws.get_all_addresses();
 
   if addresses.is_empty() {
-      // 繧｢繝峨Ξ繧ｹ縺檎┌縺・ｴ蜷医・繧ｨ繝ｩ繝ｼ繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ縺励※邨ゆｺ・
+      // アドレスが無い場合エラーメッセージを表示して終了
       loop {
           terminal.draw(|f| {
               let size = f.area();
@@ -187,11 +187,11 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
       }
   }
 
-  // 繧｢繝峨Ξ繧ｹ荳隕ｧ縺九ｉ驕ｸ謚槭☆繧・ListState 繧剃ｽ懈・
+  // アドレス一覧から選択する ListState を作成
   let mut list_state = ListState::default();
   list_state.select(Some(0));
 
-  // 繧｢繝峨Ξ繧ｹ荳隕ｧ縺ｮ驕ｸ謚樒判髱｢
+  // アドレス一覧の選択画面
   loop {
       terminal.draw(|f| {
           let size = f.area();
@@ -234,19 +234,19 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                           list_state.select(Some(prev));
                       }
                   }
-                  KeyCode::Enter => break, // 驕ｸ謚樒｢ｺ螳・
+                  KeyCode::Enter => break, // 選択確定
                   _ => {}
               }
           }
       }
   }
 
-  // 驕ｸ謚槭＆繧後◆繧｢繝峨Ξ繧ｹ繧貞叙蠕励＠縲√◎縺ｮ谿矩ｫ倥ｒ險育ｮ・
+  // 選択されたアドレスを取得し，その残高を計算
   let selected_index = list_state.selected().unwrap();
   let addr = addresses[selected_index].clone();
   let balance = cmd_get_balance(&addr)?;
 
-  // 谿矩ｫ倡ｵ先棡縺ｮ逕ｻ髱｢繧定｡ｨ遉ｺ
+  // 残高結果の画面を表示
   loop {
       terminal.draw(|f| {
           let size = f.area();
@@ -295,7 +295,7 @@ impl TuiApp {
       Self { menu_items, state }
   }
 
-  /// 谺｡縺ｮ鬆・岼縺ｸ遘ｻ蜍・
+  /// 次の項目へ移動
   pub fn next(&mut self) {
       let i = match self.state.selected() {
           Some(i) => {
@@ -310,7 +310,7 @@ impl TuiApp {
       self.state.select(Some(i));
   }
 
-  /// 蜑阪・鬆・岼縺ｸ遘ｻ蜍・
+  /// 前の項目へ移動
   pub fn previous(&mut self) {
       let i = match self.state.selected() {
           Some(i) => {
@@ -325,13 +325,13 @@ impl TuiApp {
       self.state.select(Some(i));
   }
 
-  /// 迴ｾ蝨ｨ驕ｸ謚槭＆繧後※縺・ｋ鬆・岼繧貞叙蠕・
+  /// 現在選択されている項目を取得
   pub fn selected_item(&self) -> Option<&&str> {
       self.state.selected().map(|i| &self.menu_items[i])
   }
 }
 
-/// TUI 繧帝幕蟋九☆繧九お繝ｳ繝医Μ繝昴う繝ｳ繝・
+/// TUI エントリーポイントを開始する
 pub fn run_tui() -> Result<()> {
   enable_raw_mode()?;
   let mut stdout = io::stdout();
@@ -421,7 +421,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
                                   tui_get_balance(terminal)?;
                               }
                               "Send" => {
-                                  // 窶ｻ Send 縺ｯ蟇ｾ隧ｱ蜈･蜉帙′蠢・ｦ√↓縺ｪ繧九◆繧√√％縺薙〒縺ｯ邁｡譏鍋噪縺ｫ繝｡繝・そ繝ｼ繧ｸ陦ｨ遉ｺ縺ｮ縺ｿ
+                                  // Send は対話入力が主になるためにここでは簡易的にメッセージ表示のみ
                                   println!(
                                       "Send functionality is not fully interactive in TUI yet."
                                   );
