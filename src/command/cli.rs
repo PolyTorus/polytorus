@@ -12,6 +12,8 @@ use clap::{App, Arg};
 use std::process::exit;
 use std::vec;
 
+pub mod tui;
+
 pub struct Cli {}
 
 impl Cli {

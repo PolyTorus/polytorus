@@ -1,4 +1,4 @@
-// src/command/tui.rs
+// src/command/cli/tui.rs
 use crate::{
   blockchain::blockchain::Blockchain,
   command::cli::{
