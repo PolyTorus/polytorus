@@ -5,23 +5,13 @@ use crate::blockchain::utxoset::*;
 use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::wallets::*;
+use crate::tui::term::*;
 use crate::network::server::Server;
 use crate::Result;
 use bitcoincash_addr::Address;
 use clap::{App, Arg};
 use std::process::exit;
 use std::vec;
-use crate::command::tui::tui_print_chain;
-
-
-pub fn handle_cli(args: Vec<String>) {
-    if args.contains(&String::from("--tui")) {
-        tui::tui_print_chain();
-    } else {
-        println!("CLI mode");
-        // CLI の実装
-    }
-}
 
 pub struct Cli {}
 
@@ -102,6 +92,13 @@ impl Cli {
                     .arg(Arg::from_usage(
                         "-m --mine 'mine immediately on the remote node'",
                     )),
+            )
+            .subcommand(
+                App::new("tui_print_chain")
+                    .about("print all the chain blocks")
+                    .arg(Arg::from_usage(
+                        "<address> 'The address to get balance for'",
+                    ))
             )
             .get_matches();
 
@@ -194,8 +191,10 @@ impl Cli {
             let mine = matches.is_present("mine");
 
             cmd_remote_send(from, to, amount, node, mine)?;
+        } else if let Some(ref matches) = matches.subcommand_matches("tui_print_chain") {
+            let _tui = tui_print_chain()?;
         }
-
+        
         Ok(())
     }
 }
@@ -238,10 +237,10 @@ fn cmd_reindex() -> Result<i32> {
     let bc = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
     utxo_set.reindex()?;
-    utxo_set.count_transactions()
+    utxo_set.count_transactions()?
 }
 
-fn cmd_create_blockchain(address: &str) -> Result<()> {
+pub(crate) fn cmd_create_blockchain(address: &str) -> Result<()> {
     let address = String::from(address);
     let bc = Blockchain::create_blockchain(address)?;
 
@@ -356,6 +355,6 @@ mod tests {
         assert_eq!(balance2, 0);
 
         let _ = cmd_send(&addr1, &addr2, 5, false, Some("127.0.0.1:7000"));
-        Ok(())
+        Ok(()) 
     }
 }

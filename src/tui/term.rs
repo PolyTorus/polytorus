@@ -1,11 +1,16 @@
-// src/command/cli/tui.rs
-use crate::{
-  blockchain::blockchain::Blockchain,
-  command::cli::{
-      cmd_create_blockchain, cmd_create_wallet, cmd_get_balance, cmd_list_address, cmd_reindex,
-  },
-  crypto::wallets::Wallets,
-  Result,
+// src/tui/term.rs
+use crate::{blockchain::blockchain::Blockchain,
+            command::cli::{
+                
+                cmd_create_blockchain,
+                cmd_create_wallet,
+                cmd_get_balance,
+                cmd_list_address,
+                cmd_reindex,
+                
+            },
+            crypto::wallets::Wallets,
+            Result,
 };
 
 use crossterm::{
@@ -19,10 +24,10 @@ use ratatui::{
   prelude::Backend,
   style::{Color, Style},
   widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
-  Terminal,
-};
+  Terminal, };
 use std::io;
 use std::time::{Duration, Instant};
+
 
 pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
   // ブロックチェーン全体を取得！Eter() は tip からジェネシス方向へ進むため、reverse して表示頁E??整える?E?E
@@ -31,20 +36,21 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
   blocks.reverse();
 
   // 蜷・ヶ繝ｭ繝・け縺ｮ讎りｦ・ｼ・eight, Hash蜈磯ｭ8譁・ｭ・ Prev蜈磯ｭ8譁・ｭ暦ｼ峨ｒ菴懈・
-  let block_summaries: Vec<String> = blocks
-      .iter()
-      .map(|block| {
-          let hash = block.get_hash();
-          let prev = block.get_prev_hash();
-          let hash_prefix = if hash.len() >= 8 { &hash[..8] } else { &hash };
-          let prev_prefix = if prev.len() >= 8 { &prev[..8] } else { &prev };
-          format!(
-              "Height: {} | Hash: {} | Prev: {}",
-              block.get_height(),
-              hash_prefix,
-              prev_prefix
-          )
-      })
+  let block_summaries: Vec<String> = blocks.iter().map(|block| {
+      let hash = block.get_hash();
+      let prev = block.get_prev_hash();
+      let hash_prefix = if hash.len() >= 8 {
+          &hash[..8]
+      } else {
+          &hash
+      };
+      let prev_prefix = if prev.len() >= 8 {
+          &prev[..8]
+      } else {
+          &prev
+      };
+      format!("Height: {} | Hash: {} | Prev: {}", block.get_height(), hash_prefix, prev_prefix)
+  })
       .collect();
 
   // リスト選択状態
@@ -60,10 +66,10 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
           let chunks = Layout::default()
               .direction(Direction::Horizontal)
               .margin(2)
-              .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref())
+              .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref(),)
               .split(size);
 
-          // 左側のブロックチェーン一覧
+          // 左側のブロックチェーン一覧 
           let items: Vec<ListItem> = block_summaries
               .iter()
               .map(|s| ListItem::new(s.clone()))
@@ -75,13 +81,10 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
           f.render_stateful_widget(list, chunks[0], &mut list_state);
 
           // 右側の選択中のブロックチェーンの詳細(デバッグ形式)
-          let detail = if let Some(selected) = list_state.selected() {
-              format!("{:#?}", blocks[selected])
-          } else {
-              "No block selected".to_string()
-          };
+          let detail = if let Some(selected) = list_state.selected() { format!("{:#?}", blocks[selected]) } else { "No block selected".to_string() };
           let detail_paragraph = Paragraph::new(detail)
-              .block(
+              .block( 
+
                   Block::default()
                       .borders(Borders::ALL)
                       .title("Block Details"),
@@ -97,11 +100,7 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                   KeyCode::Down => {
                       if let Some(selected) = list_state.selected() {
                           let next = if selected >= block_summaries.len() - 1 {
-                              0
-                          } else {
-                              selected + 1
-                          };
-                          list_state.select(Some(next));
+                              0 } else { selected + 1 }; list_state.select(Some(next));
                           detail_scroll_x = 0; // 選択変更時にスクロール位置をリセット
                       }
                   }
@@ -109,11 +108,7 @@ pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                       if let Some(selected) = list_state.selected() {
                           let prev = if selected == 0 {
                               block_summaries.len() - 1
-                          } else {
-                              selected - 1
-                          };
-                          list_state.select(Some(prev));
-                          detail_scroll_x = 0; // 選択変更時にスクロール位置をリセット
+                          } else { selected - 1 }; list_state.select(Some(prev)); detail_scroll_x = 0; // 選択変更時にスクロール位置をリセット
                       }
                   }
                   // 詳細パネルの横スクロール
@@ -141,13 +136,11 @@ pub fn tui_create_wallet<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
           let size = f.area();
           let block = Block::default()
               .borders(Borders::ALL)
-              .title("Create Wallet");
-          let paragraph = Paragraph::new(format!(
-              "Wallet created:\n\n{}\n\nPress any key to return.",
-              address
-          ))
-          .block(block)
-          .alignment(Alignment::Center)
+              .title("Create Wallet"); 
+          let paragraph = Paragraph::new(format!("Wallet created:\n\n{}\n\nPress any key to return.", address))
+              .block(block)
+              .alignment(Alignment::Center) 
+
           .wrap(Wrap { trim: true });
           f.render_widget(paragraph, size);
       })?;
@@ -171,11 +164,9 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
           terminal.draw(|f| {
               let size = f.area();
               let block = Block::default().borders(Borders::ALL).title("Get Balance");
-              let paragraph = Paragraph::new(
-                  "No wallet found. Please create one first.\n\nPress any key to return.",
-              )
-              .block(block)
-              .alignment(Alignment::Center)
+              let paragraph = Paragraph::new("No wallet found. Please create one first.\n\nPress any key to return.",)
+                  .block(block)
+                  .alignment(Alignment::Center) 
               .wrap(Wrap { trim: true });
               f.render_widget(paragraph, size);
           })?;
@@ -198,11 +189,9 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
           let items: Vec<ListItem> = addresses
               .iter()
               .map(|a| ListItem::new(a.as_str()))
-              .collect();
-          let list = List::new(items)
-              .block(
-                  Block::default()
-                      .borders(Borders::ALL)
+              .collect(); 
+          let list = List::new(items).block(
+                  Block::default().borders(Borders::ALL)
                       .title("Select Wallet for Balance (Enter to confirm, q to cancel)"),
               )
               .highlight_style(Style::default().fg(Color::Yellow))
@@ -217,11 +206,7 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                   KeyCode::Down => {
                       if let Some(selected) = list_state.selected() {
                           let next = if selected >= addresses.len() - 1 {
-                              0
-                          } else {
-                              selected + 1
-                          };
-                          list_state.select(Some(next));
+                              0 } else { selected + 1 }; list_state.select(Some(next));
                       }
                   }
                   KeyCode::Up => {
@@ -229,10 +214,8 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
                           let prev = if selected == 0 {
                               addresses.len() - 1
                           } else {
-                              selected - 1
-                          };
-                          list_state.select(Some(prev));
-                      }
+                              selected - 1 }; list_state.select(Some(prev));
+                      } 
                   }
                   KeyCode::Enter => break, // 選択確定
                   _ => {}
@@ -252,13 +235,11 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
           let size = f.area();
           let block = Block::default()
               .borders(Borders::ALL)
-              .title("Balance Result");
-          let paragraph = Paragraph::new(format!(
-              "Wallet: {}\nBalance: {}\n\nPress any key to return.",
-              addr, balance
-          ))
-          .block(block)
-          .alignment(Alignment::Center)
+              .title("Balance Result"); 
+          let paragraph = Paragraph::new(format!("Wallet: {}\nBalance: {}\n\nPress any key to return.", addr, balance))
+              .block(block)
+              .alignment(Alignment::Center) 
+
           .wrap(Wrap { trim: true });
           f.render_widget(paragraph, size);
       })?;
@@ -272,19 +253,18 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
 }
 
 pub struct TuiApp {
-  pub menu_items: Vec<&'static str>,
-  pub state: ListState,
+  pub menu_items: Vec<&'static str>, pub state: ListState,
 }
 
 impl TuiApp {
   pub fn new() -> Self {
-      let menu_items = vec![
-          "Print Chain",
-          "Create Wallet",
-          "List Addresses",
-          "Reindex UTXO",
-          "Create Blockchain",
-          "Get Balance",
+      let menu_items = vec![ 
+          "Print Chain", 
+          "Create Wallet", 
+          "List Addresses", 
+          "Reindex UTXO", 
+          "Create Blockchain", 
+          "Get Balance", 
           "Send",
           "Start Node",
           "Start Miner",
@@ -299,13 +279,9 @@ impl TuiApp {
   pub fn next(&mut self) {
       let i = match self.state.selected() {
           Some(i) => {
-              if i >= self.menu_items.len() - 1 {
-                  0
-              } else {
-                  i + 1
-              }
+              if i >= self.menu_items.len() - 1 { 0 } else { i + 1 }
           }
-          None => 0,
+          None => 0, 
       };
       self.state.select(Some(i));
   }
@@ -313,13 +289,9 @@ impl TuiApp {
   /// 前の項目へ移動
   pub fn previous(&mut self) {
       let i = match self.state.selected() {
-          Some(i) => {
-              if i == 0 {
-                  self.menu_items.len() - 1
-              } else {
-                  i - 1
-              }
-          }
+          Some(i) => { if i == 0 { self.menu_items.len() - 1 } else { i - 1 } }
+
+
           None => 0,
       };
       self.state.select(Some(i));
@@ -342,11 +314,7 @@ pub fn run_tui() -> Result<()> {
   let res = run_app(&mut terminal);
 
   disable_raw_mode()?;
-  execute!(
-      terminal.backend_mut(),
-      LeaveAlternateScreen,
-      DisableMouseCapture
-  )?;
+  execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
   terminal.show_cursor()?;
   res
 }
@@ -362,7 +330,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
           let chunks = Layout::default()
               .direction(Direction::Vertical)
               .margin(2)
-              .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref())
+              .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref(),)
               .split(size);
 
           let items: Vec<ListItem> = app.menu_items.iter().map(|i| ListItem::new(*i)).collect();
@@ -375,9 +343,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
           let instructions = Block::default().borders(Borders::ALL).title("Instructions");
           f.render_widget(instructions, chunks[1]);
       })?;
-
-      let timeout = tick_rate
-          .checked_sub(last_tick.elapsed())
+      let timeout = tick_rate.checked_sub(last_tick.elapsed())
           .unwrap_or_else(|| Duration::from_secs(0));
       if event::poll(timeout)? {
           if let Event::Key(key) = event::read()? {
@@ -389,9 +355,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
                       if let Some(selected) = app.selected_item() {
                           match *selected {
                               "Print Chain" => {
-                                  tui_print_chain(terminal)?;
-                              }
-                              "Create Wallet" => {
+                                  tui_print_chain(terminal)?; } "Create Wallet" => {
                                   let addr = cmd_create_wallet()?;
                                   println!("Wallet created: {}", addr);
                               }
@@ -405,36 +369,25 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
                               "Create Blockchain" => {
                                   let ws = Wallets::new()?;
                                   if let Some(addr) = ws.get_all_addresses().first() {
-                                      cmd_create_blockchain(addr)?;
+                                      crate::command::cli::cmd_create_blockchain(addr)?;
                                   } else {
                                       println!("No wallet found. Create one first.");
                                   }
                               }
                               "Get Balance" => {
-                                  // let ws = Wallets::new()?;
-                                  // if let Some(addr) = ws.get_all_addresses().first() {
-                                  //     let balance = cmd_get_balance(addr)?;
-                                  //     println!("Balance for {}: {}", addr, balance);
-                                  // } else {
-                                  //     println!("No wallet found. Create one first.");
-                                  // }
                                   tui_get_balance(terminal)?;
                               }
                               "Send" => {
                                   // Send は対話入力が主になるためにここでは簡易的にメッセージ表示のみ
-                                  println!(
-                                      "Send functionality is not fully interactive in TUI yet."
-                                  );
+                                  println!("Send functionality is not fully interactive in TUI yet.");
                               }
                               "Start Node" => {
-                                  println!(
-                                      "Start Node functionality is not supported in TUI mode."
-                                  );
+                                  println!("Start Node functionality is not supported in TUI mode.");
                               }
                               "Start Miner" => {
-                                  println!(
-                                      "Start Miner functionality is not supported in TUI mode."
-                                  );
+                                  println!("Start Miner functionality is not supported in TUI mode.");
+
+
                               }
                               "Quit" => break,
                               _ => {}
