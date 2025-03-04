@@ -456,6 +456,7 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+    
 
     #[test]
     fn test_tui_print_chain() {
