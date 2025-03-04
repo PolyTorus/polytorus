@@ -11,8 +11,17 @@ use bitcoincash_addr::Address;
 use clap::{App, Arg};
 use std::process::exit;
 use std::vec;
+use crate::command::tui::tui_print_chain;
 
-pub mod tui;
+
+pub fn handle_cli(args: Vec<String>) {
+    if args.contains(&String::from("--tui")) {
+        tui::tui_print_chain();
+    } else {
+        println!("CLI mode");
+        // CLI の実装
+    }
+}
 
 pub struct Cli {}
 
