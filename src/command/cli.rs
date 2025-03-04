@@ -237,7 +237,8 @@ fn cmd_reindex() -> Result<i32> {
     let bc = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
     utxo_set.reindex()?;
-    utxo_set.count_transactions()?
+    utxo_set.count_transactions()?;
+    Ok(utxo_set.count_transactions())
 }
 
 pub(crate) fn cmd_create_blockchain(address: &str) -> Result<()> {
