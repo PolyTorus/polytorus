@@ -1,17 +1,8 @@
-// src/tui/term.rs
+// src/command/term.rs
 use crate::{blockchain::blockchain::Blockchain,
-            command::cli::{
-                
-                cmd_create_blockchain,
-                cmd_create_wallet,
-                cmd_get_balance,
-                cmd_list_address,
-                cmd_reindex,
-                
-            },
             crypto::wallets::Wallets,
             Result,
-};
+            };
 
 use crossterm::{
   event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -24,10 +15,11 @@ use ratatui::{
   prelude::Backend,
   style::{Color, Style},
   widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
-  Terminal, };
+  Terminal,};
 use std::io;
 use std::time::{Duration, Instant};
 
+use crate::command::cli::{cmd_get_balance, cmd_create_wallet};
 
 pub fn tui_print_chain<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
   // ブロックチェーン全体を取得！Eter() は tip からジェネシス方向へ進むため、reverse して表示頁E??整える?E?E
@@ -228,7 +220,7 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
   let selected_index = list_state.selected().unwrap();
   let addr = addresses[selected_index].clone();
   let balance = cmd_get_balance(&addr)?;
-
+  
   // 残高結果の画面を表示
   loop {
       terminal.draw(|f| {
@@ -252,7 +244,7 @@ pub fn tui_get_balance<B: Backend>(terminal: &mut Terminal<B>) -> Result<()> {
   Ok(())
 }
 
-pub struct TuiApp {
+pub struct TuiApp{
   pub menu_items: Vec<&'static str>, pub state: ListState,
 }
 
@@ -272,7 +264,7 @@ impl TuiApp {
       ];
       let mut state = ListState::default();
       state.select(Some(0));
-      Self { menu_items, state }
+      Self{ menu_items, state }
   }
 
   /// 次の項目へ移動
@@ -289,7 +281,7 @@ impl TuiApp {
   /// 前の項目へ移動
   pub fn previous(&mut self) {
       let i = match self.state.selected() {
-          Some(i) => { if i == 0 { self.menu_items.len() - 1 } else { i - 1 } }
+          Some(i) => { if i == 0 { self.menu_items.len() - 1 } else { i - 1 }}
 
 
           None => 0,
@@ -355,15 +347,15 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
                       if let Some(selected) = app.selected_item() {
                           match *selected {
                               "Print Chain" => {
-                                  tui_print_chain(terminal)?; } "Create Wallet" => {
-                                  let addr = cmd_create_wallet()?;
-                                  println!("Wallet created: {}", addr);
-                              }
+                                  tui_print_chain(terminal)?; } 
+                                  "Create Wallet" => {
+                                  tui_create_wallet(terminal)?;
+                                }
                               "List Addresses" => {
-                                  cmd_list_address()?;
+                                  cmd_list_address_public()?;
                               }
                               "Reindex UTXO" => {
-                                  let count = cmd_reindex()?;
+                                  let count = cmd_reindex_public()?;
                                   println!("UTXO reindexed. Transaction count: {}", count);
                               }
                               "Create Blockchain" => {
@@ -404,4 +396,21 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
   }
 
   Ok(())
+}
+
+fn cmd_reindex_public() -> Result<i32> {
+    let bc = Blockchain::new()?;
+    let utxo_set = crate::blockchain::utxoset::UTXOSet { blockchain: bc };
+    utxo_set.reindex()?;
+    Ok(utxo_set.count_transactions()?)
+}
+
+fn cmd_list_address_public() -> Result<()> {
+    let ws = Wallets::new()?;
+    let addresses = ws.get_all_addresses();
+    println!("addresses: ");
+    for ad in addresses {
+        println!("{}", ad);
+    }
+    Ok(())
 }

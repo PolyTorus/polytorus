@@ -5,7 +5,6 @@ use crate::blockchain::utxoset::*;
 use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::wallets::*;
-use crate::tui::term::*;
 use crate::network::server::Server;
 use crate::Result;
 use bitcoincash_addr::Address;
@@ -191,8 +190,6 @@ impl Cli {
             let mine = matches.is_present("mine");
 
             cmd_remote_send(from, to, amount, node, mine)?;
-        } else if let Some(ref matches) = matches.subcommand_matches("tui_print_chain") {
-            let _tui = tui_print_chain()?;
         }
         
         Ok(())
@@ -226,7 +223,7 @@ fn cmd_send(
     Ok(())
 }
 
-fn cmd_create_wallet() -> Result<String> {
+pub fn cmd_create_wallet() -> Result<String> {
     let mut ws = Wallets::new()?;
     let address = ws.create_wallet();
     ws.save_all()?;
@@ -238,10 +235,10 @@ fn cmd_reindex() -> Result<i32> {
     let utxo_set = UTXOSet { blockchain: bc };
     utxo_set.reindex()?;
     utxo_set.count_transactions()?;
-    Ok(utxo_set.count_transactions())
+    Ok(utxo_set.count_transactions()?)
 }
 
-pub(crate) fn cmd_create_blockchain(address: &str) -> Result<()> {
+pub fn cmd_create_blockchain(address: &str) -> Result<()> {
     let address = String::from(address);
     let bc = Blockchain::create_blockchain(address)?;
 
@@ -251,7 +248,7 @@ pub(crate) fn cmd_create_blockchain(address: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_get_balance(address: &str) -> Result<i32> {
+pub fn cmd_get_balance(address: &str) -> Result<i32> {
     let pub_key_hash = Address::decode(address).unwrap().body;
     let bc = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };

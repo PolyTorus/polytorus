@@ -5,7 +5,6 @@ pub mod blockchain;
 pub mod command;
 pub mod crypto;
 pub mod network;
-pub mod tui;
 
 #[macro_use]
 extern crate log;
