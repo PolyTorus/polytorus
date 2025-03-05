@@ -13,14 +13,18 @@
 
 - Create Wallet
 ```bash
-cargo run createwallet
+cargo run --bin main createwallet
 ```
 
 - Create Blockchain
 ```bash
-cargo run createblockchain <address>
+cargo run --bin main createblockchain <address>
 ```
 
+- Use WebApi
+```bash
+cargo run --features web --bin web-main
+```
 
 
 ## License
