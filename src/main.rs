@@ -9,8 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> { //add Result type
     if let Err(e) = cli.run() {
         println!("Error: {}", e);
     }
-
-    let args: Vec<String> = std::env::args().collect();
-    run::handle_term(args)?; //call run::handle_term
+    run::handle_term()?; //call run::handle_term
     Ok(())
 }
