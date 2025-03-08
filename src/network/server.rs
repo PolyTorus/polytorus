@@ -775,7 +775,7 @@ mod test {
     fn test_cmd() {
         let mut ws = Wallets::new().unwrap();
         let wa1 = ws.create_wallet();
-        let bc = Blockchain::create_blockchain(wa1).unwrap();
+        let bc = Blockchain::create_blockchain(wa1, 3, 3).unwrap();
         let utxo_set = UTXOSet { blockchain: bc };
         let server = Server::new("localhost", "7878", "", None, utxo_set).unwrap();
 

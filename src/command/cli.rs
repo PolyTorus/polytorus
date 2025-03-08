@@ -232,7 +232,7 @@ fn cmd_reindex() -> Result<i32> {
 
 fn cmd_create_blockchain(address: &str) -> Result<()> {
     let address = String::from(address);
-    let bc = Blockchain::create_blockchain(address)?;
+    let bc = Blockchain::create_blockchain(address, 3, 3)?;
 
     let utxo_set = UTXOSet { blockchain: bc };
     utxo_set.reindex()?;
