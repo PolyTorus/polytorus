@@ -114,7 +114,7 @@ impl Block {
             timestamp,
             transactions,
             prev_block_hash,
-            connections: HashMap::new(),
+            connections: initial_block_hash,
             hash: String::new(),
             nonce: 0,
             height,
