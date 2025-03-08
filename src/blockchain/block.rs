@@ -18,10 +18,14 @@ pub struct Block {
     timestamp: u128,
     transactions: Vec<Transaction>,
     prev_block_hash: String,
+    parallel_block_hash: String,
+    cross_block_hash: String,
     hash: String,
     nonce: i32,
     height: i32,
     difficulty: usize,
+    x: usize,
+    y: usize,
 }
 
 impl Block {
@@ -32,6 +36,11 @@ impl Block {
     pub fn get_prev_hash(&self) -> String {
         self.prev_block_hash.clone()
     }
+
+    pub fn get_parallel_block_hash(&self) -> String { self.parallel_block_hash.clone() }
+
+    pub fn get_coordinates(&self) -> (usize, usize) { (self.x, self.y) }
+
 
     pub fn get_transaction(&self) -> &Vec<Transaction> {
         &self.transactions
@@ -45,8 +54,12 @@ impl Block {
     pub fn new_block(
         transactions: Vec<Transaction>,
         prev_block_hash: String,
+        parallel_block_hash: String,
+        cross_block_hash: String,
         height: i32,
         difficulty: usize,
+        x: usize,
+        y: usize,
     ) -> Result<Block> {
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
@@ -55,10 +68,14 @@ impl Block {
             timestamp,
             transactions,
             prev_block_hash,
+            parallel_block_hash,
+            cross_block_hash,
             hash: String::new(),
             nonce: 0,
             height,
             difficulty,
+            x,
+            y,
         };
         block.run_proof_of_work()?;
         Ok(block)
@@ -66,7 +83,16 @@ impl Block {
 
     /// NewGenesisBlock creates and returns genesis Block
     pub fn new_genesis_block(coinbase: Transaction) -> Block {
-        Block::new_block(vec![coinbase], String::new(), 0, INITIAL_DIFFICULTY).unwrap()
+        Block::new_block(
+            vec![coinbase],
+            String::new(),
+            String::new(),
+            String::new(),
+            0,
+            INITIAL_DIFFICULTY,
+            0,
+            0
+        ).unwrap()
     }
 
     /// Run performs a proof-of-work
@@ -96,10 +122,14 @@ impl Block {
     fn prepare_hash_data(&self) -> Result<Vec<u8>> {
         let content = (
             self.prev_block_hash.clone(),
+            self.parallel_block_hash.clone(),
+            self.cross_block_hash.clone(),
             self.hash_transactions()?,
             self.timestamp,
             self.difficulty,
             self.nonce,
+            self.x,
+            self.y,
         );
         let bytes = serialize(&content)?;
         Ok(bytes)
