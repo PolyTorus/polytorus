@@ -12,6 +12,19 @@ use std::time::SystemTime;
 
 const INITIAL_DIFFICULTY: usize = 4;
 const DESIRED_BLOCK_TIME: u128 = 10_000;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum Direction {
+    North,
+    East,
+    South,
+    West,
+    NorthEast,
+    SouthEast,
+    SouthWest,
+    NorthWest,
+}
+
 /// Block keeps block headers
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
