@@ -18,9 +18,13 @@ const GENESIS_COINBASE_DATA: &str =
 pub struct Blockchain {
     pub tip: String,
     pub db: sled::Db,
+    pub width: usize,
+    pub height: usize,
+    pub map: HashMap<(usize, usize), String>,
 }
 
 /// BlockchainIterator is used to iterate over blockchain blocks
+#[derive(Debug)]
 pub struct BlockchainIterator<'a> {
     current_hash: String,
     bc: &'a Blockchain,
@@ -42,23 +46,57 @@ impl Blockchain {
         } else {
             String::from_utf8(hash.to_vec())?
         };
-        Ok(Blockchain { tip: lasthash, db })
+
+        let width =  match db.get("WIDTH")? {
+            Some(w) => deserialize(&w)?,
+            None => 3,
+        };
+
+        let height = match db.get("HEIGHT")? {
+            Some(h) => deserialize(&h)?,
+            None => 3,
+        };
+
+        let map = match db.get("MAP")? {
+            Some(m) => deserialize(&m)?,
+            None => HashMap::new(),
+        };
+
+
+        Ok(Blockchain { tip: lasthash, db, width, height, map })
     }
 
     /// CreateBlockchain creates a new blockchain DB
-    pub fn create_blockchain(address: String) -> Result<Blockchain> {
+    pub fn create_blockchain(address: String, width: usize, height: usize) -> Result<Blockchain> {
         info!("Creating new blockchain");
+
+        if width == 0 || height == 0 {
+            return Err(format_err!("width and height must be greater than 0"));
+        }
+
 
         std::fs::remove_dir_all("data/blocks").ok();
         let db = sled::open("data/blocks")?;
         debug!("Creating new block database");
+
         let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA))?;
         let genesis: Block = Block::new_genesis_block(cbtx);
+
+        let mut map: HashMap<(usize, usize), String> = HashMap::new();
+        map.insert((0, 0), genesis.get_hash());
+
         db.insert(genesis.get_hash(), serialize(&genesis)?)?;
         db.insert("LAST", genesis.get_hash().as_bytes())?;
+        db.insert("WIDTH", serialize(&width)?)?;
+        db.insert("HEIGHT", serialize(&height)?)?;
+        db.insert("MAP", serialize(&map)?)?;
+
         let bc = Blockchain {
             tip: genesis.get_hash(),
             db,
+            width,
+            height,
+            map,
         };
         bc.db.flush()?;
         Ok(bc)
@@ -77,6 +115,16 @@ impl Blockchain {
         let lasthash = self.db.get("LAST")?.unwrap();
         let prev_hash = String::from_utf8(lasthash.to_vec())?;
         let prev_block = self.get_block(&prev_hash)?;
+
+        let (current_x, current_y) = prev_block.get_coordinates();
+        let next_x = (current_x + 1) % self.width;
+        let next_y = if next_x == 0 { (current_y + 1) % self.height } else { current_y };
+
+        let parallel_hash = self.get_block_at_coordinates((next_x, (current_y + self.height - 1) % self.height)).unwrap_or_else(|_| String::new());
+        let cross_hash = self.get_block_at_coordinates(((current_x + self.width - 1) % self.width,
+                                                        (current_y + self.height - 1) % self.height))
+            .unwrap_or_else(|_| String::new());
+
         let current_timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_millis();
@@ -85,9 +133,17 @@ impl Blockchain {
         let newblock = Block::new_block(
             transactions,
             prev_hash,
+            parallel_hash,
+            cross_hash,
             self.get_best_height()? + 1,
             new_difficulty,
+            next_x,
+            next_y,
         )?;
+
+        self.map.insert((next_x, next_y), newblock.get_hash());
+        self.db.insert("MAP", serialize(&self.map)?)?;
+
         self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
         self.db.insert("LAST", newblock.get_hash().as_bytes())?;
         self.db.flush()?;
@@ -205,6 +261,10 @@ impl Blockchain {
         if block.get_height() > lastheight {
             self.db.insert("LAST", block.get_hash().as_bytes())?;
             self.tip = block.get_hash();
+
+            let (x, y) = block.get_coordinates();
+            self.map.insert((x, y), block.get_hash());
+            self.db.insert("MAP", serialize(&self.map)?)?;
             self.db.flush()?;
         }
         Ok(())
@@ -237,6 +297,37 @@ impl Blockchain {
         }
         list
     }
+
+    pub fn get_block_at_coordinates(&self, coords: (usize, usize)) -> Result<String> {
+        match self.map.get(&coords) {
+            Some(hash) => Ok(hash.clone()),
+            None => Err(format_err!("No block at coords {:?}", coords)),
+        }
+    }
+
+    pub fn visualize(&self) -> Result<String> {
+        let mut output = String::new();
+        output.push_str(&format!("Torus Blockchain Structure ({}x{})\n", self.width, self.height));
+        output.push_str("-----------------------------\n");
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                match self.map.get(&(x, y)) {
+                    Some(hash) => {
+                        let short_hash = &hash[0..6]; // ハッシュの最初の6文字だけ表示
+                        output.push_str(&format!("[{}] ", short_hash));
+                    },
+                    None => {
+                        output.push_str("[     ] ");
+                    }
+                }
+            }
+            output.push_str("\n");
+        }
+
+        Ok(output)
+    }
+
 }
 
 impl<'a> Iterator for BlockchainIterator<'a> {
