@@ -8,12 +8,13 @@ use crypto::sha2::Sha256;
 use merkle_cbt::merkle_tree::Merge;
 use merkle_cbt::merkle_tree::CBMT;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::time::SystemTime;
 
 const INITIAL_DIFFICULTY: usize = 4;
 const DESIRED_BLOCK_TIME: u128 = 10_000;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Direction {
     North,
     East,
@@ -31,14 +32,41 @@ pub struct Block {
     timestamp: u128,
     transactions: Vec<Transaction>,
     prev_block_hash: String,
-    parallel_block_hash: String,
-    cross_block_hash: String,
+    connections: HashMap<Direction, String>,
     hash: String,
     nonce: i32,
     height: i32,
     difficulty: usize,
     x: usize,
     y: usize,
+}
+
+impl Direction {
+    pub fn opposite(&self) -> Direction {
+        match self {
+            Direction::North => Direction::South,
+            Direction::East => Direction::West,
+            Direction::South => Direction::North,
+            Direction::West => Direction::East,
+            Direction::NorthEast => Direction::SouthWest,
+            Direction::SouthEast => Direction::NorthWest,
+            Direction::SouthWest => Direction::NorthEast,
+            Direction::NorthWest => Direction::SouthEast,
+        }
+    }
+
+    pub fn all_directions() -> Vec<Direction> {
+        vec![
+            Direction::North,
+            Direction::East,
+            Direction::South,
+            Direction::West,
+            Direction::NorthEast,
+            Direction::SouthEast,
+            Direction::SouthWest,
+            Direction::NorthWest,
+        ]
+    }
 }
 
 impl Block {
@@ -50,7 +78,13 @@ impl Block {
         self.prev_block_hash.clone()
     }
 
-    pub fn get_parallel_block_hash(&self) -> String { self.parallel_block_hash.clone() }
+    pub fn get_connections(&self, direction: &Direction) -> Option<String> {
+        self.connections.get(direction).cloned()
+    }
+
+    pub fn set_connections(&mut self, direction: Direction, hash: String) {
+        self.connections.insert(direction, hash);
+    }
 
     pub fn get_coordinates(&self) -> (usize, usize) { (self.x, self.y) }
 
@@ -67,8 +101,7 @@ impl Block {
     pub fn new_block(
         transactions: Vec<Transaction>,
         prev_block_hash: String,
-        parallel_block_hash: String,
-        cross_block_hash: String,
+        initial_block_hash: HashMap<Direction, String>,
         height: i32,
         difficulty: usize,
         x: usize,
@@ -81,8 +114,7 @@ impl Block {
             timestamp,
             transactions,
             prev_block_hash,
-            parallel_block_hash,
-            cross_block_hash,
+            connections: HashMap::new(),
             hash: String::new(),
             nonce: 0,
             height,
@@ -99,8 +131,7 @@ impl Block {
         Block::new_block(
             vec![coinbase],
             String::new(),
-            String::new(),
-            String::new(),
+            HashMap::new(),
             0,
             INITIAL_DIFFICULTY,
             0,
@@ -133,10 +164,16 @@ impl Block {
     }
 
     fn prepare_hash_data(&self) -> Result<Vec<u8>> {
+        let mut sorted_connections = Vec::new();
+        for direction in Direction::all_directions() {
+            if let Some(hash) = self.connections.get(&direction) {
+                sorted_connections.push(hash.as_bytes().to_owned());
+            }
+        }
+
         let content = (
             self.prev_block_hash.clone(),
-            self.parallel_block_hash.clone(),
-            self.cross_block_hash.clone(),
+            sorted_connections,
             self.hash_transactions()?,
             self.timestamp,
             self.difficulty,
