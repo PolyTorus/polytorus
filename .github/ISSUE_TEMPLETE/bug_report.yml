@@ -1,0 +1,109 @@
+name: "Bug Report"
+description: "Create a bug report."
+labels: ["triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for creating an issue 😎!
+
+        Please search open/closed issues before submitting. Someone might have asked the same thing before 😎!
+
+          - [Issues](https://github.com/PolyTorus/polytorus/issues)
+          - [Closed Issues](https://github.com/PolyTorus/polytorus/issues?q=is%3Aissue%20state%3Aclosed)
+          - [Discussions](https://github.com/PolyTorus/polytorus/discussions)
+
+        Please help us help you by taking the time to accurately fill out this template. 💖
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package has an issue?
+      options:
+        - "@main"
+        - "@develop"
+        - "@feature/torus"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: "Package Version"
+      description: "The version of the package you are using."
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: "A brief description of the issue."
+      placeholder: |
+        When I ____, I expected ____ to happen, but ____ happened instead.
+    validations:
+      required: true
+  - type: input
+    id: reproduction
+    attributes:
+      label: "Link to Reproduction"
+      description: |
+        If possible, please include a link to a CodeSandbox with a minimal reproduction
+      placeholder: "https://codesandbox.io/"
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce"
+      description: |
+        Explain how to reproduce the issue in the provided reproduction.
+      value: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+  - type: dropdown
+    id: browser-type
+    attributes:
+      label: Browser
+      description: Select the browsers where the issue can be reproduced.
+      options:
+        - "Chrome"
+        - "Firefox"
+        - "Safari"
+        - "Edge"
+        - "Opera"
+        - "Other (add additional context)"
+  - type: checkboxes
+    id: operating-system
+    attributes:
+      label: "Operating System"
+      description: "The operating system(s) on which this issue occurred."
+      options:
+        - label: "macOS"
+        - label: "Windows"
+        - label: "Linux"
+        - label: "iPadOS"
+        - label: "iOS"
+        - label: "Android"
+  - type: dropdown
+    id: fix
+    attributes:
+      label: Do you know how to fix the issue?
+      options:
+        - "Yes"
+        - "No"
+  - type: dropdown
+    id: participate
+    attributes:
+      label: Are you willing to participate in fixing this issue and create a pull request with the fix?
+      options:
+        - "Yes"
+        - "No"
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: "Additional Information"
+      description: |
+        Use this section to provide any additional information you might have,
+        such as a possible fix, screenshots, notes, or links to ideas.
+  - type: markdown
+    attributes:
+      value:
