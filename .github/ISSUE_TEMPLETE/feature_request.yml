@@ -43,19 +43,6 @@ body:
         2. Click on '....'
         3. ....
   - type: textarea
-    id: "alternatives"
-    attributes:
-      label: "Alternatives"
-      description: |
-        Have you considered any alternative solutions or features before making this request?
-  - type: dropdown
-    id: participate
-    attributes:
-      label: Are you willing to participate in implementing this feature and create a pull request include the implementation?
-      options:
-        - "Yes"
-        - "No"
-  - type: textarea
     id: "additional-information"
     attributes:
       label: "Additional Information"

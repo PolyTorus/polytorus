@@ -42,18 +42,6 @@ body:
         2. '....'をクリックする
         3. ....
   - type: textarea
-    id: alternatives
-    attributes:
-      label: "代替案"
-      description: このリクエストをする前に、他の代替解決策や機能を検討しましたか？
-  - type: dropdown
-    id: participate
-    attributes:
-      label: この機能の実装に参加し、実装を含むプルリクエストを作成しますか？
-      options:
-        - "はい"
-        - "いいえ"
-  - type: textarea
     id: additional-information
     attributes:
       label: "追加情報"
