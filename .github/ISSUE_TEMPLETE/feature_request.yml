@@ -24,7 +24,7 @@ body:
     attributes:
       label: "Problem Statement/Justification"
       description: |
-        Provide valid reasons why this feature should be added to Yamada UI.
+        Provide valid reasons why this feature should be added to PolyTorus.
 
         If this feature is related to a problem you've encountered, please describe it as well.
     validations:

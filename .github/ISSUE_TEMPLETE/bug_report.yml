@@ -45,9 +45,7 @@ body:
     id: reproduction
     attributes:
       label: "Link to Reproduction"
-      description: |
-        If possible, please include a link to a CodeSandbox with a minimal reproduction
-      placeholder: "https://codesandbox.io/"
+      description:
   - type: textarea
     id: steps
     attributes:

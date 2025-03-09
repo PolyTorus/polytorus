@@ -24,14 +24,6 @@ body:
         - "@feature/torus"
     validations:
       required: true
-  - type: input
-    id: version
-    attributes:
-      label: "パッケージのバージョン"
-      description: "使用しているパッケージのバージョン。"
-      placeholder: "0.1.0"
-    validations:
-      required: true
   - type: textarea
     id: description
     attributes:
@@ -45,9 +37,7 @@ body:
     id: reproduction
     attributes:
       label: "再現へのリンク"
-      description: |
-        可能であれば、最小限の再現を含むCodeSandboxへのリンクを含めてください。
-      placeholder: "https://codesandbox.io/"
+      description:
   - type: textarea
     id: steps
     attributes:

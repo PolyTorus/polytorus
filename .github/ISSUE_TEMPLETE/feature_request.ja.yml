@@ -24,7 +24,7 @@ body:
     attributes:
       label: "問題の主張/正当化"
       description: |
-        なぜこの機能がYamada UIに追加されるべきか、有効な理由を提供してください。
+        なぜこの機能がPolyTorusに追加されるべきか、有効な理由を提供してください。
 
         この機能が遭遇した問題に関連している場合は、それも説明してください。
     validations:
