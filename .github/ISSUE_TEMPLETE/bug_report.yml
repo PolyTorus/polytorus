@@ -58,30 +58,6 @@ body:
         3. Scroll down to '...'
         4. See error
   - type: dropdown
-    id: browser-type
-    attributes:
-      label: Browser
-      description: Select the browsers where the issue can be reproduced.
-      options:
-        - "Chrome"
-        - "Firefox"
-        - "Safari"
-        - "Edge"
-        - "Opera"
-        - "Other (add additional context)"
-  - type: checkboxes
-    id: operating-system
-    attributes:
-      label: "Operating System"
-      description: "The operating system(s) on which this issue occurred."
-      options:
-        - label: "macOS"
-        - label: "Windows"
-        - label: "Linux"
-        - label: "iPadOS"
-        - label: "iOS"
-        - label: "Android"
-  - type: dropdown
     id: fix
     attributes:
       label: Do you know how to fix the issue?

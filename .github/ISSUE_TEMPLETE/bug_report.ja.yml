@@ -50,30 +50,6 @@ body:
         3. '...'までスクロールします。
         4. エラーを確認します。
   - type: dropdown
-    id: browser-type
-    attributes:
-      label: ブラウザ
-      description: 問題が再現されるブラウザを選択してください。
-      options:
-        - "Chrome"
-        - "Firefox"
-        - "Safari"
-        - "Edge"
-        - "Opera"
-        - "その他（追加のコンテキストを追加）"
-  - type: checkboxes
-    id: operating-system
-    attributes:
-      label: "OS"
-      description: "この問題が発生したOS。"
-      options:
-        - label: "macOS"
-        - label: "Windows"
-        - label: "Linux"
-        - label: "iPadOS"
-        - label: "iOS"
-        - label: "Android"
-  - type: dropdown
     id: fix
     attributes:
       label: まさか、問題の修正方法をご存知ですか？
