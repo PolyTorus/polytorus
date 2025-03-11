@@ -6,6 +6,7 @@ use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::wallets::*;
 use crate::network::server::Server;
+use crate::network::webrtc::*;
 use crate::Result;
 use bitcoincash_addr::Address;
 use clap::{App, Arg};
@@ -91,6 +92,25 @@ impl Cli {
                     .arg(Arg::from_usage(
                         "-m --mine 'mine immediately on the remote node'",
                     )),
+            )
+            .subcommand(
+                App::new("webrtcnode")
+                    .about("start a WebRTC node server")
+                    .arg(Arg::from_usage("<port> 'the port server bind to locally'"))
+                    .arg(
+                        Arg::with_name("host")
+                            .long("host")
+                            .takes_value(true)
+                            .default_value("0.0.0.0")
+                            .help("connections"),
+                    )
+                    .arg(
+                        Arg::with_name("stun")
+                            .long("stun")
+                            .takes_value(true)
+                            .default_value("stun:stun.l.google.com:19302")
+                            .help("STUN server URL"),
+                    ),
             )
             .get_matches();
 
@@ -183,6 +203,14 @@ impl Cli {
             let mine = matches.is_present("mine");
 
             cmd_remote_send(from, to, amount, node, mine)?;
+        } else if let Some(ref matches) = matches.subcommand_matches("webrtcnode") {
+            let config = WebRTCConfig {
+                host: matches.value_of("host").unwrap_or("0.0.0.0").to_string(),
+                port: matches.value_of("port").unwrap().to_string(),
+                stun_url: matches.value_of("stun").unwrap().to_string(),
+                ..Default::default()
+            };
+            cmd_start_webrtc_node(config)?;
         }
 
         Ok(())
@@ -285,6 +313,13 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, mine_now: bool
     server.send_tx(node, &signed_tx)?;
 
     println!("Transaction sent successfully!");
+    Ok(())
+}
+
+fn cmd_start_webrtc_node(config: WebRTCConfig) -> Result<()> {
+    println!("Starting WebRTC node...");
+    let mut node = WebRTCNode::new(config)?;
+    node.start()?;
     Ok(())
 }
 
