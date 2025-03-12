@@ -21,3 +21,5 @@ fn-dsa = "0.2.0"
 secp256k1 = "0.22.2"
 rand_core = "0.6.4"
 rand = "0.8.5"
+actix-web = "4"       
+tokio = { version = "1", features = ["full"] }  
