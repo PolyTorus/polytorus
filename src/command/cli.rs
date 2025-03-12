@@ -6,6 +6,7 @@ use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::wallets::*;
 use crate::network::server::Server;
+use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
 use clap::{App, Arg};
@@ -19,7 +20,7 @@ impl Cli {
         Cli {}
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
         info!("run app");
         let matches = App::new("polytorus")
             .version(env!("CARGO_PKG_VERSION"))
@@ -29,6 +30,7 @@ impl Cli {
             .subcommand(App::new("createwallet").about("create a wallet"))
             .subcommand(App::new("listaddresses").about("list all addresses"))
             .subcommand(App::new("reindex").about("reindex UTXO"))
+            .subcommand(App::new("server").about("run server"))
             .subcommand(
                 App::new("startnode")
                     .about("start the node server")
@@ -108,6 +110,8 @@ impl Cli {
             println!("Done! There are {} transactions in the UTXO set.", count);
         } else if let Some(_) = matches.subcommand_matches("listaddresses") {
             cmd_list_address()?;
+        }else if let Some(_)=matches.subcommand_matches("server"){
+            cmd_server().await?;
         } else if let Some(ref matches) = matches.subcommand_matches("createblockchain") {
             if let Some(address) = matches.value_of("address") {
                 cmd_create_blockchain(address)?;
@@ -187,6 +191,12 @@ impl Cli {
 
         Ok(())
     }
+}
+
+async fn cmd_server() -> Result<()> {
+    WebServer::new().await?;
+
+    Ok(())
 }
 
 fn cmd_send(
