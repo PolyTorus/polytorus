@@ -78,12 +78,16 @@ impl Block {
         self.prev_block_hash.clone()
     }
 
-    pub fn get_connections(&self, direction: &Direction) -> Option<String> {
+    pub fn get_connection(&self, direction: &Direction) -> Option<String> {
         self.connections.get(direction).cloned()
     }
 
-    pub fn set_connections(&mut self, direction: Direction, hash: String) {
+    pub fn set_connection(&mut self, direction: Direction, hash: String) {
         self.connections.insert(direction, hash);
+    }
+
+    pub fn get_all_connections(&self) -> HashMap<Direction, String> {
+        self.connections.clone()
     }
 
     pub fn get_coordinates(&self) -> (usize, usize) { (self.x, self.y) }
