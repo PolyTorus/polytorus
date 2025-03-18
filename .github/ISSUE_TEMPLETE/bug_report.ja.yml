@@ -1,0 +1,72 @@
+name: "Bug Report (日本語)"
+description: "バグ報告を作成します。"
+labels: ["triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        問題を作成していただきありがとうございます！ 😎
+
+        提出する前に、オープン/クローズされた問題を検索してください。以前に、誰かが同じことを尋ねているかもしれません！ 😎
+
+          - [Issues](https://github.com/PolyTorus/polytorus/issues)
+          - [Closed Issues](https://github.com/PolyTorus/polytorus/issues?q=is%3Aissue%20state%3Aclosed)
+          - [Discussions](https://github.com/PolyTorus/polytorus/discussions)
+
+        このテンプレートを正確に記入することで、私たちの手助けになります。💖
+  - type: dropdown
+    id: package
+    attributes:
+      label: どのパッケージに問題がありますか？
+      options:
+        - "@main"
+        - "@develop"
+        - "@feature/torus"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "概要"
+      description: "問題の簡単な説明。"
+      placeholder: |
+        ____ したとき、____ が起こると予想していましたが、代わりに ____ が起こりました。
+    validations:
+      required: true
+  - type: input
+    id: reproduction
+    attributes:
+      label: "再現へのリンク"
+      description:
+  - type: textarea
+    id: steps
+    attributes:
+      label: "再現手順"
+      description: |
+        提供された再現で問題を再現する方法を説明してください。
+      value: |
+        1. '...'に行きます。
+        2. '...'をクリックします。
+        3. '...'までスクロールします。
+        4. エラーを確認します。
+  - type: dropdown
+    id: fix
+    attributes:
+      label: まさか、問題の修正方法をご存知ですか？
+      options:
+        - "はい"
+        - "いいえ"
+  - type: dropdown
+    id: participate
+    attributes:
+      label: この問題の修正に参加し、修正を含むプルリクエストを作成しますか？
+      options:
+        - "はい"
+        - "いいえ"
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: "追加情報"
+      description: |
+        考えられる修正、スクリーンショット、ノート、アイデアへのリンクなど、持っている追加情報をこのセクションで提供してください。
+      value:

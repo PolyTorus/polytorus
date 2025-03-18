@@ -6,9 +6,10 @@ use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::wallets::*;
 use crate::network::server::Server;
+use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
-use clap::{App, Arg};
+use clap::{App, Arg,ArgMatches};
 use std::process::exit;
 use std::vec;
 
@@ -19,7 +20,7 @@ impl Cli {
         Cli {}
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
         info!("run app");
         let matches = App::new("polytorus")
             .version(env!("CARGO_PKG_VERSION"))
@@ -29,6 +30,7 @@ impl Cli {
             .subcommand(App::new("createwallet").about("create a wallet"))
             .subcommand(App::new("listaddresses").about("list all addresses"))
             .subcommand(App::new("reindex").about("reindex UTXO"))
+            .subcommand(App::new("server").about("run server"))
             .subcommand(
                 App::new("startnode")
                     .about("start the node server")
@@ -108,28 +110,20 @@ impl Cli {
             println!("Done! There are {} transactions in the UTXO set.", count);
         } else if let Some(_) = matches.subcommand_matches("listaddresses") {
             cmd_list_address()?;
+        }else if let Some(_)=matches.subcommand_matches("server"){
+            cmd_server().await?;
         } else if let Some(ref matches) = matches.subcommand_matches("createblockchain") {
             if let Some(address) = matches.value_of("address") {
                 cmd_create_blockchain(address)?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("send") {
-            let from = if let Some(address) = matches.value_of("from") {
-                address
-            } else {
-                println!("from not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
-            let to = if let Some(address) = matches.value_of("to") {
-                address
-            } else {
-                println!("to not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
+            let from = get_value("from", matches)?;
+            let to = get_value("to", matches)?;
+            
             let amount: i32 = if let Some(amount) = matches.value_of("amount") {
                 amount.parse()?
             } else {
-                println!("amount in send not supply!: usage\n{}", matches.usage());
-                exit(1)
+                error_start_miner("amount", matches.usage())
             };
             let target_node = matches.value_of("node");
             if matches.is_present("mine") {
@@ -152,18 +146,10 @@ impl Cli {
                 server.start_server()?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
-            let mining_address = if let Some(address) = matches.value_of("address") {
-                address
-            } else {
-                println!("address not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
-            let port = if let Some(port) = matches.value_of("port") {
-                port
-            } else {
-                println!("port not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
+            let mining_address = get_value("address", matches)?;
+            
+            let port = get_value("port", matches)?;
+            
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
@@ -187,6 +173,12 @@ impl Cli {
 
         Ok(())
     }
+}
+
+async fn cmd_server() -> Result<()> {
+    WebServer::new().await?;
+
+    Ok(())
 }
 
 fn cmd_send(
@@ -214,6 +206,20 @@ fn cmd_send(
 
     println!("success!");
     Ok(())
+}
+
+fn get_value<'a>(name:&str,matches:&'a ArgMatches<'_>)-> Result<&'a str>{
+    if let Some(value) = matches.value_of(name) {
+        Ok(value)
+    } else {
+        error_start_miner(name, matches.usage())
+    }
+}
+
+fn error_start_miner(name: &str,usage:&str)->!{
+    println!("{} not supply!: usage\n{}", name,usage);
+    
+    exit(1)
 }
 
 fn cmd_create_wallet() -> Result<String> {
