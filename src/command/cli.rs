@@ -9,7 +9,7 @@ use crate::network::server::Server;
 use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
-use clap::{App, Arg};
+use clap::{App, Arg,ArgMatches};
 use std::process::exit;
 use std::vec;
 
@@ -117,23 +117,13 @@ impl Cli {
                 cmd_create_blockchain(address)?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("send") {
-            let from = if let Some(address) = matches.value_of("from") {
-                address
-            } else {
-                println!("from not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
-            let to = if let Some(address) = matches.value_of("to") {
-                address
-            } else {
-                println!("to not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
+            let from = get_value("from", matches)?;
+            let to = get_value("to", matches)?;
+            
             let amount: i32 = if let Some(amount) = matches.value_of("amount") {
                 amount.parse()?
             } else {
-                println!("amount in send not supply!: usage\n{}", matches.usage());
-                exit(1)
+                error_start_miner("amount", matches.usage())
             };
             let target_node = matches.value_of("node");
             if matches.is_present("mine") {
@@ -156,18 +146,10 @@ impl Cli {
                 server.start_server()?;
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
-            let mining_address = if let Some(address) = matches.value_of("address") {
-                address
-            } else {
-                println!("address not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
-            let port = if let Some(port) = matches.value_of("port") {
-                port
-            } else {
-                println!("port not supply!: usage\n{}", matches.usage());
-                exit(1)
-            };
+            let mining_address = get_value("address", matches)?;
+            
+            let port = get_value("port", matches)?;
+            
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
@@ -224,6 +206,20 @@ fn cmd_send(
 
     println!("success!");
     Ok(())
+}
+
+fn get_value<'a>(name:&str,matches:&'a ArgMatches<'_>)-> Result<&'a str>{
+    if let Some(value) = matches.value_of(name) {
+        Ok(value)
+    } else {
+        error_start_miner(name, matches.usage())
+    }
+}
+
+fn error_start_miner(name: &str,usage:&str)->!{
+    println!("{} not supply!: usage\n{}", name,usage);
+    
+    exit(1)
 }
 
 fn cmd_create_wallet() -> Result<String> {
