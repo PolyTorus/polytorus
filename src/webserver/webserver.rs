@@ -9,8 +9,6 @@ impl WebServer {
             .run()
             .await
     }
-
-
 }
 
 #[get("/")]

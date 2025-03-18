@@ -9,7 +9,7 @@ use crate::network::server::Server;
 use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
-use clap::{App, Arg,ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use std::process::exit;
 use std::vec;
 
@@ -110,7 +110,7 @@ impl Cli {
             println!("Done! There are {} transactions in the UTXO set.", count);
         } else if let Some(_) = matches.subcommand_matches("listaddresses") {
             cmd_list_address()?;
-        }else if let Some(_)=matches.subcommand_matches("server"){
+        } else if let Some(_) = matches.subcommand_matches("server") {
             cmd_server().await?;
         } else if let Some(ref matches) = matches.subcommand_matches("createblockchain") {
             if let Some(address) = matches.value_of("address") {
@@ -119,7 +119,7 @@ impl Cli {
         } else if let Some(ref matches) = matches.subcommand_matches("send") {
             let from = get_value("from", matches)?;
             let to = get_value("to", matches)?;
-            
+
             let amount: i32 = if let Some(amount) = matches.value_of("amount") {
                 amount.parse()?
             } else {
@@ -147,9 +147,9 @@ impl Cli {
             }
         } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
             let mining_address = get_value("address", matches)?;
-            
+
             let port = get_value("port", matches)?;
-            
+
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
@@ -208,7 +208,7 @@ fn cmd_send(
     Ok(())
 }
 
-fn get_value<'a>(name:&str,matches:&'a ArgMatches<'_>)-> Result<&'a str>{
+fn get_value<'a>(name: &str, matches: &'a ArgMatches<'_>) -> Result<&'a str> {
     if let Some(value) = matches.value_of(name) {
         Ok(value)
     } else {
@@ -216,9 +216,9 @@ fn get_value<'a>(name:&str,matches:&'a ArgMatches<'_>)-> Result<&'a str>{
     }
 }
 
-fn error_start_miner(name: &str,usage:&str)->!{
-    println!("{} not supply!: usage\n{}", name,usage);
-    
+fn error_start_miner(name: &str, usage: &str) -> ! {
+    println!("{} not supply!: usage\n{}", name, usage);
+
     exit(1)
 }
 
