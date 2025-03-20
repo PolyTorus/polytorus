@@ -100,7 +100,7 @@ impl Blockchain {
     pub fn iter(&self) -> BlockchainIterator {
         BlockchainIterator {
             current_hash: self.tip.clone(),
-            bc: &self,
+            bc: self,
         }
     }
 
@@ -213,7 +213,7 @@ impl Blockchain {
     // GetBlock finds a block by its hash and returns it
     pub fn get_block(&self, block_hash: &str) -> Result<Block> {
         let data = self.db.get(block_hash)?.unwrap();
-        let block = deserialize(&data.to_vec())?;
+        let block = deserialize(&data)?;
         Ok(block)
     }
 
@@ -225,7 +225,7 @@ impl Blockchain {
             return Ok(-1);
         };
         let last_data = self.db.get(lasthash)?.unwrap();
-        let last_block: Block = deserialize(&last_data.to_vec())?;
+        let last_block: Block = deserialize(&last_data)?;
         Ok(last_block.get_height())
     }
 
@@ -239,7 +239,7 @@ impl Blockchain {
     }
 }
 
-impl<'a> Iterator for BlockchainIterator<'a> {
+impl Iterator for BlockchainIterator<'_> {
     type Item = Block;
 
     fn next(&mut self) -> Option<Self::Item> {

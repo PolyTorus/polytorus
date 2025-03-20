@@ -140,10 +140,11 @@ impl Server {
                 server1.request_blocks()
             } else {
                 let nodes = server1.get_known_nodes();
-                Ok(if !nodes.is_empty() {
+                if !nodes.is_empty() {
                     let first = nodes.iter().next().unwrap();
                     server1.send_version(first)?;
-                })
+                };
+                Ok(())
             }
         });
 
@@ -201,10 +202,7 @@ impl Server {
     }
 
     fn get_mempool_tx(&self, addr: &str) -> Option<Transaction> {
-        match self.inner.lock().unwrap().mempool.get(addr) {
-            Some(tx) => Some(tx.clone()),
-            None => None,
-        }
+        self.inner.lock().unwrap().mempool.get(addr).cloned()
     }
 
     fn get_mempool(&self) -> HashMap<String, Transaction> {
@@ -394,7 +392,7 @@ impl Server {
         self.add_block(msg.block)?;
 
         let mut in_transit = self.get_in_transit();
-        if in_transit.len() > 0 {
+        if !in_transit.is_empty() {
             let block_hash = &in_transit[0];
             self.send_get_data(&msg.addr_from, "block", block_hash)?;
             in_transit.remove(0);
@@ -468,11 +466,11 @@ impl Server {
             let mut mempool = self.get_mempool();
             debug!("Current mempool: {:#?}", &mempool);
 
-            if mempool.len() >= 1 {
+            if !mempool.is_empty() {
                 loop {
                     let mut txs = Vec::new();
 
-                    for (_, tx) in &mempool {
+                    for tx in mempool.values() {
                         if self.verify_tx(tx)? {
                             txs.push(tx.clone());
                         }
@@ -499,7 +497,7 @@ impl Server {
                         }
                     }
 
-                    if mempool.len() == 0 {
+                    if mempool.is_empty() {
                         break;
                     }
                 }
@@ -727,7 +725,7 @@ fn bytes_to_cmd(bytes: &[u8]) -> Result<Message> {
     let cmd_bytes = &bytes[..CMD_LEN];
     let data = &bytes[CMD_LEN..];
     for b in cmd_bytes {
-        if 0 as u8 != *b {
+        if 0_u8 != *b {
             cmd.push(*b);
         }
     }

@@ -10,11 +10,17 @@ use crate::network::server::Server;
 use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
-use clap::{App, Arg,ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use std::process::exit;
 use std::vec;
 
 pub struct Cli {}
+
+impl Default for Cli {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Cli {
     pub fn new() -> Cli {
@@ -99,7 +105,7 @@ impl Cli {
             )
             .get_matches();
 
-        if let Some(ref matches) = matches.subcommand_matches("getbalance") {
+        if let Some(matches) = matches.subcommand_matches("getbalance") {
             if let Some(address) = matches.value_of("address") {
                 let balance = cmd_get_balance(address)?;
                 println!("Balance: {}\n", balance);
@@ -114,21 +120,21 @@ impl Cli {
             println!("address: {}", cmd_create_wallet(encryption)?);
         } else if let Some(_) = matches.subcommand_matches("printchain") {
             cmd_print_chain()?;
-        } else if let Some(_) = matches.subcommand_matches("reindex") {
+        } else if matches.subcommand_matches("reindex").is_some() {
             let count = cmd_reindex()?;
             println!("Done! There are {} transactions in the UTXO set.", count);
-        } else if let Some(_) = matches.subcommand_matches("listaddresses") {
+        } else if matches.subcommand_matches("listaddresses").is_some() {
             cmd_list_address()?;
         } else if let Some(_)=matches.subcommand_matches("server"){
             cmd_server().await?;
-        } else if let Some(ref matches) = matches.subcommand_matches("createblockchain") {
+        } else if let Some(matches) = matches.subcommand_matches("createblockchain") {
             if let Some(address) = matches.value_of("address") {
                 cmd_create_blockchain(address)?;
             }
-        } else if let Some(ref matches) = matches.subcommand_matches("send") {
+        } else if let Some(matches) = matches.subcommand_matches("send") {
             let from = get_value("from", matches)?;
             let to = get_value("to", matches)?;
-            
+
             let amount: i32 = if let Some(amount) = matches.value_of("amount") {
                 amount.parse()?
             } else {
@@ -150,11 +156,11 @@ impl Cli {
                 )?;
                 server.start_server()?;
             }
-        } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
+        } else if let Some(matches) = matches.subcommand_matches("startminer") {
             let mining_address = get_value("address", matches)?;
-            
+
             let port = get_value("port", matches)?;
-            
+
             println!("Start miner node...");
             let bc = Blockchain::new()?;
             let utxo_set = UTXOSet { blockchain: bc };
@@ -166,7 +172,7 @@ impl Cli {
                 utxo_set,
             )?;
             server.start_server()?;
-        } else if let Some(ref matches) = matches.subcommand_matches("remotesend") {
+        } else if let Some(matches) = matches.subcommand_matches("remotesend") {
             let from = matches.value_of("from").unwrap();
             let to = matches.value_of("to").unwrap();
             let amount: i32 = matches.value_of("amount").unwrap().parse()?;
@@ -213,7 +219,7 @@ fn cmd_send(
     Ok(())
 }
 
-fn get_value<'a>(name:&str,matches:&'a ArgMatches<'_>)-> Result<&'a str>{
+fn get_value<'a>(name: &str, matches: &'a ArgMatches<'_>) -> Result<&'a str> {
     if let Some(value) = matches.value_of(name) {
         Ok(value)
     } else {
@@ -221,9 +227,9 @@ fn get_value<'a>(name:&str,matches:&'a ArgMatches<'_>)-> Result<&'a str>{
     }
 }
 
-fn error_start_miner(name: &str,usage:&str)->!{
-    println!("{} not supply!: usage\n{}", name,usage);
-    
+fn error_start_miner(name: &str, usage: &str) -> ! {
+    println!("{} not supply!: usage\n{}", name, usage);
+
     exit(1)
 }
 
