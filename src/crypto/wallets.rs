@@ -7,12 +7,10 @@ use crypto::sha2::Sha256;
 use fn_dsa::{
     sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
 };
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, Message};
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
-use super::types::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -22,28 +20,15 @@ pub struct Wallet {
 
 impl Wallet {
     /// NewWallet creates and returns a Wallet
-    fn new(encryption: EncryptionType) -> Self {
-        match encryption {
-            EncryptionType::FNDSA => {
-                let mut kg = KeyPairGeneratorStandard::default();
-                let mut sign_key = [0u8; sign_key_size(FN_DSA_LOGN_512)];
-                let mut vrfy_key = [0u8; vrfy_key_size(FN_DSA_LOGN_512)];
-                kg.keygen(FN_DSA_LOGN_512, &mut OsRng, &mut sign_key, &mut vrfy_key);
+    fn new() -> Self {
+        let mut kg = KeyPairGeneratorStandard::default();
+        let mut sign_key = [0u8; sign_key_size(FN_DSA_LOGN_512)];
+        let mut vrfy_key = [0u8; vrfy_key_size(FN_DSA_LOGN_512)];
+        kg.keygen(FN_DSA_LOGN_512, &mut OsRng, &mut sign_key, &mut vrfy_key);
 
-                Wallet {
-                    secret_key: sign_key.to_vec(),
-                    public_key: vrfy_key.to_vec(),
-                }
-            },
-            EncryptionType::ECDSA => {
-                let secp = Secp256k1::new();
-                let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
-
-                Wallet {
-                    secret_key: secret_key.secret_bytes().to_vec(),
-                    public_key: public_key.serialize().to_vec(),
-                }
-            },
+        Wallet {
+            secret_key: sign_key.to_vec(),
+            public_key: vrfy_key.to_vec(),
         }
     }
 
@@ -58,12 +43,6 @@ impl Wallet {
             ..Default::default()
         };
         address.encode().unwrap()
-    }
-}
-
-impl Default for Wallet {
-    fn default() -> Self {
-        Wallet::new(EncryptionType::FNDSA)
     }
 }
 
@@ -101,8 +80,8 @@ impl Wallets {
     }
 
     /// CreateWallet adds a Wallet to Wallets
-    pub fn create_wallet(&mut self, encryption: EncryptionType) -> String {
-        let wallet = Wallet::new(encryption);
+    pub fn create_wallet(&mut self) -> String {
+        let wallet = Wallet::new();
         let address = wallet.get_address();
         self.wallets.insert(address.clone(), wallet);
         info!("create wallet: {}", address);
@@ -147,8 +126,8 @@ mod test {
     };
     #[test]
     fn test_create_wallet_and_hash() {
-        let w1 = Wallet::default();
-        let w2 = Wallet::default();
+        let w1 = Wallet::new();
+        let w2 = Wallet::new();
         assert_ne!(w1, w2);
         assert_ne!(w1.get_address(), w2.get_address());
 
@@ -162,7 +141,7 @@ mod test {
     #[test]
     fn test_wallets() {
         let mut ws = Wallets::new().unwrap();
-        let wa1 = ws.create_wallet(EncryptionType::FNDSA);
+        let wa1 = ws.create_wallet();
         let w1 = ws.get_wallet(&wa1).unwrap().clone();
         ws.save_all().unwrap();
 
@@ -174,14 +153,14 @@ mod test {
     #[test]
     #[should_panic]
     fn test_wallets_not_exist() {
-        let w3 = Wallet::default();
+        let w3 = Wallet::new();
         let ws2 = Wallets::new().unwrap();
         ws2.get_wallet(&w3.get_address()).unwrap();
     }
 
     #[test]
     fn test_signature() {
-        let w = Wallet::default();
+        let w = Wallet::new();
         let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
         let mut sig = vec![0u8; signature_size(sk.get_logn())];
         sk.sign(&mut OsRng, &DOMAIN_NONE, &HASH_ID_RAW, b"message", &mut sig);
