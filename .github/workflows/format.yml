@@ -16,13 +16,13 @@ jobs:
 
       # https://github.com/dtolnay/rust-toolchain
       - name: Install rust components
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@56f84321dbccf38fb67ce29ab63e4754056677e0
         with:
           toolchain: stable
-          components: rustfmt
+          components: clippy, rustfmt
 
       - name: Format
-        run: cargo fmt --all
+        run: cargo fmt --all && cargo clippy --fix
 
       - name: Commit
         run: |

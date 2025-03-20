@@ -1,4 +1,3 @@
-use actix_web;
 use env_logger::Env;
 use polytorus::command::cli::Cli;
 

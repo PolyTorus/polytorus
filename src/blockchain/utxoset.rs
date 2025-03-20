@@ -25,7 +25,7 @@ impl UTXOSet {
         for kv in db.iter() {
             let (k, v) = kv?;
             let txid = String::from_utf8(k.to_vec())?;
-            let outs: TXOutputs = deserialize(&v.to_vec())?;
+            let outs: TXOutputs = deserialize(&v)?;
 
             for out_idx in 0..outs.outputs.len() {
                 if outs.outputs[out_idx].is_locked_with_key(pub_key_hash) && accumulated < amount {
@@ -52,7 +52,7 @@ impl UTXOSet {
 
         for kv in db.iter() {
             let (_, v) = kv?;
-            let outs: TXOutputs = deserialize(&v.to_vec())?;
+            let outs: TXOutputs = deserialize(&v)?;
 
             for out in outs.outputs {
                 if out.is_locked_with_key(pub_key_hash) {
@@ -101,7 +101,7 @@ impl UTXOSet {
                     let mut update_outputs = TXOutputs {
                         outputs: Vec::new(),
                     };
-                    let outs: TXOutputs = deserialize(&db.get(&vin.txid)?.unwrap().to_vec())?;
+                    let outs: TXOutputs = deserialize(&db.get(&vin.txid)?.unwrap())?;
                     for out_idx in 0..outs.outputs.len() {
                         if out_idx != vin.vout as usize {
                             update_outputs.outputs.push(outs.outputs[out_idx].clone());
