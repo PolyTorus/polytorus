@@ -768,13 +768,13 @@ fn bytes_to_cmd(bytes: &[u8]) -> Result<Message> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::blockchain::blockchain::*;
+    use crate::{blockchain::blockchain::*, crypto::types::EncryptionType};
     // use crate::crypto::wallets::*;
 
     #[test]
     fn test_cmd() {
         let mut ws = Wallets::new().unwrap();
-        let wa1 = ws.create_wallet();
+        let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let bc = Blockchain::create_blockchain(wa1).unwrap();
         let utxo_set = UTXOSet { blockchain: bc };
         let server = Server::new("localhost", "7878", "", None, utxo_set).unwrap();
