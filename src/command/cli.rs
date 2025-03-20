@@ -84,7 +84,7 @@ impl Cli {
                         Arg::with_name("node")
                             .long("node")
                             .takes_value(true)
-                            .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)"),
+                            .help("Address of target node (e.g., 54.123.45.67:7000)"),
                     ),
             )
             .subcommand(
