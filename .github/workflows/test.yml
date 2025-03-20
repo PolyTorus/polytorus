@@ -1,0 +1,21 @@
+name: Test by `cargo test`
+
+on:
+  push:
+    branches: ["feature/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # https://github.com/dtolnay/rust-toolchain
+      - name: Install rust components
+        uses: dtolnay/rust-toolchain@56f84321dbccf38fb67ce29ab63e4754056677e0
+        with:
+          toolchain: stable
+
+      - name: Test
+        run: cargo test -- --test-threads=1
