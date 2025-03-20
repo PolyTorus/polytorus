@@ -170,7 +170,7 @@ impl Transaction {
                     &self.vin[in_id].signature,
                     &DOMAIN_NONE,
                     &HASH_ID_RAW,
-                    &tx_copy.id.as_bytes(),
+                    tx_copy.id.as_bytes(),
                 )
             {
                 return Ok(false);
@@ -234,7 +234,7 @@ impl Transaction {
         for v in &self.vin {
             vin.push(TXInput {
                 txid: v.txid.clone(),
-                vout: v.vout.clone(),
+                vout: v.vout,
                 signature: Vec::new(),
                 pub_key: Vec::new(),
             })

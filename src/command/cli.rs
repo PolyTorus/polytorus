@@ -15,6 +15,12 @@ use std::vec;
 
 pub struct Cli {}
 
+impl Default for Cli {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Cli {
     pub fn new() -> Cli {
         Cli {}
@@ -96,27 +102,27 @@ impl Cli {
             )
             .get_matches();
 
-        if let Some(ref matches) = matches.subcommand_matches("getbalance") {
+        if let Some(matches) = matches.subcommand_matches("getbalance") {
             if let Some(address) = matches.value_of("address") {
                 let balance = cmd_get_balance(address)?;
                 println!("Balance: {}\n", balance);
             }
-        } else if let Some(_) = matches.subcommand_matches("createwallet") {
+        } else if matches.subcommand_matches("createwallet").is_some() {
             println!("address: {}", cmd_create_wallet()?);
-        } else if let Some(_) = matches.subcommand_matches("printchain") {
+        } else if matches.subcommand_matches("printchain").is_some() {
             cmd_print_chain()?;
-        } else if let Some(_) = matches.subcommand_matches("reindex") {
+        } else if matches.subcommand_matches("reindex").is_some() {
             let count = cmd_reindex()?;
             println!("Done! There are {} transactions in the UTXO set.", count);
-        } else if let Some(_) = matches.subcommand_matches("listaddresses") {
+        } else if matches.subcommand_matches("listaddresses").is_some() {
             cmd_list_address()?;
-        } else if let Some(_) = matches.subcommand_matches("server") {
+        } else if matches.subcommand_matches("server").is_some() {
             cmd_server().await?;
-        } else if let Some(ref matches) = matches.subcommand_matches("createblockchain") {
+        } else if let Some(matches) = matches.subcommand_matches("createblockchain") {
             if let Some(address) = matches.value_of("address") {
                 cmd_create_blockchain(address)?;
             }
-        } else if let Some(ref matches) = matches.subcommand_matches("send") {
+        } else if let Some(matches) = matches.subcommand_matches("send") {
             let from = get_value("from", matches)?;
             let to = get_value("to", matches)?;
 
@@ -131,7 +137,7 @@ impl Cli {
             } else {
                 cmd_send(from, to, amount, false, target_node)?;
             }
-        } else if let Some(ref matches) = matches.subcommand_matches("startnode") {
+        } else if let Some(matches) = matches.subcommand_matches("startnode") {
             if let Some(port) = matches.value_of("port") {
                 println!("Start node...");
                 let bc = Blockchain::new()?;
@@ -145,7 +151,7 @@ impl Cli {
                 )?;
                 server.start_server()?;
             }
-        } else if let Some(ref matches) = matches.subcommand_matches("startminer") {
+        } else if let Some(matches) = matches.subcommand_matches("startminer") {
             let mining_address = get_value("address", matches)?;
 
             let port = get_value("port", matches)?;
@@ -161,7 +167,7 @@ impl Cli {
                 utxo_set,
             )?;
             server.start_server()?;
-        } else if let Some(ref matches) = matches.subcommand_matches("remotesend") {
+        } else if let Some(matches) = matches.subcommand_matches("remotesend") {
             let from = matches.value_of("from").unwrap();
             let to = matches.value_of("to").unwrap();
             let amount: i32 = matches.value_of("amount").unwrap().parse()?;
