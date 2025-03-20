@@ -27,6 +27,12 @@ cargo run createwallet
 cargo run createblockchain <address>
 ```
 
+## Pull Request
+
+In this project, `rustfmt` and `clippy` will be run at PR merge time, and unified code will be added to the `main` branch. Therefore, you are free to use your own code formatter and linter.
+When building a PR, it may be easier for others to help if you issue an Issue first. Please consider submitting an Issue first.
+Other rules are not yet strictly defined. We are also looking for people to decide the rules for CONTRIBUTING!
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
