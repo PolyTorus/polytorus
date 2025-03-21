@@ -210,7 +210,7 @@ impl Cli {
                 stun_url: matches.value_of("stun").unwrap().to_string(),
                 ..Default::default()
             };
-            cmd_start_webrtc_node(config)?;
+            tokio::runtime::Runtime::new()?.block_on(cmd_start_webrtc_node(config))?;
         }
 
         Ok(())
@@ -316,9 +316,9 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, mine_now: bool
     Ok(())
 }
 
-fn cmd_start_webrtc_node(config: WebRTCConfig) -> Result<()> {
+async fn cmd_start_webrtc_node(config: WebRTCConfig) -> Result<()> {
     println!("Starting WebRTC node...");
-    let mut node = WebRTCNode::new(config)?;
+    let mut node = WebRTCNode::new(config).await?;
     node.start()?;
     Ok(())
 }
