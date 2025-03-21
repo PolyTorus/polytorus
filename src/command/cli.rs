@@ -4,6 +4,7 @@ use crate::blockchain::blockchain::*;
 use crate::blockchain::utxoset::*;
 use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
+use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
 use crate::network::server::Server;
 use crate::webserver::webserver::WebServer;
@@ -33,7 +34,11 @@ impl Cli {
             .author("quantumshiro")
             .about("post quantum blockchain")
             .subcommand(App::new("printchain").about("print all the chain blocks"))
-            .subcommand(App::new("createwallet").about("create a wallet"))
+            .subcommand(App::new("createwallet").about("create a wallet")
+                .arg(Arg::from_usage("<encryption> 'encryption type'")
+                    .possible_values(&["ECDSA", "FNDSA"])
+                    .default_value("FNDSA")
+                    .help("encryption type")))
             .subcommand(App::new("listaddresses").about("list all addresses"))
             .subcommand(App::new("reindex").about("reindex UTXO"))
             .subcommand(App::new("server").about("run server"))
@@ -107,16 +112,22 @@ impl Cli {
                 let balance = cmd_get_balance(address)?;
                 println!("Balance: {}\n", balance);
             }
-        } else if matches.subcommand_matches("createwallet").is_some() {
-            println!("address: {}", cmd_create_wallet()?);
-        } else if matches.subcommand_matches("printchain").is_some() {
+        } else if let Some(ref matches) = matches.subcommand_matches("createwallet") {
+            let encryption = matches.value_of("encryption").unwrap().trim();
+            let encryption: EncryptionType = match encryption {
+                "ECDSA" => EncryptionType::ECDSA,
+                "FNDSA" => EncryptionType::FNDSA,
+                _ => EncryptionType::FNDSA,
+            };
+            println!("address: {}", cmd_create_wallet(encryption)?);
+        } else if let Some(_) = matches.subcommand_matches("printchain") {
             cmd_print_chain()?;
         } else if matches.subcommand_matches("reindex").is_some() {
             let count = cmd_reindex()?;
             println!("Done! There are {} transactions in the UTXO set.", count);
         } else if matches.subcommand_matches("listaddresses").is_some() {
             cmd_list_address()?;
-        } else if matches.subcommand_matches("server").is_some() {
+        } else if let Some(_)=matches.subcommand_matches("server"){
             cmd_server().await?;
         } else if let Some(matches) = matches.subcommand_matches("createblockchain") {
             if let Some(address) = matches.value_of("address") {
@@ -132,12 +143,8 @@ impl Cli {
                 error_start_miner("amount", matches.usage())
             };
             let target_node = matches.value_of("node");
-            if matches.is_present("mine") {
-                cmd_send(from, to, amount, true, target_node)?;
-            } else {
-                cmd_send(from, to, amount, false, target_node)?;
-            }
-        } else if let Some(matches) = matches.subcommand_matches("startnode") {
+            cmd_send(from, to, amount, matches.is_present("mine"), target_node)?;
+        } else if let Some(ref matches) = matches.subcommand_matches("startnode") {
             if let Some(port) = matches.value_of("port") {
                 println!("Start node...");
                 let bc = Blockchain::new()?;
@@ -228,9 +235,9 @@ fn error_start_miner(name: &str, usage: &str) -> ! {
     exit(1)
 }
 
-fn cmd_create_wallet() -> Result<String> {
+fn cmd_create_wallet(encryption: EncryptionType) -> Result<String> {
     let mut ws = Wallets::new()?;
-    let address = ws.create_wallet();
+    let address = ws.create_wallet(encryption);
     ws.save_all()?;
     Ok(address)
 }
@@ -311,8 +318,8 @@ mod tests {
     #[test]
     fn test_cli_send_with_mine() -> TestResult {
         // 2 つのウォレットを作成
-        let addr1 = cmd_create_wallet()?;
-        let addr2 = cmd_create_wallet()?;
+        let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
+        let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
         // ジェネシスブロック作成：addr1 に初期報酬が入る（例では 10 とする）
         cmd_create_blockchain(&addr1)?;
 
@@ -347,8 +354,8 @@ mod tests {
 
     #[test]
     fn test_cli_send_with_target_node() -> TestResult {
-        let addr1 = cmd_create_wallet()?;
-        let addr2 = cmd_create_wallet()?;
+        let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
+        let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
         cmd_create_blockchain(&addr1)?;
 
         let balance1 = cmd_get_balance(&addr1)?;
