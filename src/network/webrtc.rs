@@ -28,6 +28,13 @@ pub struct TurnConfig {
     pub password: String,
 }
 
+#[derive(Clone, Debug)]
+pub struct PeerInfo {
+    pub peer_id: String,
+    pub address: String,
+    pub port: u16,
+}
+
 // WebRTCの状態を表現するenum
 #[derive(Debug, Clone, PartialEq)]
 pub enum WebRTCState {
@@ -129,7 +136,7 @@ impl WebRTCNode {
         dc.on_message(Box::new(move |msg| {
             Box::pin(async move {
                 println!("Message received: {:?}", msg);
-                // メッセージ処理ロジックをここに実装
+                // TODO: メッセージ処理ロジックをここに実装
             })
         }));
 
@@ -140,7 +147,7 @@ impl WebRTCNode {
         let mut state = self.state.lock().await;
         *state = WebRTCState::Connecting;
 
-        // 接続処理の実装
+        // TODO: 接続処理の実装
         // シグナリングサーバーとの通信やSDPの交換など
 
         Ok(())
@@ -155,11 +162,24 @@ impl WebRTCNode {
     pub async fn get_state(&self) -> WebRTCState {
         self.state.lock().await.clone()
     }
+
+    // TODO: ピアの発見
+    async fn discover_peers(&self) -> Vec<PeerInfo> {
+        // ブロックチェーンからアクティブなピア情報を取得
+        // STUNサーバー情報も分散管理可能
+        vec![]
+    }
+
+    // TODO: 接続の確立
+    async fn establish_connection(&self, peer: PeerInfo) {
+        // ブロックチェーン経由でシグナリング情報を交換
+        // SDPの交換をスマートコントラクト経由で実施
+    }
 }
 
 // Drop実装で適切なリソース解放を保証
 impl Drop for WebRTCNode {
     fn drop(&mut self) {
-        // クリーンアップ処理
+        // TODO: クリーンアップ処理
     }
 }
