@@ -22,7 +22,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Format
-        run: cargo fmt --all && cargo clippy --fix
+        run: cargo fmt --all && cargo clippy --fix --allow-dirty
 
       - name: Commit
         run: |
