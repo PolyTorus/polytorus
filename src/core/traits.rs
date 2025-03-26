@@ -1,5 +1,3 @@
-use rand_core::block;
-
 use crate::blockchain::block::Block;
 use crate::crypto::transaction::Transaction;
 use crate::Result;
