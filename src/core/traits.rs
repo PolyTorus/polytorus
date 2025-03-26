@@ -3,7 +3,8 @@ use crate::crypto::transaction::Transaction;
 use crate::Result;
 use std::collections::HashMap;
 
-pub trait StorateProvider: Send + Sync {
+/// StorageProvider defines the interface for blockchain storage backends
+pub trait StorageProvider: Send + Sync {
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>>;
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()>;
     fn delete(&self, key: &[u8]) -> Result<()>;
@@ -11,10 +12,10 @@ pub trait StorateProvider: Send + Sync {
     fn iterate<F>(&self, f: F) -> Result<()>
     where
         F: FnMut(&[u8], &[u8]) -> Result<bool>;
-
     fn flush(&self) -> Result<()>;
 }
 
+/// ConsensusEngine defines the interface for blockchain consensus algorithms
 pub trait ConsensusEngine: Send + Sync {
     fn validate_block(&self, block: &Block) -> Result<bool>;
     fn prepare_block(&self, transactions: Vec<Transaction>, prev_hash: String, height: i32) -> Result<Block>;
@@ -22,10 +23,12 @@ pub trait ConsensusEngine: Send + Sync {
     fn get_name(&self) -> String;
 }
 
+/// TransactionValidator defines the interface for transaction validation
 pub trait TransactionValidator: Send + Sync {
     fn validate_transaction(&self, tx: &Transaction, prev_txs: HashMap<String, Transaction>) -> Result<bool>;
 }
 
+/// ChainState defines the interface for blockchain state management
 pub trait ChainState: Send + Sync {
     fn get_best_height(&self) -> Result<i32>;
     fn get_block(&self, hash: &str) -> Result<Block>;
