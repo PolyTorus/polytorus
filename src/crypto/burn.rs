@@ -32,3 +32,61 @@ pub struct RewardPool {
     pub next_distribution: u128,
 }
 
+pub struct BurnManager {
+    db: sled::Db,
+    reward_pool: RewardPool,
+}
+
+impl BurnManager {
+    pub fn new() -> Result<Self> {
+        let db = sled::open("data/burn")?;
+
+        let reward_pool = match db.get("reward_pool")? {
+            Some(data) => bincode::deserialize(&data)?,
+            None => {
+                let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+                let next_distribution = now + 24 * 60 * 60 * 1000;
+
+                let pool = RewardPool {
+                    total: 0,
+                    last_distribution: now,
+                    next_distribution,
+                };
+
+                let pool_data = bincode::serialize(&pool)?;
+                db.insert("reward_pool", pool_data)?;
+                db.flush()?;
+
+                pool
+            },
+        };
+
+        Ok(Self { db, reward_pool })
+    }
+
+    pub fn add_burn_record(&mut self, address: &str, amount: i32, txid: &str) -> Result<BurnRecord> {
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+
+        let actual_burn = (amount as f64 * ACTUAL_BURN_RATIP) as i32;
+        let reward_pool_amount = amount - actual_burn;
+
+        self.reward_pool.total += reward_pool_amount;
+        let pool_data = bincode::serialize(&self.reward_pool)?;
+        self.db.insert("reward_pool", pool_data)?;
+
+        let record = BurnRecord {
+            address: address.to_string(),
+            total: amount,
+            actual_burn,
+            reward: reward_pool_amount,
+            timestamp,
+            txid: txid.to_string(),
+        };
+
+        let key = format!("{}:{}", address, txid);
+        self.db.insert(key.as_bytes(), bincode::serialize(&record)?)?;
+        self.db.flush()?;
+
+        Ok(record)
+    }
+}
