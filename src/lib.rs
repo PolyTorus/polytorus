@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 // src/lib.rs
+pub mod core;
 pub mod blockchain;
 pub mod command;
 pub mod crypto;
