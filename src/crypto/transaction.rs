@@ -280,7 +280,7 @@ impl TXOutput {
 
 #[cfg(test)]
 mod test {
-    use crate::crypto::types::EncryptionType;
+    use crate::crypto::types::CryptoType;
 
     use super::*;
     use fn_dsa::{
@@ -292,7 +292,7 @@ mod test {
     #[test]
     fn test_signature() {
         let mut ws = Wallets::new().unwrap();
-        let wa1 = ws.create_wallet(EncryptionType::FNDSA);
+        let wa1 = ws.create_wallet(CryptoType::FNDSA);
         let w = ws.get_wallet(&wa1).unwrap().clone();
         ws.save_all().unwrap();
         drop(ws);

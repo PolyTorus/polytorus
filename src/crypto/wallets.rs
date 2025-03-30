@@ -22,9 +22,9 @@ pub struct Wallet {
 
 impl Wallet {
     /// NewWallet creates and returns a Wallet
-    fn new(encryption: EncryptionType) -> Self {
+    fn new(encryption: CryptoType) -> Self {
         match encryption {
-            EncryptionType::FNDSA => {
+            CryptoType::FNDSA => {
                 let mut kg = KeyPairGeneratorStandard::default();
                 let mut sign_key = [0u8; sign_key_size(FN_DSA_LOGN_512)];
                 let mut vrfy_key = [0u8; vrfy_key_size(FN_DSA_LOGN_512)];
@@ -35,7 +35,7 @@ impl Wallet {
                     public_key: vrfy_key.to_vec(),
                 }
             },
-            EncryptionType::ECDSA => {
+            CryptoType::ECDSA => {
                 let secp = Secp256k1::new();
                 let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
 
@@ -63,7 +63,7 @@ impl Wallet {
 
 impl Default for Wallet {
     fn default() -> Self {
-        Wallet::new(EncryptionType::FNDSA)
+        Wallet::new(CryptoType::FNDSA)
     }
 }
 
@@ -101,7 +101,7 @@ impl Wallets {
     }
 
     /// CreateWallet adds a Wallet to Wallets
-    pub fn create_wallet(&mut self, encryption: EncryptionType) -> String {
+    pub fn create_wallet(&mut self, encryption: CryptoType) -> String {
         let wallet = Wallet::new(encryption);
         let address = wallet.get_address();
         self.wallets.insert(address.clone(), wallet);
@@ -162,7 +162,7 @@ mod test {
     #[test]
     fn test_wallets() {
         let mut ws = Wallets::new().unwrap();
-        let wa1 = ws.create_wallet(EncryptionType::FNDSA);
+        let wa1 = ws.create_wallet(CryptoType::FNDSA);
         let w1 = ws.get_wallet(&wa1).unwrap().clone();
         ws.save_all().unwrap();
 

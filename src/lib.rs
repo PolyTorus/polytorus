@@ -7,6 +7,7 @@ pub mod crypto;
 pub mod network;
 pub mod webserver;
 pub mod types;
+pub mod errors;
 
 #[macro_use]
 extern crate log;
