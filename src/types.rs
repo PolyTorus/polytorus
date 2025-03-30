@@ -57,3 +57,31 @@ impl BlockHash {
         self.0.is_empty()
     }
 }
+
+impl TransactionId {
+    pub fn empty() -> Self {
+        TransactionId(String::new())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl Address {
+    pub fn empty() -> Self {
+        Address(String::new())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
