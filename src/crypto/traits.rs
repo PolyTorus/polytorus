@@ -1,4 +1,8 @@
+use crate::crypto::types::{CryptoType, PrivateKey, PublicKey, Signature};
+use crate::errors::Result;
+
 pub trait CryptoProvider {
-    fn sign(&self, private_key: &[u8], message: &[u8]) -> Vec<u8>;
-    fn verify(&self, public_key: &[u8], message: &[u8], signature: &[u8]) -> bool;
+    fn gen_keypair(&self, encryption_type: CryptoType) -> Result<(PrivateKey, PublicKey)>;
+    fn sign(&self, private_key: &PrivateKey, message: &[u8]) -> Result<Signature>;
+    fn verify(&self, public_key: &PublicKey, message: &[u8], signature: &Signature) -> bool;
 }

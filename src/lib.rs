@@ -8,6 +8,7 @@ pub mod network;
 pub mod webserver;
 pub mod types;
 pub mod errors;
+pub mod compat;
 
 #[macro_use]
 extern crate log;
