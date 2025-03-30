@@ -4,7 +4,7 @@ use crate::blockchain::blockchain::*;
 use crate::blockchain::utxoset::*;
 use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
-use crate::crypto::types::EncryptionType;
+use crate::crypto::types::CryptoType;
 use crate::crypto::wallets::*;
 use crate::network::server::Server;
 use crate::webserver::webserver::WebServer;
@@ -114,10 +114,10 @@ impl Cli {
             }
         } else if let Some(ref matches) = matches.subcommand_matches("createwallet") {
             let encryption = matches.value_of("encryption").unwrap().trim();
-            let encryption: EncryptionType = match encryption {
-                "ECDSA" => EncryptionType::ECDSA,
-                "FNDSA" => EncryptionType::FNDSA,
-                _ => EncryptionType::FNDSA,
+            let encryption: CryptoType = match encryption {
+                "ECDSA" => CryptoType::ECDSA,
+                "FNDSA" => CryptoType::FNDSA,
+                _ => CryptoType::FNDSA,
             };
             println!("address: {}", cmd_create_wallet(encryption)?);
         } else if let Some(_) = matches.subcommand_matches("printchain") {
@@ -235,7 +235,7 @@ fn error_start_miner(name: &str, usage: &str) -> ! {
     exit(1)
 }
 
-fn cmd_create_wallet(encryption: EncryptionType) -> Result<String> {
+fn cmd_create_wallet(encryption: CryptoType) -> Result<String> {
     let mut ws = Wallets::new()?;
     let address = ws.create_wallet(encryption);
     ws.save_all()?;
@@ -318,8 +318,8 @@ mod tests {
     #[test]
     fn test_cli_send_with_mine() -> TestResult {
         // 2 つのウォレットを作成
-        let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
-        let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
+        let addr1 = cmd_create_wallet(CryptoType::FNDSA)?;
+        let addr2 = cmd_create_wallet(CryptoType::FNDSA)?;
         // ジェネシスブロック作成：addr1 に初期報酬が入る（例では 10 とする）
         cmd_create_blockchain(&addr1)?;
 
@@ -354,8 +354,8 @@ mod tests {
 
     #[test]
     fn test_cli_send_with_target_node() -> TestResult {
-        let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
-        let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
+        let addr1 = cmd_create_wallet(CryptoType::FNDSA)?;
+        let addr2 = cmd_create_wallet(CryptoType::FNDSA)?;
         cmd_create_blockchain(&addr1)?;
 
         let balance1 = cmd_get_balance(&addr1)?;
