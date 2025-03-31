@@ -9,6 +9,7 @@ pub mod webserver;
 pub mod types;
 pub mod errors;
 pub mod compat;
+pub mod config;
 
 #[macro_use]
 extern crate log;

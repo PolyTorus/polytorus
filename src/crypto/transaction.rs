@@ -1,17 +1,18 @@
-use crate::blockchain::utxoset::*;
+use crate::types::{TransactionId, Address};
+use crate::errors::{BlockchainError, Result};
+use crate::blockchain::utxoset::UTXOSet;
 use crate::crypto::traits::CryptoProvider;
-use crate::crypto::wallets::*;
-use crate::Result;
+use crate::crypto::types::{CryptoType, PrivateKey, PublicKey, Signature};
+use crate::crypto::wallets::Wallet;
+use crate::config::BlockchainConfig;
 use bincode::serialize_into;
-use bitcoincash_addr::Address;
+use bitcoincash_addr::Address as BcAddress;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use failure::format_err;
-use fn_dsa::{VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE, HASH_ID_RAW};
+use crypto::ripemd160::Ripemd160;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::vec;
 
 const SUBSIDY: i32 = 10;
 
@@ -68,10 +69,10 @@ impl Transaction {
 
         if acc_v.0 < amount {
             error!("Not Enough balance");
-            return Err(format_err!(
+            return Err(BlockchainError::Other(format!(
                 "Not Enough balance: current balance {}",
                 acc_v.0
-            ));
+            )));
         }
 
         for tx in acc_v.1 {
@@ -141,7 +142,7 @@ impl Transaction {
 
         for vin in &self.vin {
             if prev_TXs.get(&vin.txid).unwrap().id.is_empty() {
-                return Err(format_err!("ERROR: Previous transaction is not correct"));
+                return Err(BlockchainError::Other(String::from("ERROR: Previous transaction is not correct")));
             }
         }
 
@@ -193,7 +194,7 @@ impl Transaction {
 
         for vin in &self.vin {
             if prev_TXs.get(&vin.txid).unwrap().id.is_empty() {
-                return Err(format_err!("ERROR: Previous transaction is not correct"));
+                return Err(BlockchainError::Other(String::from("ERROR: Previous transaction is not correct")));
             }
         }
 
@@ -201,15 +202,16 @@ impl Transaction {
 
         for in_id in 0..tx_copy.vin.len() {
             let prev_Tx = prev_TXs.get(&tx_copy.vin[in_id].txid).unwrap();
-            tx_copy.vin[in_id].signature.clear();
-            tx_copy.vin[in_id].pub_key = prev_Tx.vout[tx_copy.vin[in_id].vout as usize]
-                .pub_key_hash
-                .clone();
+            tx_copy.vin[in_id].signature = Signature::new(private_key.key_type, Vec::new());
+            tx_copy.vin[in_id].pub_key = PublicKey::new(
+                private_key.key_type,
+                prev_Tx.vout[tx_copy.vin[in_id].vout as usize].pub_key_hash.clone(),
+            );
             tx_copy.id = tx_copy.hash()?;
-            tx_copy.vin[in_id].pub_key = Vec::new();
-            // let signature = ed25519::signature(tx_copy.id.as_bytes(), private_key);
-            let signature = crypto.sign(private_key, tx_copy.id.as_bytes());
-            self.vin[in_id].signature = signature.to_vec();
+            tx_copy.vin[in_id].pub_key = PublicKey::new(private_key.key_type, Vec::new());
+            
+            let signature = crypto.sign(private_key, tx_copy.id.as_str().as_bytes())?;
+            self.vin[in_id].signature = signature;
         }
 
         Ok(())
