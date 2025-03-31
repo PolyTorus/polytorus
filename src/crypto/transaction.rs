@@ -1,3 +1,4 @@
+use crate::config::BlockchainConfig;
 use crate::types::{self, Address, TransactionId};
 use crate::errors::{BlockchainError, Result};
 use crate::blockchain::utxoset::UTXOSet;
@@ -84,9 +85,9 @@ impl Transaction {
             }
         }
 
-        let mut vout = vec![TXOutput::new(amount, to.to_string())?];
+        let mut vout = vec![TXOutput::new(amount, to.clone())?];
         if acc_v.0 > amount {
-            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address().to_string())?)
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
         }
 
         let mut tx = Transaction {
@@ -96,12 +97,12 @@ impl Transaction {
         };
         tx.id = types::TransactionId(tx.hash()?);
         utxo.blockchain
-            .sign_transacton(&mut tx, &wallet.secret_key.data, crypto)?;
+            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
         Ok(tx)
     }
 
     /// NewCoinbaseTX creates a new coinbase transaction
-    pub fn new_coinbase(to: String, mut data: String) -> Result<Transaction> {
+    pub fn new_coinbase(to: Address, mut data: String, config: &BlockchainConfig) -> Result<Transaction> {
         info!("new coinbase Transaction to: {}", to);
         let mut key: [u8; 32] = [0; 32];
         if data.is_empty() {
@@ -120,7 +121,7 @@ impl Transaction {
                 signature: Signature::new(CryptoType::FNDSA, Vec::new()),
                 pub_key: PublicKey::new(CryptoType::FNDSA, pub_key),
             }],
-            vout: vec![TXOutput::new(SUBSIDY, to)?],
+            vout: vec![TXOutput::new(config.subsidy, to)?],
         };
         tx.id = types::TransactionId(tx.hash()?);
         Ok(tx)
@@ -281,12 +282,12 @@ impl TXOutput {
         Ok(())
     }
 
-    pub fn new(value: i32, address: String) -> Result<Self> {
+    pub fn new(value: i32, address: Address) -> Result<Self> {
         let mut txo = TXOutput {
             value,
             pub_key_hash: Vec::new(),
         };
-        txo.lock(&address)?;
+        txo.lock(address.as_str())?;
         Ok(txo)
     }
 }

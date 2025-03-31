@@ -1,13 +1,16 @@
 //! Blockchain
 
-use crate::blockchain::block::*;
+use crate::blockchain::block::Block;
+use crate::types::{BlockHash, TransactionId, Address};
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
-use crate::Result;
+use crate::crypto::types::{PrivateKey, PublicKey};
+use crate::errors::{BlockchainError, Result};
+use crate::config::BlockchainConfig;
 use bincode::{deserialize, serialize};
-use failure::format_err;
 use sled;
 use std::collections::HashMap;
+use std::fmt::format;
 use std::time::SystemTime;
 
 const GENESIS_COINBASE_DATA: &str =
@@ -18,6 +21,7 @@ const GENESIS_COINBASE_DATA: &str =
 pub struct Blockchain {
     pub tip: String,
     pub db: sled::Db,
+    pub config: BlockchainConfig,
 }
 
 /// BlockchainIterator is used to iterate over blockchain blocks
@@ -28,10 +32,10 @@ pub struct BlockchainIterator<'a> {
 
 impl Blockchain {
     /// NewBlockchain creates a new Blockchain db
-    pub fn new() -> Result<Blockchain> {
+    pub fn new(config: BlockchainConfig) -> Result<Blockchain> {
         info!("open blockchain");
 
-        let db = sled::open("data/blocks")?;
+        let db = sled::open(&format!("{}/blocks", config.data_dir))?;
         let hash = match db.get("LAST")? {
             Some(l) => l.to_vec(),
             None => Vec::new(),
@@ -42,23 +46,29 @@ impl Blockchain {
         } else {
             String::from_utf8(hash.to_vec())?
         };
-        Ok(Blockchain { tip: lasthash, db })
+        Ok(Blockchain {
+            tip: lasthash, 
+            db,
+            config, 
+        })
     }
 
     /// CreateBlockchain creates a new blockchain DB
-    pub fn create_blockchain(address: String) -> Result<Blockchain> {
+    pub fn create_blockchain(address: Address, config: BlockchainConfig) -> Result<Blockchain> {
         info!("Creating new blockchain");
 
-        std::fs::remove_dir_all("data/blocks").ok();
-        let db = sled::open("data/blocks")?;
+        std::fs::remove_dir_all(&format!("{}/blocks", config.data_dir)).ok();
+        let db = sled::open(&format!("{}/blocks", config.data_dir))?;
         debug!("Creating new block database");
-        let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA))?;
+
+        let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA), &config)?;
         let genesis: Block = Block::new_genesis_block(cbtx);
         db.insert(genesis.get_hash(), serialize(&genesis)?)?;
         db.insert("LAST", genesis.get_hash().as_bytes())?;
         let bc = Blockchain {
             tip: genesis.get_hash(),
             db,
+            config,
         };
         bc.db.flush()?;
         Ok(bc)
@@ -70,7 +80,11 @@ impl Blockchain {
 
         for tx in &transactions {
             if !self.verify_transacton(tx)? {
-                return Err(format_err!("ERROR: Invalid transaction").into());
+                return Err(BlockchainError::InvalidTransaction(format!(
+                    "Transaction {} is not valid",
+                    tx.id
+                ))
+                .into());
             }
         }
 
@@ -105,9 +119,9 @@ impl Blockchain {
     }
 
     /// FindUTXO finds and returns all unspent transaction outputs
-    pub fn find_UTXO(&self) -> HashMap<String, TXOutputs> {
-        let mut utxos: HashMap<String, TXOutputs> = HashMap::new();
-        let mut spend_txos: HashMap<String, Vec<i32>> = HashMap::new();
+    pub fn find_UTXO(&self) -> HashMap<TransactionId, TXOutputs> {
+        let mut utxos: HashMap<TransactionId, TXOutputs> = HashMap::new();
+        let mut spend_txos: HashMap<TransactionId, Vec<i32>> = HashMap::new();
 
         for block in self.iter() {
             for tx in block.get_transaction() {
@@ -152,18 +166,22 @@ impl Blockchain {
     }
 
     /// FindTransaction finds a transaction by its ID
-    pub fn find_transacton(&self, id: &str) -> Result<Transaction> {
+    pub fn find_transacton(&self, id: &TransactionId) -> Result<Transaction> {
         for b in self.iter() {
             for tx in b.get_transaction() {
-                if tx.id == id {
+                if tx.id == *id {
                     return Ok(tx.clone());
                 }
             }
         }
-        Err(format_err!("Transaction is not found").into())
+        Err(BlockchainError::InvalidTransaction(format!(
+            "Transaction {} not found",
+            id
+        ))
+        .into())
     }
 
-    fn get_prev_TXs(&self, tx: &Transaction) -> Result<HashMap<String, Transaction>> {
+    fn get_prev_TXs(&self, tx: &Transaction) -> Result<HashMap<TransactionId, Transaction>> {
         let mut prev_TXs = HashMap::new();
         for vin in &tx.vin {
             let prev_TX = self.find_transacton(&vin.txid)?;
@@ -176,7 +194,7 @@ impl Blockchain {
     pub fn sign_transacton(
         &self,
         tx: &mut Transaction,
-        private_key: &[u8],
+        private_key: &PrivateKey,
         crypto: &dyn CryptoProvider,
     ) -> Result<()> {
         let prev_TXs = self.get_prev_TXs(tx)?;
