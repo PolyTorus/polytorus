@@ -20,7 +20,7 @@ pub struct Wallet {
 
 impl Wallet {
     /// NewWallet creates and returns a Wallet
-    fn new(crypto_provider: &dyn CryptoProvider, encryption: CryptoType) -> Result<Self> {
+    pub fn new(crypto_provider: &dyn CryptoProvider, encryption: CryptoType) -> Result<Self> {
         let (secret_key, public_key) = crypto_provider.gen_keypair(encryption)?;
 
         Ok(Self {

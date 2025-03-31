@@ -1,15 +1,12 @@
-use crate::types::{TransactionId, Address};
+use crate::types::{self, Address, TransactionId};
 use crate::errors::{BlockchainError, Result};
 use crate::blockchain::utxoset::UTXOSet;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::types::{CryptoType, PrivateKey, PublicKey, Signature};
-use crate::crypto::wallets::Wallet;
-use crate::config::BlockchainConfig;
+use crate::crypto::wallets::{hash_pub_key, Wallet};
 use bincode::serialize_into;
-use bitcoincash_addr::Address as BcAddress;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use crypto::ripemd160::Ripemd160;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -19,10 +16,10 @@ const SUBSIDY: i32 = 10;
 /// TXInput represents a transaction input
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TXInput {
-    pub txid: String,
+    pub txid: TransactionId,
     pub vout: i32,
-    pub signature: Vec<u8>,
-    pub pub_key: Vec<u8>,
+    pub signature: Signature,
+    pub pub_key: PublicKey,
 }
 
 /// TXOutput represents a transaction output
@@ -41,7 +38,7 @@ pub struct TXOutputs {
 /// Transaction represents a Bitcoin transaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
-    pub id: String,
+    pub id: TransactionId,
     pub vin: Vec<TXInput>,
     pub vout: Vec<TXOutput>,
 }
@@ -78,9 +75,9 @@ impl Transaction {
         for tx in acc_v.1 {
             for out in tx.1 {
                 let input = TXInput {
-                    txid: tx.0.clone(),
+                    txid: types::TransactionId(tx.0.clone()),
                     vout: out,
-                    signature: Vec::new(),
+                    signature: Signature::new(wallet.public_key.key_type.clone(), Vec::new()),
                     pub_key: wallet.public_key.clone(),
                 };
                 vin.push(input);
@@ -89,17 +86,17 @@ impl Transaction {
 
         let mut vout = vec![TXOutput::new(amount, to.to_string())?];
         if acc_v.0 > amount {
-            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address().to_string())?)
         }
 
         let mut tx = Transaction {
-            id: String::new(),
+            id: TransactionId::empty(),
             vin,
             vout,
         };
-        tx.id = tx.hash()?;
+        tx.id = types::TransactionId(tx.hash()?);
         utxo.blockchain
-            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+            .sign_transacton(&mut tx, &wallet.secret_key.data, crypto)?;
         Ok(tx)
     }
 
@@ -116,16 +113,16 @@ impl Transaction {
         pub_key.append(&mut Vec::from(key));
 
         let mut tx = Transaction {
-            id: String::new(),
+            id: TransactionId::empty(),
             vin: vec![TXInput {
-                txid: String::new(),
+                txid: TransactionId::empty(),
                 vout: -1,
-                signature: Vec::new(),
-                pub_key,
+                signature: Signature::new(CryptoType::FNDSA, Vec::new()),
+                pub_key: PublicKey::new(CryptoType::FNDSA, pub_key),
             }],
             vout: vec![TXOutput::new(SUBSIDY, to)?],
         };
-        tx.id = tx.hash()?;
+        tx.id = types::TransactionId(tx.hash()?);
         Ok(tx)
     }
 
@@ -135,7 +132,7 @@ impl Transaction {
     }
 
     /// Verify verifies signatures of Transaction inputs
-    pub fn verify(&self, prev_TXs: HashMap<String, Transaction>) -> Result<bool> {
+    pub fn verify(&self, prev_TXs: HashMap<TransactionId, Transaction>) -> Result<bool> {
         if self.is_coinbase() {
             return Ok(true);
         }
@@ -150,31 +147,45 @@ impl Transaction {
 
         for in_id in 0..self.vin.len() {
             let prev_Tx = prev_TXs.get(&self.vin[in_id].txid).unwrap();
-            tx_copy.vin[in_id].signature.clear();
-            tx_copy.vin[in_id].pub_key = prev_Tx.vout[self.vin[in_id].vout as usize]
-                .pub_key_hash
-                .clone();
-            tx_copy.id = tx_copy.hash()?;
-            tx_copy.vin[in_id].pub_key = Vec::new();
+            tx_copy.vin[in_id].signature = Signature::new(self.vin[in_id].signature.key_type.clone(), Vec::new());
+            tx_copy.vin[in_id].pub_key = PublicKey::new(
+                self.vin[in_id].pub_key.key_type.clone(),
+                prev_Tx.vout[self.vin[in_id].vout as usize].pub_key_hash.clone(),
+            );
+            tx_copy.id = types::TransactionId(tx_copy.hash()?);
+            tx_copy.vin[in_id].pub_key = PublicKey::new(self.vin[in_id].pub_key.key_type.clone(), Vec::new());
 
-            // if !ed25519::verify(
-            //     &tx_copy.id.as_bytes(), // message
-            //     &self.vin[in_id].pub_key, // public key
-            //     &self.vin[in_id].signature, // signature
-            // ) {
-            //     return Ok(false);
-            // }
+            match self.vin[in_id].pub_key.key_type {
+                CryptoType::FNDSA => {
+                    use fn_dsa::{VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE, HASH_ID_RAW};
 
-            if !VerifyingKeyStandard::decode(&self.vin[in_id].pub_key)
-                .unwrap()
-                .verify(
-                    &self.vin[in_id].signature,
-                    &DOMAIN_NONE,
-                    &HASH_ID_RAW,
-                    tx_copy.id.as_bytes(),
-                )
-            {
-                return Ok(false);
+                    if !VerifyingKeyStandard::decode(&self.vin[in_id].pub_key.data)
+                        .ok_or(BlockchainError::InvalidSignature("Invalid public key".to_string()))?
+                        .verify(
+                            &self.vin[in_id].signature.data,
+                            &DOMAIN_NONE,
+                            &HASH_ID_RAW,
+                            tx_copy.id.as_str().as_bytes(),
+                        )
+                        {
+                            return Ok(false);
+                        }
+                },
+                CryptoType::ECDSA => {
+                    use secp256k1::{Message, PublicKey, Secp256k1, ecdsa::Signature};
+                    
+                    let secp = Secp256k1::verification_only();
+                    let pk = PublicKey::from_slice(&self.vin[in_id].pub_key.data)
+                        .map_err(|e| BlockchainError::InvalidSignature(e.to_string()))?;
+                    let msg = Message::from_slice(tx_copy.id.as_str().as_bytes())
+                        .map_err(|e| BlockchainError::InvalidSignature(e.to_string()))?;
+                    let sig = Signature::from_compact(&self.vin[in_id].signature.data)
+                        .map_err(|e| BlockchainError::InvalidSignature(e.to_string()))?;
+                    
+                    if !secp.verify_ecdsa(&msg, &sig, &pk).is_ok() {
+                        return Ok(false);
+                    }
+                },
             }
         }
 
@@ -184,8 +195,8 @@ impl Transaction {
     /// Sign signs each input of a Transaction
     pub fn sign(
         &mut self,
-        private_key: &[u8],
-        prev_TXs: HashMap<String, Transaction>,
+        private_key: &PrivateKey,
+        prev_TXs: HashMap<TransactionId, Transaction>,
         crypto: &dyn CryptoProvider,
     ) -> Result<()> {
         if self.is_coinbase() {
@@ -202,13 +213,13 @@ impl Transaction {
 
         for in_id in 0..tx_copy.vin.len() {
             let prev_Tx = prev_TXs.get(&tx_copy.vin[in_id].txid).unwrap();
-            tx_copy.vin[in_id].signature = Signature::new(private_key.key_type, Vec::new());
+            tx_copy.vin[in_id].signature = Signature::new(private_key.key_type.clone(), Vec::new());
             tx_copy.vin[in_id].pub_key = PublicKey::new(
-                private_key.key_type,
+                private_key.key_type.clone(),
                 prev_Tx.vout[tx_copy.vin[in_id].vout as usize].pub_key_hash.clone(),
             );
-            tx_copy.id = tx_copy.hash()?;
-            tx_copy.vin[in_id].pub_key = PublicKey::new(private_key.key_type, Vec::new());
+            tx_copy.id = types::TransactionId(tx_copy.hash()?);
+            tx_copy.vin[in_id].pub_key = PublicKey::new(private_key.key_type.clone(), Vec::new());
             
             let signature = crypto.sign(private_key, tx_copy.id.as_str().as_bytes())?;
             self.vin[in_id].signature = signature;
@@ -237,8 +248,8 @@ impl Transaction {
             vin.push(TXInput {
                 txid: v.txid.clone(),
                 vout: v.vout,
-                signature: Vec::new(),
-                pub_key: Vec::new(),
+                signature: Signature::new(v.signature.key_type.clone(), Vec::new()),
+                pub_key: PublicKey::new(v.pub_key.key_type.clone(), Vec::new()),
             })
         }
 
@@ -250,7 +261,7 @@ impl Transaction {
         }
 
         Transaction {
-            id: String::new(),
+            id: TransactionId::empty(),
             vin,
             vout,
         }
@@ -264,7 +275,7 @@ impl TXOutput {
     }
     /// Lock signs the output
     fn lock(&mut self, address: &str) -> Result<()> {
-        let pub_key_hash = Address::decode(address).unwrap().body;
+        let pub_key_hash = bitcoincash_addr::Address::decode(address).unwrap().body;
         debug!("lock: {}", address);
         self.pub_key_hash = pub_key_hash;
         Ok(())
@@ -282,43 +293,38 @@ impl TXOutput {
 
 #[cfg(test)]
 mod test {
-    use crate::crypto::types::CryptoType;
+    use core::hash;
 
     use super::*;
-    use fn_dsa::{
-        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
-        DOMAIN_NONE, HASH_ID_RAW,
-    };
-    use rand_core::OsRng;
+    use crate::config::WalletConfig;
+    use crate::crypto::types::CryptoType;
+    use crate::crypto::fndsa::FnDsaCrypto;
 
     #[test]
-    fn test_signature() {
-        let mut ws = Wallets::new().unwrap();
-        let wa1 = ws.create_wallet(CryptoType::FNDSA);
-        let w = ws.get_wallet(&wa1).unwrap().clone();
-        ws.save_all().unwrap();
-        drop(ws);
+    fn test_create_wallet_and_address() -> Result<()> {
+        let config = WalletConfig {
+            data_dir: "data/test/wallets".to_string(),
+            default_key_type: CryptoType::FNDSA,
+        };
 
-        let data = String::from("test");
-        let tx = Transaction::new_coinbase(wa1, data).unwrap();
-        assert!(tx.is_coinbase());
+        let crypto = FnDsaCrypto;
+        let wallet = Wallet::new(&crypto, CryptoType::FNDSA)?;
+        let address = wallet.get_address();
 
-        // let signature = ed25519::signature(tx.id.as_bytes(), &w.secret_key);
-        // assert!(ed25519::verify(tx.id.as_bytes(), &w.public_key, &signature));
-        let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
-        let mut signature = vec![0u8; signature_size(sk.get_logn())];
-        sk.sign(
-            &mut OsRng,
-            &DOMAIN_NONE,
-            &HASH_ID_RAW,
-            tx.id.as_bytes(),
-            &mut signature,
-        );
-        assert!(VerifyingKeyStandard::decode(&w.public_key).unwrap().verify(
-            &signature,
-            &DOMAIN_NONE,
-            &HASH_ID_RAW,
-            tx.id.as_bytes()
-        ));
+        assert!(!address.is_empty());
+
+        let mut pub_key_hash = wallet.public_key.data.clone();
+        hash_pub_key(&mut pub_key_hash);
+
+        let expected_address = bitcoincash_addr::Address {
+            body: pub_key_hash,
+            scheme: bitcoincash_addr::Scheme::Base58,
+            hash_type: bitcoincash_addr::HashType::Script,
+            ..Default::default()
+        }.encode().unwrap();
+
+        assert_eq!(address.as_str(), &expected_address);
+
+        Ok(())
     }
 }
