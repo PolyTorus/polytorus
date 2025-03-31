@@ -76,7 +76,7 @@ impl Transaction {
         for tx in acc_v.1 {
             for out in tx.1 {
                 let input = TXInput {
-                    txid: types::TransactionId(tx.0.clone()),
+                    txid: types::TransactionId(tx.0.to_string()),
                     vout: out,
                     signature: Signature::new(wallet.public_key.key_type.clone(), Vec::new()),
                     pub_key: wallet.public_key.clone(),
