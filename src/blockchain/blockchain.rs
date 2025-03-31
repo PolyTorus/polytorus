@@ -70,7 +70,7 @@ impl Blockchain {
 
         for tx in &transactions {
             if !self.verify_transacton(tx)? {
-                return Err(format_err!("ERROR: Invalid transaction"));
+                return Err(format_err!("ERROR: Invalid transaction").into());
             }
         }
 
@@ -160,7 +160,7 @@ impl Blockchain {
                 }
             }
         }
-        Err(format_err!("Transaction is not found"))
+        Err(format_err!("Transaction is not found").into())
     }
 
     fn get_prev_TXs(&self, tx: &Transaction) -> Result<HashMap<String, Transaction>> {
