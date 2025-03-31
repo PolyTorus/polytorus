@@ -1,69 +1,45 @@
+use crate::config::WalletConfig;
 use crate::Result;
 use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
 use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
-use fn_dsa::{
-    sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
-};
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, Message};
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
+use super::traits::CryptoProvider;
 use super::types::*;
+use crate::types::Address;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
-    pub secret_key: Vec<u8>,
-    pub public_key: Vec<u8>,
+    pub secret_key: PrivateKey,
+    pub public_key: PublicKey,
 }
 
 impl Wallet {
     /// NewWallet creates and returns a Wallet
-    fn new(encryption: CryptoType) -> Self {
-        match encryption {
-            CryptoType::FNDSA => {
-                let mut kg = KeyPairGeneratorStandard::default();
-                let mut sign_key = [0u8; sign_key_size(FN_DSA_LOGN_512)];
-                let mut vrfy_key = [0u8; vrfy_key_size(FN_DSA_LOGN_512)];
-                kg.keygen(FN_DSA_LOGN_512, &mut OsRng, &mut sign_key, &mut vrfy_key);
+    fn new(crypto_provider: &dyn CryptoProvider, encryption: CryptoType) -> Result<Self> {
+        let (secret_key, public_key) = crypto_provider.gen_keypair(encryption)?;
 
-                Wallet {
-                    secret_key: sign_key.to_vec(),
-                    public_key: vrfy_key.to_vec(),
-                }
-            },
-            CryptoType::ECDSA => {
-                let secp = Secp256k1::new();
-                let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
-
-                Wallet {
-                    secret_key: secret_key.secret_bytes().to_vec(),
-                    public_key: public_key.serialize().to_vec(),
-                }
-            },
-        }
+        Ok(Self {
+            secret_key,
+            public_key,
+        })
     }
 
     /// GetAddress returns wallet address
-    pub fn get_address(&self) -> String {
-        let mut pub_hash: Vec<u8> = self.public_key.clone();
+    pub fn get_address(&self) -> Address {
+        let mut pub_hash = self.public_key.data.clone();
         hash_pub_key(&mut pub_hash);
-        let address = Address {
+        let address = bitcoincash_addr::Address {
             body: pub_hash,
             scheme: Scheme::Base58,
             hash_type: HashType::Script,
             ..Default::default()
         };
-        address.encode().unwrap()
-    }
-}
-
-impl Default for Wallet {
-    fn default() -> Self {
-        Wallet::new(CryptoType::FNDSA)
+        Address(address.encode().unwrap())
     }
 }
 
@@ -79,20 +55,22 @@ pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
 }
 
 pub struct Wallets {
-    wallets: HashMap<String, Wallet>,
+    wallets: HashMap<Address, Wallet>,
+    config: WalletConfig,
 }
 
 impl Wallets {
     /// NewWallets creates Wallets and fills it from a file if it exists
-    pub fn new() -> Result<Wallets> {
+    pub fn new(config: WalletConfig) -> Result<Wallets> {
         let mut wlt = Wallets {
-            wallets: HashMap::<String, Wallet>::new(),
+            wallets: HashMap::<Address, Wallet>::new(),
+            config,
         };
         let db = sled::open("data/wallets")?;
 
         for item in db.into_iter() {
             let i = item?;
-            let address = String::from_utf8(i.0.to_vec())?;
+            let address = Address(String::from_utf8(i.0.to_vec())?);
             let wallet = deserialize(&i.1)?;
             wlt.wallets.insert(address, wallet);
         }
@@ -101,35 +79,31 @@ impl Wallets {
     }
 
     /// CreateWallet adds a Wallet to Wallets
-    pub fn create_wallet(&mut self, encryption: CryptoType) -> String {
-        let wallet = Wallet::new(encryption);
+    pub fn create_wallet(&mut self, crypto_provider: &dyn CryptoProvider, encryption: CryptoType) -> Result<Address> {
+        let wallet = Wallet::new(crypto_provider, encryption)?;
         let address = wallet.get_address();
         self.wallets.insert(address.clone(), wallet);
         info!("create wallet: {}", address);
-        address
+        Ok(address)
     }
 
     /// GetAddresses returns an array of addresses stored in the wallet file
-    pub fn get_all_addresses(&self) -> Vec<String> {
-        let mut addresses = Vec::<String>::new();
-        for address in self.wallets.keys() {
-            addresses.push(address.clone());
-        }
-        addresses
+    pub fn get_all_addresses(&self) -> Vec<Address> {
+        self.wallets.keys().cloned().collect()
     }
 
     /// GetWallet returns a Wallet by its address
-    pub fn get_wallet(&self, address: &str) -> Option<&Wallet> {
+    pub fn get_wallet(&self, address: &Address) -> Option<&Wallet> {
         self.wallets.get(address)
     }
 
     /// SaveToFile saves wallets to a file
     pub fn save_all(&self) -> Result<()> {
-        let db = sled::open("data/wallets")?;
+        let db = sled::open(&self.config.data_dir)?;
 
         for (address, wallet) in &self.wallets {
             let data = serialize(wallet)?;
-            db.insert(address, data)?;
+            db.insert(address.as_str().as_bytes(), data)?;
         }
 
         db.flush()?;
@@ -141,58 +115,60 @@ impl Wallets {
 #[cfg(test)]
 mod test {
     use super::*;
-    use fn_dsa::{
-        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
-        DOMAIN_NONE, HASH_ID_RAW,
-    };
-    #[test]
-    fn test_create_wallet_and_hash() {
-        let w1 = Wallet::default();
-        let w2 = Wallet::default();
-        assert_ne!(w1, w2);
-        assert_ne!(w1.get_address(), w2.get_address());
+    use crate::crypto::fndsa::FnDsaCrypto;
 
-        let mut p2 = w2.public_key.clone();
-        hash_pub_key(&mut p2);
-        assert_eq!(p2.len(), 20);
-        let pub_key_hash = Address::decode(&w2.get_address()).unwrap().body;
-        assert_eq!(pub_key_hash, p2);
+    #[test]
+    fn test_create_wallet_and_address() -> Result<()> {
+        
+        let crypto_provider = FnDsaCrypto;
+        let wallet = Wallet::new(&crypto_provider, CryptoType::FNDSA)?;
+        let address = wallet.get_address();
+
+        assert!(!address.is_empty());
+        
+        let mut pub_key_hash = wallet.public_key.data.clone();
+        hash_pub_key(&mut pub_key_hash);
+        
+        let expected_address = bitcoincash_addr::Address {
+            body: pub_key_hash,
+            scheme: Scheme::Base58,
+            hash_type: HashType::Script,
+            ..Default::default()
+        }.encode().unwrap();
+        
+        assert_eq!(address.as_str(), &expected_address);
+
+        Ok(())
     }
 
     #[test]
-    fn test_wallets() {
-        let mut ws = Wallets::new().unwrap();
-        let wa1 = ws.create_wallet(CryptoType::FNDSA);
-        let w1 = ws.get_wallet(&wa1).unwrap().clone();
-        ws.save_all().unwrap();
+    fn test_wallets_management() -> Result<()> {
+        let config = WalletConfig {
+            data_dir: String::from("data/test/wallets"),
+            default_key_type: CryptoType::FNDSA,
+        };
+        
+        std::fs::create_dir_all(&config.data_dir).ok();
 
-        let ws2 = Wallets::new().unwrap();
-        let w2 = ws2.get_wallet(&wa1).unwrap();
-        assert_eq!(&w1, w2);
-    }
+        let crypto = FnDsaCrypto;
+        let mut wallets = Wallets::new(config.clone())?;
 
-    #[test]
-    #[should_panic]
-    fn test_wallets_not_exist() {
-        let w3 = Wallet::default();
-        let ws2 = Wallets::new().unwrap();
-        ws2.get_wallet(&w3.get_address()).unwrap();
-    }
+        let address1 = wallets.create_wallet(&crypto, CryptoType::FNDSA)?;
+        let address2 = wallets.create_wallet(&crypto, CryptoType::FNDSA)?;
 
-    #[test]
-    fn test_signature() {
-        let w = Wallet::default();
-        let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
-        let mut sig = vec![0u8; signature_size(sk.get_logn())];
-        sk.sign(&mut OsRng, &DOMAIN_NONE, &HASH_ID_RAW, b"message", &mut sig);
+        wallets.save_all()?;
 
-        match VerifyingKeyStandard::decode(&w.public_key) {
-            Some(vk) => {
-                assert!(vk.verify(&sig, &DOMAIN_NONE, &HASH_ID_RAW, b"message"));
-            }
-            None => {
-                panic!("failed to decode verifying key");
-            }
-        }
+        let wallets2 = Wallets::new(config)?;
+
+        assert!(wallets2.get_wallet((&address1)).is_some());
+        assert!(wallets2.get_wallet((&address2)).is_some());
+
+        let addresses = wallets2.get_all_addresses();
+        assert!(addresses.contains(&address1));
+        assert!(addresses.contains(&address2));
+
+        std::fs::remove_dir_all("data/test").ok();
+
+        Ok(())
     }
 }

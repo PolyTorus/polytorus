@@ -50,7 +50,7 @@ impl Transaction {
     /// NewUTXOTransaction creates a new transaction
     pub fn new_UTXO(
         wallet: &Wallet,
-        to: &str,
+        to: &Address,
         amount: i32,
         utxo: &UTXOSet,
         crypto: &dyn CryptoProvider,
@@ -62,7 +62,7 @@ impl Transaction {
         );
         let mut vin = Vec::new();
 
-        let mut pub_key_hash = wallet.public_key.clone();
+        let mut pub_key_hash = wallet.public_key.data.clone();
         hash_pub_key(&mut pub_key_hash);
 
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
