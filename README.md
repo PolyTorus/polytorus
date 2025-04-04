@@ -13,7 +13,7 @@ PolyTorus is a blockchain project designed to withstand quantum cryptography att
     * Transaction management with UTXO model.
     * Wallet creation and management.
     * Blockchain state persistence using sled database.
-* Nwtworking Capabilities:
+* Networking Capabilities:
     * Peer-to-peer networking using TCP.
     * Message broadcasting and handling.
 * Web Interface
