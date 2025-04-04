@@ -26,20 +26,58 @@ PolyTorus is a blockchain project designed to withstand quantum cryptography att
 * Explore novel consensus algorithms
 * Conduct formal verification of the blockchain's security
 
-## Install
+## Installation
+### Prerequisites
+* Rust 1.56 or later
+* Cargo
 
-This project uses `Cargo`. After cloning the project, you can run it by doing `cargo run`.
-
-## Usage
-
-- Create Wallet
+### Building from Source
+1. Clone the repository:
 ```bash
-cargo run createwallet
+git clone https://github.com/PolyTorus/polytorus.git
+cd polytorus
 ```
 
-- Create Blockchain
+2. Build the project:
+```bash
+cargo build --release
+```
+
+3. Run the project:
+```bash
+./target/realease/polytorus 
+```
+
+## Usage
+### Basic Commands
+* Create a new wallet:
+```bash
+cargo run createwallet [ECDSA | FNDSA]
+```
+
+* List all wallet addresses:
+```bash
+cargo run listaddresses
+```
+
+* Create a new Blockchain with genesis block:
 ```bash
 cargo run createblockchain <address>
+```
+
+* Check balance of an address:
+```bash
+cargo run balance <address>
+```
+
+* Print all blocks in the chain
+```bash
+cargo run printchain
+```
+
+* Reindex UTXO set:
+```bash
+cargo run reindex
 ```
 
 ## Pull Request
