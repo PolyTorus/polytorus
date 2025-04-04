@@ -1,8 +1,23 @@
 <div align="center">
     <h1>PolyTorus</h1>
+    <p>A Quantum-Resistant Blockchain Implementation</P>
 </div>
 
-PolyTorus is project to develop a blockchain that can withstand quantum cryptography.
+PolyTorus is a blockchain project designed to withstand quantum cryptography attacks by Implementing quantum-resistant cryptography algorithms alongside traditional ones.
+
+## FEATURES
+* Quantum-Resistant Cryptography: Implements FN-DSA for quantum-resistant digital signatures.
+* Dual Cryptography Support: Use both ECDSA (traditional) and FN-DSA encryption methods.
+* Complete Blockchain Implementation:
+    * Block creation and mining with proof-of-work.
+    * Transaction management with UTXO model.
+    * Wallet creation and management.
+    * Blockchain state persistence using sled database.
+* Nwtworking Capabilities:
+    * Peer-to-peer networking using TCP.
+    * Message broadcasting and handling.
+* Web Interface
+* CLI Interface
 
 ## Goals
 * Develop a quantum-resistant public blockchain
