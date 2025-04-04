@@ -45,7 +45,7 @@ cargo build --release
 
 3. Run the project:
 ```bash
-./target/realease/polytorus 
+./target/release/polytorus 
 ```
 
 ## Usage
