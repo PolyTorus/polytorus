@@ -44,3 +44,12 @@ pub fn create(
                 })
             })
 }
+
+pub fn create_genesis(coinbase: Transaction) -> Block {
+    create(
+        vec![coinbase],
+        String::new(),
+        0,
+        4,
+    ).unwrap().expect("Failed to create genesis block")
+}
