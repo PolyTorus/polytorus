@@ -23,3 +23,14 @@ pub fn difficulty(block: &Block) -> usize {
 pub fn timestamp(block: &Block) -> u128 {
     block.get_timestamp()
 }
+
+pub struct BlockResult<T>(pub crate::Result<T>);
+
+impl<T> BlockResult<T> {
+    pub fn and_then<U, F>(self, f: F) -> BlockResult<U>
+    where 
+        F: FnOnce(T) -> crate::Result<U>,
+    {
+        BlockResult(self.0.and_then(f))
+    }
+}
