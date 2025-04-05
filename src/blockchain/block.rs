@@ -15,13 +15,13 @@ const DESIRED_BLOCK_TIME: u128 = 10_000;
 /// Block keeps block headers
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
-    timestamp: u128,
-    transactions: Vec<Transaction>,
-    prev_block_hash: String,
-    hash: String,
-    nonce: i32,
-    height: i32,
-    difficulty: usize,
+    pub(crate) timestamp: u128,
+    pub(crate) transactions: Vec<Transaction>,
+    pub(crate) prev_block_hash: String,
+    pub(crate) hash: String,
+    pub(crate) nonce: i32,
+    pub(crate) height: i32,
+    pub(crate) difficulty: usize,
 }
 
 impl Block {
