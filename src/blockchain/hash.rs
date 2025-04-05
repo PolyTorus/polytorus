@@ -1,5 +1,7 @@
 use bincode::serialize;
 use crypto::{digest::Digest, sha2::Sha256};
+use merkle_cbt::CBMT;
+use crate::{blockchain::block::MergeVu8, crypto::transaction::Transaction};
 
 pub fn header(
     prev_hash: &str,
@@ -21,4 +23,15 @@ pub fn header(
     hasher.input(&bytes);
 
     Ok(hasher.result_str())
+}
+
+pub fn transactions(transactions: &[Transaction]) -> crate::Result<Vec<u8>> {
+    let mut tx_hashes = Vec::new();
+    for tx in transactions {
+        tx_hashes.push(tx.hash()?.as_bytes().to_owned());
+    }
+
+    let tree = CBMT::<Vec<u8>, MergeVu8>::build_merkle_tree(tx_hashes);
+
+    Ok(tree.root())
 }

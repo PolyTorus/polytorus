@@ -137,7 +137,7 @@ impl Block {
     }
 }
 
-struct MergeVu8 {}
+pub struct MergeVu8 {}
 
 impl Merge for MergeVu8 {
     type Item = Vec<u8>;
