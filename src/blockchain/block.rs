@@ -41,6 +41,14 @@ impl Block {
         self.height
     }
 
+    pub fn get_difficulty(&self) -> usize {
+        self.difficulty
+    }
+
+    pub fn get_timestamp(&self) -> u128 {
+        self.timestamp
+    }
+
     /// NewBlock creates and returns Block
     pub fn new_block(
         transactions: Vec<Transaction>,

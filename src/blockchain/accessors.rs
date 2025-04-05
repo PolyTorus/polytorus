@@ -17,9 +17,9 @@ pub fn height(block: &Block) -> i32 {
 }
 
 pub fn difficulty(block: &Block) -> usize {
-    block.difficulty
+    block.get_difficulty()
 }
 
-pub fn timestamp(block: &Block) -> i64 {
-    block.timestamp
+pub fn timestamp(block: &Block) -> u128 {
+    block.get_timestamp()
 }
