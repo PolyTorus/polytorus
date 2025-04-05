@@ -33,4 +33,15 @@ impl<T> BlockResult<T> {
     {
         BlockResult(self.0.and_then(f))
     }
+
+    pub fn map<U, F>(self, f: F) -> BlockResult<U>
+    where 
+        F: FnOnce(T) -> U,
+    {
+        BlockResult(self.0.map(f))
+    }
+
+    pub fn unwrap(self) -> crate::Result<T> {
+        self.0
+    }
 }
