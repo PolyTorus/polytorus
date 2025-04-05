@@ -35,3 +35,11 @@ pub fn transactions(transactions: &[Transaction]) -> crate::Result<Vec<u8>> {
 
     Ok(tree.root())
 }
+
+pub fn meets_difficulty(
+    hash: &str,
+    difficulty: usize,
+) -> bool {
+    let target = "0".repeat(difficulty);
+    hash.starts_with(&target)
+}
