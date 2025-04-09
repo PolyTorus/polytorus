@@ -42,3 +42,9 @@ impl Engine {
         todo!("Implement transaction execution")
     }
 }
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
