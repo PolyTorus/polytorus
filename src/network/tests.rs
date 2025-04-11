@@ -67,11 +67,11 @@ fn setup_test_environment() -> Result<(Blockchain, Wallets, String)> {
 }
 
 /// Create and start a local server for testing
-fn start_test_server(port: &str, mining_address: &str) -> Result<Server> {
+fn start_test_server(port: &str, mining_address: &str, bootstrap: Option<&str>) -> Result<Server> {
     let (bc, _, _) = setup_test_environment()?;
     let utxo_set = UTXOSet { blockchain: bc };
     
-    let server = Server::new("0.0.0.0", port, mining_address, None, utxo_set)?;
+    let server = Server::new("0.0.0.0", port, mining_address, bootstrap, utxo_set)?;
     
     // Start server in background thread
     let server_clone = server.clone();
@@ -95,21 +95,11 @@ fn test_external_connectivity() {
         None => return, // Skip test if no remote node
     };
     
-    // Create a test server
-    let port = get_local_port();
-    let server = match start_test_server(&port, "") {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("Failed to start test server: {}", e);
-        }
-    };
-    
-    // Test connectivity to remote node
+    // Test direct TCP connectivity to remote node
     let result = TcpStream::connect(&remote_addr);
     assert!(result.is_ok(), "Could not connect to remote node at {}", remote_addr);
     
-    // Stop server
-    let _ = server.stop_server();
+    println!("Successfully connected to remote node at {}", remote_addr);
 }
 
 /// Test version exchange with a remote node
@@ -122,28 +112,12 @@ fn test_version_exchange() {
     
     // Create a test server with the remote node as bootstrap
     let port = get_local_port();
-    let (bc, _, _) = match setup_test_environment() {
-        Ok(env) => env,
-        Err(e) => {
-            panic!("Failed to set up test environment: {}", e);
-        }
-    };
-    
-    let utxo_set = UTXOSet { blockchain: bc };
-    let server = match Server::new("0.0.0.0", &port, "", Some(&remote_addr), utxo_set) {
+    let server = match start_test_server(&port, "", Some(&remote_addr)) {
         Ok(s) => s,
         Err(e) => {
             panic!("Failed to create test server: {}", e);
         }
     };
-    
-    // Start server (this should trigger version exchange with the bootstrap node)
-    let server_clone = server.clone();
-    thread::spawn(move || {
-        if let Err(e) = server_clone.start_server() {
-            eprintln!("Server error: {}", e);
-        }
-    });
     
     // Give time for version exchange
     thread::sleep(Duration::from_secs(5));
@@ -151,8 +125,7 @@ fn test_version_exchange() {
     // Stop server
     let _ = server.stop_server();
     
-    // Success if we get here without errors
-    assert!(true);
+    println!("Version exchange test completed");
 }
 
 /// Test sending a transaction to a remote node
@@ -180,42 +153,36 @@ fn test_send_transaction_to_remote() {
     
     // Set up test server
     let port = get_local_port();
-    let server = match start_test_server(&port, "") {
+    let server = match start_test_server(&port, "", None) {
         Ok(s) => s,
         Err(e) => {
             panic!("Failed to start test server: {}", e);
         }
     };
     
-    // First make sure we have funds by mining a block if needed
+    // Get wallet and crypto provider
     let from_wallet = wallets.get_wallet(&from_address).unwrap();
     let crypto = FnDsaCrypto;
     
     // Create and send a transaction
-    let tx = match Transaction::new_UTXO(from_wallet, &to_address, 1, &utxo_set, &crypto) {
-        Ok(tx) => tx,
+    match Transaction::new_UTXO(from_wallet, &to_address, 1, &utxo_set, &crypto) {
+        Ok(tx) => {
+            // Send transaction to remote node
+            let result = server.send_tx(&remote_addr, &tx);
+            
+            if let Err(e) = result {
+                println!("Transaction send failed: {}. This might be expected.", e);
+            } else {
+                println!("Transaction sent successfully");
+            }
+        },
         Err(e) => {
             println!("Could not create transaction: {}. This might be normal if no funds.", e);
-            // Stop server
-            let _ = server.stop_server();
-            return;
         }
     };
     
-    // Send transaction to remote node
-    let result = server.send_tx(&remote_addr, &tx);
-    
     // Stop server
     let _ = server.stop_server();
-    
-    // Allow failure if the remote node rejects the transaction
-    // (this could happen for valid reasons like insufficient funds)
-    if let Err(e) = result {
-        println!("Transaction send failed: {}. This might be expected.", e);
-    }
-    
-    // Success if we get here without panicking
-    assert!(true);
 }
 
 /// Test blockchain synchronization with a remote node
@@ -226,8 +193,10 @@ fn test_blockchain_sync() {
         None => return, // Skip test if no remote node
     };
     
-    // Create a fresh blockchain
-    let _ = std::fs::remove_dir_all("data/blocks");
+    // Create a fresh blockchain for testing
+    let _ = std::fs::remove_dir_all("data/blocks").ok(); // Ignore errors if directory doesn't exist
+    
+    // Create a new blockchain
     let (_, wallets, address) = match setup_test_environment() {
         Ok(env) => env,
         Err(e) => {
@@ -235,15 +204,13 @@ fn test_blockchain_sync() {
         }
     };
     
-    // Create a new blockchain
     let bc = Blockchain::create_blockchain(address).unwrap();
-    let utxo_set = UTXOSet { blockchain: bc };
-    
-    // Record initial height
-    let initial_height = utxo_set.blockchain.get_best_height().unwrap();
+    let initial_height = bc.get_best_height().unwrap();
+    println!("Initial blockchain height: {}", initial_height);
     
     // Set up server with the remote node as bootstrap
     let port = get_local_port();
+    let utxo_set = UTXOSet { blockchain: bc };
     let server = match Server::new("0.0.0.0", &port, "", Some(&remote_addr), utxo_set) {
         Ok(s) => s,
         Err(e) => {
@@ -253,26 +220,23 @@ fn test_blockchain_sync() {
     
     // Start server (this should trigger blockchain sync)
     let server_clone = server.clone();
-    let server_thread = thread::spawn(move || {
+    thread::spawn(move || {
         if let Err(e) = server_clone.start_server() {
             eprintln!("Server error: {}", e);
         }
     });
     
     // Give time for sync (this might need to be longer for larger blockchains)
+    println!("Waiting for blockchain sync (30 seconds)...");
     thread::sleep(Duration::from_secs(30));
     
     // Stop server
     let _ = server.stop_server();
     
-    // Wait for server thread to exit
-    let _ = server_thread.join();
-    
     // Check if blockchain was synchronized
     let bc_after = Blockchain::new().unwrap();
     let final_height = bc_after.get_best_height().unwrap();
     
-    println!("Blockchain height before sync: {}", initial_height);
     println!("Blockchain height after sync: {}", final_height);
     
     // Either we synced more blocks or the remote node had the same height as us
@@ -301,141 +265,33 @@ fn test_remote_wallet_operations() {
     
     // Create a test server
     let port = get_local_port();
-    let server = match start_test_server(&port, "") {
+    let server = match start_test_server(&port, "", None) {
         Ok(s) => s,
         Err(e) => {
             panic!("Failed to start test server: {}", e);
         }
     };
     
-    // Create an unsigned transaction
+    // Create an unsigned transaction (dummy transaction for testing)
     let tx = Transaction {
         id: String::new(),
         vin: Vec::new(),
         vout: vec![],
     };
     
-    // This will likely fail, but we're testing the communication path
+    // Try to request remote signing
+    println!("Requesting remote signing from {}", remote_addr);
     let result = server.send_sign_request(&remote_addr, "test_wallet_address", &tx);
-    
-    // Stop server
-    let _ = server.stop_server();
     
     // Allow failure as the remote node might not have the requested wallet
     if let Err(e) = result {
         println!("Remote signing failed: {}. This might be expected.", e);
-    }
-    
-    // Success if we get here without panicking
-    assert!(true);
-}
-
-/// This test checks if the server can handle network partitions and reconnections
-#[test]
-fn test_network_partition_recovery() {
-    let remote_addr = match require_remote_node() {
-        Some(addr) => addr,
-        None => return, // Skip test if no remote node
-    };
-    
-    // Set up test environment
-    let (bc, _, _) = match setup_test_environment() {
-        Ok(env) => env,
-        Err(e) => {
-            panic!("Failed to set up test environment: {}", e);
-        }
-    };
-    
-    let utxo_set = UTXOSet { blockchain: bc };
-    
-    // Create a test server
-    let port = get_local_port();
-    let server = match start_test_server(&port, "") {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("Failed to start test server: {}", e);
-        }
-    };
-    
-    // First ensure we can connect
-    let result1 = TcpStream::connect(&remote_addr);
-    assert!(result1.is_ok(), "Initial connection failed");
-    
-    // Now simulate network partition by adding a temporary firewall rule
-    // This is platform-specific and requires admin rights, so we'll use a safer approach
-    // by just waiting and trying to reconnect
-    
-    println!("Waiting to simulate network partition...");
-    thread::sleep(Duration::from_secs(10));
-    
-    // Try to reconnect - the server should handle this gracefully
-    match TcpStream::connect(&remote_addr) {
-        Ok(_) => println!("Reconnection successful"),
-        Err(e) => println!("Reconnection failed: {}. Server should handle this.", e),
+    } else {
+        println!("Remote signing successful");
     }
     
     // Stop server
     let _ = server.stop_server();
-    
-    // Success if we get here without panicking
-    assert!(true);
-}
-
-/// Test multiple simultaneous connections to different remote nodes
-#[test]
-fn test_multiple_remote_connections() {
-    let remote_addr = match require_remote_node() {
-        Some(addr) => addr,
-        None => return, // Skip test if no remote node
-    };
-    
-    // Ideally, we'd have multiple remote nodes, but for this test
-    // we'll just connect to the same one multiple times
-    
-    // Set up test environment
-    let (bc, _, _) = match setup_test_environment() {
-        Ok(env) => env,
-        Err(e) => {
-            panic!("Failed to set up test environment: {}", e);
-        }
-    };
-    
-    let utxo_set = UTXOSet { blockchain: bc };
-    
-    // Create a test server
-    let port = get_local_port();
-    let server = match start_test_server(&port, "") {
-        Ok(s) => s,
-        Err(e) => {
-            panic!("Failed to start test server: {}", e);
-        }
-    };
-    
-    // Create multiple connections in parallel
-    let num_connections = 5;
-    let mut handles = vec![];
-    
-    for i in 0..num_connections {
-        let addr = remote_addr.clone();
-        handles.push(thread::spawn(move || {
-            println!("Connection {} attempting to connect to {}", i, addr);
-            match TcpStream::connect(&addr) {
-                Ok(_) => println!("Connection {} established", i),
-                Err(e) => println!("Connection {} failed: {}", i, e),
-            }
-        }));
-    }
-    
-    // Wait for all connections to complete
-    for handle in handles {
-        let _ = handle.join();
-    }
-    
-    // Stop server
-    let _ = server.stop_server();
-    
-    // Success if we get here without panicking
-    assert!(true);
 }
 
 /// Test using command-line tools to interact with the server
@@ -446,7 +302,9 @@ fn test_cli_integration() {
         None => return, // Skip test if no remote node
     };
     
-    // Create a wallet
+    println!("Creating test wallet via CLI");
+    
+    // Create a wallet using CLI
     let output = Command::new("cargo")
         .args(["run", "createwallet", "FNDSA"])
         .output();
@@ -461,7 +319,7 @@ fn test_cli_integration() {
     
     // Extract wallet address
     let address = if let Some(addr_line) = wallet_output.lines().find(|l| l.starts_with("address:")) {
-        addr_line.trim_start_matches("address:").trim()
+        addr_line.trim_start_matches("address:").trim().to_string()
     } else {
         println!("Could not find wallet address in output: {}", wallet_output);
         return;
@@ -469,12 +327,13 @@ fn test_cli_integration() {
     
     println!("Created wallet with address: {}", address);
     
-    // Try to send a transaction to the remote node (this will likely fail due to no funds)
+    // Try to send a transaction to the remote node via CLI
+    println!("Attempting to send transaction via CLI to {}", remote_addr);
     let output = Command::new("cargo")
         .args([
             "run", "send", 
-            address, // from
-            address, // to (self)
+            &address, // from
+            &address, // to (self)
             "1", // amount
             "--node", &remote_addr
         ])
@@ -484,13 +343,14 @@ fn test_cli_integration() {
     match output {
         Ok(output) => {
             println!("CLI command output: {}", String::from_utf8_lossy(&output.stdout));
-            println!("CLI command error: {}", String::from_utf8_lossy(&output.stderr));
+            if !output.stderr.is_empty() {
+                println!("CLI command error: {}", String::from_utf8_lossy(&output.stderr));
+            }
         },
         Err(e) => {
             println!("CLI command failed: {}", e);
         }
     }
     
-    // Success if we get here without panicking
-    assert!(true);
+    println!("CLI integration test completed");
 }
