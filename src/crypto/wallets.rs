@@ -1,5 +1,5 @@
 use crate::Result;
-use bincode::{deserialize, serialize};
+use bincode::{de, deserialize, serialize};
 use bitcoincash_addr::*;
 use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
@@ -78,6 +78,7 @@ pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
     hasher2.result(pubKey);
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Wallets {
     wallets: HashMap<String, Wallet>,
 }
