@@ -1,3 +1,4 @@
+use super::types::*;
 use crate::Result;
 use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
@@ -8,11 +9,10 @@ use fn_dsa::{
     sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
 };
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, Message};
+use secp256k1::{Message, Secp256k1};
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
-use super::types::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -34,7 +34,7 @@ impl Wallet {
                     secret_key: sign_key.to_vec(),
                     public_key: vrfy_key.to_vec(),
                 }
-            },
+            }
             EncryptionType::ECDSA => {
                 let secp = Secp256k1::new();
                 let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
@@ -43,7 +43,7 @@ impl Wallet {
                     secret_key: secret_key.secret_bytes().to_vec(),
                     public_key: public_key.serialize().to_vec(),
                 }
-            },
+            }
         }
     }
 
@@ -102,8 +102,8 @@ impl Wallets {
 
     /// CreateWallet adds a Wallet to Wallets
     pub fn create_wallet(&mut self, encryption: EncryptionType) -> String {
-        let wallet = Wallet::new(encryption);
-        let address = wallet.get_address();
+        let wallet = Wallet::new(encryption.clone());
+        let address = wallet.get_address() + &enum_to_string(encryption);
         self.wallets.insert(address.clone(), wallet);
         info!("create wallet: {}", address);
         address
@@ -123,6 +123,18 @@ impl Wallets {
         self.wallets.get(address)
     }
 
+    /// GetWalletMut returns a Wallet by its address
+    /// Use in case of create new wallet
+    pub fn get_wallet_mut(&mut self, address: &str) -> Option<&Wallet> {
+        let wallets_value = String::from(address.to_string());
+        let new_wallets: Option<&Wallet> = self.wallets.get(&wallets_value);
+        let copy_new_wallet = new_wallets.expect("fail_get_wallet").clone();
+        let new_address: &str = &address[0..34];
+        self.wallets
+            .insert(new_address.to_string(), copy_new_wallet);
+        self.wallets.get(address)
+    }
+
     /// SaveToFile saves wallets to a file
     pub fn save_all(&self) -> Result<()> {
         let db = sled::open("data/wallets")?;
@@ -135,6 +147,15 @@ impl Wallets {
         db.flush()?;
         drop(db);
         Ok(())
+    }
+}
+
+/// EnumToString converts enum to String
+/// If you add to EncryptionType, add the process.
+pub fn enum_to_string(encryption: EncryptionType) -> String {
+    match encryption {
+        EncryptionType::ECDSA => "ECDSA".to_string(),
+        EncryptionType::FNDSA => "FNDSA".to_string(),
     }
 }
 
@@ -163,11 +184,17 @@ mod test {
     fn test_wallets() {
         let mut ws = Wallets::new().unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
-        let w1 = ws.get_wallet(&wa1).unwrap().clone();
+        let w1 = ws
+            .get_wallet_mut(&(wa1.clone() + &enum_to_string(EncryptionType::FNDSA)))
+            .unwrap()
+            .clone();
         ws.save_all().unwrap();
 
-        let ws2 = Wallets::new().unwrap();
-        let w2 = ws2.get_wallet(&wa1).unwrap();
+        let mut ws2 = Wallets::new().unwrap();
+        let w2 = &ws2
+            .get_wallet_mut(&(wa1 + &enum_to_string(EncryptionType::FNDSA)))
+            .unwrap()
+            .clone();
         assert_eq!(&w1, w2);
     }
 
@@ -175,8 +202,9 @@ mod test {
     #[should_panic]
     fn test_wallets_not_exist() {
         let w3 = Wallet::default();
-        let ws2 = Wallets::new().unwrap();
-        ws2.get_wallet(&w3.get_address()).unwrap();
+        let mut ws2 = Wallets::new().unwrap();
+        ws2.get_wallet_mut(&(w3.get_address() + &enum_to_string(EncryptionType::FNDSA)))
+            .unwrap();
     }
 
     #[test]

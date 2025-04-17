@@ -1,3 +1,5 @@
+use super::ecdsa::EcdsaCrypto;
+use super::fndsa::FnDsaCrypto;
 use crate::blockchain::utxoset::*;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::wallets::*;
@@ -156,6 +158,28 @@ impl Transaction {
             tx_copy.id = tx_copy.hash()?;
             tx_copy.vin[in_id].pub_key = Vec::new();
 
+            match &(tx_copy.vin[in_id].txid[34..]) {
+                "ECDSA" => {
+                    EcdsaCrypto::verify(
+                        &EcdsaCrypto,
+                        &self.vin[in_id].pub_key,
+                        &tx_copy.id.as_bytes(),
+                        &self.vin[in_id].signature,
+                    );
+                }
+                "FNDSA" => {
+                    FnDsaCrypto::verify(
+                        &FnDsaCrypto,
+                        &self.vin[in_id].pub_key,
+                        &tx_copy.id.as_bytes(),
+                        &self.vin[in_id].signature,
+                    );
+                }
+                _ => {
+                    panic!("error!");
+                }
+            }
+
             // if !ed25519::verify(
             //     &tx_copy.id.as_bytes(), // message
             //     &self.vin[in_id].pub_key, // public key
@@ -293,7 +317,12 @@ mod test {
     fn test_signature() {
         let mut ws = Wallets::new().unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
-        let w = ws.get_wallet(&wa1).unwrap().clone();
+        // Separating the encryption format from "to"
+        let wa1: String = wa1[0..34].to_string();
+        let w = ws
+            .get_wallet_mut(&(wa1.to_string() + &enum_to_string(EncryptionType::FNDSA)))
+            .unwrap()
+            .clone();
         ws.save_all().unwrap();
         drop(ws);
 
