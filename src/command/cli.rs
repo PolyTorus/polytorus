@@ -320,6 +320,9 @@ mod tests {
         // 2 つのウォレットを作成
         let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
         let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
+        // テストのためaddr1、addr2から暗号化形式を取り除く
+        let addr1: String = addr1[0..34].to_string();
+        let addr2: String = addr2[0..34].to_string();
         // ジェネシスブロック作成：addr1 に初期報酬が入る（例では 10 とする）
         cmd_create_blockchain(&addr1)?;
 
