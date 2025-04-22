@@ -125,16 +125,6 @@ impl Block {
         Ok(bytes)
     }
 
-    /// Validate validates block's PoW
-    fn validate(&self) -> Result<bool> {
-        let data = self.prepare_hash_data()?;
-        let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
-        let hash_str = hasher.result_str();
-        let prefix = "0".repeat(self.difficulty);
-        Ok(hash_str.starts_with(&prefix))
-    }
-
     pub fn adjust_difficulty(prev_block: &Block, current_timestamp: u128) -> usize {
         let time_diff = current_timestamp - prev_block.timestamp;
         let mut new_difficulty = prev_block.difficulty;

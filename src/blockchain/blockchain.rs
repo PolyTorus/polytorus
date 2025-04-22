@@ -11,7 +11,6 @@ use bitcoincash_addr::{Address, HashType, Scheme};
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
-use rand_core::block;
 use sled;
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -378,7 +377,7 @@ impl Blockchain {
 
         let burn_manager = BurnManager::new();
 
-        for (i, output) in tx.vout.iter().enumerate() {
+        for (_, output) in tx.vout.iter().enumerate() {
             let output_addr = Address {
                 body: output.pub_key_hash.clone(),
                 scheme: Scheme::Base58,

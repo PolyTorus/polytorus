@@ -138,3 +138,25 @@ impl BurnManager {
         Ok(hash.starts_with(&prefix))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_burn_address_generation() {
+        let burn_manager = BurnManager::new();
+        
+        let tag1 = "test_address";
+        let addr1 = burn_manager.generate_burn_address(tag1);
+        let addr2 = burn_manager.generate_burn_address(tag1);
+        assert_eq!(addr1, addr2, "Generated addresses should match");
+
+        let tag2 = "different_address";
+        let addr3 = burn_manager.generate_burn_address(tag2);
+        assert_ne!(addr1, addr3, "Generated addresses should be different");
+
+        assert!(burn_manager.verify_burn_address(&addr1, tag1), "address should be valid for the tag");
+        assert!(!burn_manager.verify_burn_address(&addr1, tag2), "address should not be valid for a different tag");
+    }
+}

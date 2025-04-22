@@ -1,5 +1,5 @@
 use crate::Result;
-use bincode::{de, deserialize, serialize};
+use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
 use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
@@ -8,7 +8,7 @@ use fn_dsa::{
     sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
 };
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::{Secp256k1, Message};
+use secp256k1::Secp256k1;
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
