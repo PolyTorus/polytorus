@@ -287,7 +287,7 @@ fn cmd_list_address() -> Result<()> {
     Ok(())
 }
 
-fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, mine_now: bool) -> Result<()> {
+fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: bool) -> Result<()> {
     let bc = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
 
