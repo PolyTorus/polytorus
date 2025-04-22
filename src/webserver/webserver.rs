@@ -1,8 +1,8 @@
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
 use crate::command::cli::cmd_create_wallet;
+use crate::crypto::types::EncryptionType;
+use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
 use serde::Deserialize;
 use std::str::FromStr;
-use crate::crypto::types::EncryptionType;
 
 pub struct WebServer {}
 
@@ -34,14 +34,11 @@ struct CryptoPath {
 
 #[post("/create_wallet/{encryption}")]
 async fn hello(path: web::Path<CryptoPath>) -> impl Responder {
-    
     match path.encryption.parse::<EncryptionType>() {
-        Ok(encryption) => {
-            match cmd_create_wallet(encryption) {
-                Ok(msg) => HttpResponse::Ok().body(msg),
-                Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-            }
-        }
+        Ok(encryption) => match cmd_create_wallet(encryption) {
+            Ok(msg) => HttpResponse::Ok().body(msg),
+            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+        },
         Err(_) => HttpResponse::BadRequest().body("不正な暗号方式です"),
     }
 }
