@@ -1,11 +1,17 @@
 //! Blockchain
 
 use crate::blockchain::block::*;
+use crate::consensus::proof_of_burn::{BurnInfo, BurnManager};
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
+use crate::crypto::wallets::hash_pub_key;
 use crate::Result;
 use bincode::{deserialize, serialize};
+use bitcoincash_addr::{Address, HashType, Scheme};
+use crypto::digest::Digest;
+use crypto::sha2::Sha256;
 use failure::format_err;
+use rand_core::block;
 use sled;
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -18,6 +24,7 @@ const GENESIS_COINBASE_DATA: &str =
 pub struct Blockchain {
     pub tip: String,
     pub db: sled::Db,
+    pub mining_address: String,
 }
 
 /// BlockchainIterator is used to iterate over blockchain blocks
@@ -42,7 +49,13 @@ impl Blockchain {
         } else {
             String::from_utf8(hash.to_vec())?
         };
-        Ok(Blockchain { tip: lasthash, db })
+
+        let mining_address = match db.get("MINING_ADDRESS")? {
+            Some(a) => String::from_utf8(a.to_vec())?,
+            None => String::new(),
+        };
+
+        Ok(Blockchain { tip: lasthash, db, mining_address })
     }
 
     /// CreateBlockchain creates a new blockchain DB
@@ -52,13 +65,16 @@ impl Blockchain {
         std::fs::remove_dir_all("data/blocks").ok();
         let db = sled::open("data/blocks")?;
         debug!("Creating new block database");
-        let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA))?;
-        let genesis: Block = Block::new_genesis_block(cbtx);
+        let cbtx = Transaction::new_coinbase(address.clone(), String::from(GENESIS_COINBASE_DATA))?;
+        let genesis: Block = Block::new_genesis_block(cbtx, address.clone());
         db.insert(genesis.get_hash(), serialize(&genesis)?)?;
         db.insert("LAST", genesis.get_hash().as_bytes())?;
+        db.insert("MINING_ADDRESS", address.as_bytes())?;
+
         let bc = Blockchain {
             tip: genesis.get_hash(),
             db,
+            mining_address: address,
         };
         bc.db.flush()?;
         Ok(bc)
@@ -87,12 +103,50 @@ impl Blockchain {
             prev_hash,
             self.get_best_height()? + 1,
             new_difficulty,
+            self.mining_address.clone(),
         )?;
         self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
         self.db.insert("LAST", newblock.get_hash().as_bytes())?;
         self.db.flush()?;
 
         self.tip = newblock.get_hash();
+        Ok(newblock)
+    }
+
+    pub fn mine_block_with_pob(&mut self, transactions: Vec<Transaction>, burn_manager: &BurnManager) -> Result<Block> {
+        info!("mine a new block with proof of burn");
+
+        for tx in &transactions {
+            if !self.verify_transacton(tx)? {
+                return Err(format_err!("ERROR: Invalid transaction"));
+            }
+        }
+
+        let lasthash = self.db.get("LAST")?.unwrap();
+        let prev_hash = String::from_utf8(lasthash.to_vec())?;
+        let prev_block = self.get_block(&prev_hash)?;
+        let current_timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_millis();
+        let new_difficulty = Block::adjust_difficulty(&prev_block, current_timestamp);
+
+
+        let mut newblock = Block::new_block(
+            transactions, 
+            prev_hash, 
+            self.get_best_height()? + 1, 
+            new_difficulty,
+            self.mining_address.clone()
+        )?;
+
+        newblock.run_proof_of_burn(burn_manager)?;
+
+        self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
+        self.db.insert("LAST", newblock.get_hash().as_bytes())?;
+        self.db.flush()?;
+
+        self.tip = newblock.get_hash();
+
         Ok(newblock)
     }
 
@@ -237,6 +291,132 @@ impl Blockchain {
         }
         list
     }
+
+    pub fn initial_burn_manager(&self) -> Result<BurnManager> {
+        let mut burn_manager = BurnManager::new();
+        
+        for b in self.iter() {
+            for tx in b.get_transaction() {
+                if self.is_burn_transaction(tx)? {
+                    if let Some(burn_info) = self.extract_burn_info(tx, b.get_height())? {
+                        burn_manager.register_burn(burn_info);
+                    }
+                }
+            }
+        }
+
+        Ok(burn_manager)
+    }
+
+    fn is_burn_transaction(&self, tx: &Transaction) -> Result<bool> {
+        if tx.is_coinbase() {
+            return Ok(false);
+        }
+        
+        if tx.vin.is_empty() {
+            return Ok(false);
+        }
+        
+        let burn_manager = BurnManager::new();
+        
+        for output in &tx.vout {
+            let output_addr = Address {
+                body: output.pub_key_hash.clone(),
+                scheme: Scheme::Base58,
+                hash_type: HashType::Script,
+                ..Default::default()
+            };
+            
+            let output_addr_str = match output_addr.encode() {
+                Ok(s) => s,
+                Err(_) => continue, 
+            };
+            
+            let pub_key = &tx.vin[0].pub_key;
+            let mut pub_key_hash = pub_key.clone();
+            hash_pub_key(&mut pub_key_hash);
+            
+            let sender_addr = Address {
+                body: pub_key_hash,
+                scheme: Scheme::Base58,
+                hash_type: HashType::Script,
+                ..Default::default()
+            };
+            
+            let sender_addr_str = match sender_addr.encode() {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            
+            if burn_manager.verify_burn_address(&output_addr_str, &sender_addr_str) {
+                if output_addr_str.starts_with("BURN") {
+                    return Ok(true);
+                }
+                
+                let mut hasher = Sha256::new();
+                hasher.input_str(&format!("{}{}", crate::consensus::proof_of_burn::PREFIX, sender_addr_str));
+                let mut hash = hasher.result_str();
+                
+                let last_char = hash.chars().last().unwrap();
+                let flipped_char = if last_char == '0' { '1' } else { '0' };
+                hash.pop();
+                hash.push(flipped_char);
+                
+                if hash == output_addr_str {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    fn extract_burn_info(&self, tx: &Transaction, block_height: i32) -> Result<Option<BurnInfo>> {
+        if tx.is_coinbase() {
+            return Ok(None);
+        }
+
+        let burn_manager = BurnManager::new();
+
+        for (i, output) in tx.vout.iter().enumerate() {
+            let output_addr = Address {
+                body: output.pub_key_hash.clone(),
+                scheme: Scheme::Base58,
+                hash_type: HashType::Script,
+                ..Default::default()
+            };
+
+            let output_addr_str = output_addr.encode()?;
+
+            if tx.vin.is_empty() {
+                continue;
+            }
+
+            let pub_key = &tx.vin[0].pub_key;
+            let mut pub_key_hash = pub_key.clone();
+            hash_pub_key(&mut pub_key_hash);
+
+            let sender_addr = Address {
+                body: pub_key_hash,
+                scheme: Scheme::Base58,
+                hash_type: HashType::Script,
+                ..Default::default()
+            };
+            let sender_addr_str = sender_addr.encode()?;
+
+            if burn_manager.verify_burn_address(&output_addr_str, &sender_addr_str) {
+                return Ok(Some(BurnInfo {
+                    address: sender_addr_str,
+                    amount: output.value,
+                    block_height,
+                    burn_txid: tx.id.clone(),
+                }));
+            }
+        }
+
+        Ok(None)
+    }
+    
 }
 
 impl Iterator for BlockchainIterator<'_> {

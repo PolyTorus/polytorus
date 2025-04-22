@@ -1,10 +1,11 @@
 use crate::blockchain::utxoset::*;
+use crate::consensus::proof_of_burn::BurnManager;
 use crate::crypto::traits::CryptoProvider;
 
 use crate::crypto::wallets::*;
 use crate::Result;
 use bincode::serialize_into;
-use bitcoincash_addr::Address;
+use bitcoincash_addr::{Address, HashType, Scheme};
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
@@ -253,6 +254,97 @@ impl Transaction {
             vin,
             vout,
         }
+    }
+
+    pub fn new_burn(wallet: &Wallet, amount: i32, utxo: &UTXOSet, crypto: &dyn CryptoProvider) -> Result<Transaction> {
+        info!("Creating burn transaction from: {}",
+            wallet.get_address()
+        );
+
+        let mut pub_key_hash = wallet.public_key.clone();
+        hash_pub_key(&mut pub_key_hash);
+
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
+
+        if acc_v.0 < amount {
+            error!("Not Enough balance");
+            return Err(format_err!(
+                "Not Enough balance: current balance {}",
+                acc_v.0
+            ));
+        }
+
+        let mut vin = Vec::new();
+
+        for tx in acc_v.1 {
+            for out in tx.1 {
+                let input = TXInput {
+                    txid: tx.0.clone(),
+                    vout: out,
+                    signature: Vec::new(),
+                    pub_key: wallet.public_key.clone(),
+                };
+                vin.push(input);
+            }
+        }
+
+        let burn_manager = BurnManager::new();
+        let burn_address = burn_manager.generate_burn_address(&wallet.get_address());
+
+        let mut vout = vec![TXOutput::new(amount, burn_address)?];
+        if acc_v.0 > amount {
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
+        }
+
+        let mut tx = Transaction {
+            id: String::new(),
+            vin,
+            vout,
+        };
+        tx.id = tx.hash()?;
+        utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+
+        Ok(tx)
+    }
+
+    pub fn is_burn(&self, burn_manager: &BurnManager) -> bool {
+        if self.vout.is_empty() {
+            return false;
+        }
+        
+        self.vout.iter().any(|output| {
+            let output_addr = Address {
+                body: output.pub_key_hash.clone(),
+                scheme: Scheme::Base58,
+                hash_type: HashType::Script,
+                ..Default::default()
+            };
+            let output_addr_str = match output_addr.encode() {
+                Ok(s) => s,
+                Err(_) => return false,
+            };
+            
+            if self.vin.is_empty() {
+                return false;
+            }
+            
+            let pub_key = &self.vin[0].pub_key;
+            let mut pub_key_hash = pub_key.clone();
+            hash_pub_key(&mut pub_key_hash);
+
+            let sender_addr = Address {
+                body: pub_key_hash,
+                scheme: Scheme::Base58,
+                hash_type: HashType::Script,
+                ..Default::default()
+            };
+            let sender_addr_str = match sender_addr.encode() {
+                Ok(s) => s,
+                Err(_) => return false,
+            };
+            
+            burn_manager.verify_burn_address(&output_addr_str, &sender_addr_str)
+        })
     }
 }
 

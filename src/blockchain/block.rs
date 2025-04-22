@@ -1,5 +1,7 @@
 //! Block implement of blockchain
 
+use crate::consensus::proof_of_burn::BurnManager;
+use crate::consensus::proof_of_burn::BurnProof;
 use crate::crypto::transaction::*;
 use crate::Result;
 use bincode::serialize;
@@ -22,6 +24,8 @@ pub struct Block {
     nonce: i32,
     height: i32,
     difficulty: usize,
+    miner_address: String,
+    proof_of_burn: Option<BurnProof>,
 }
 
 impl Block {
@@ -47,11 +51,12 @@ impl Block {
         prev_block_hash: String,
         height: i32,
         difficulty: usize,
+        miner_address: String,
     ) -> Result<Block> {
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_millis();
-        let mut block = Block {
+        let block = Block {
             timestamp,
             transactions,
             prev_block_hash,
@@ -59,26 +64,41 @@ impl Block {
             nonce: 0,
             height,
             difficulty,
+            miner_address,
+            proof_of_burn: None,
         };
-        block.run_proof_of_work()?;
+
+        // block.run_proof_of_work()?;
         Ok(block)
     }
 
     /// NewGenesisBlock creates and returns genesis Block
-    pub fn new_genesis_block(coinbase: Transaction) -> Block {
-        Block::new_block(vec![coinbase], String::new(), 0, INITIAL_DIFFICULTY).unwrap()
+    pub fn new_genesis_block(coinbase: Transaction, miner_address: String) -> Block {
+        Block::new_block(vec![coinbase], String::new(), 0, INITIAL_DIFFICULTY, miner_address).unwrap()
     }
 
     /// Run performs a proof-of-work
-    fn run_proof_of_work(&mut self) -> Result<()> {
-        info!("Mining the block");
-        while !self.validate()? {
-            self.nonce += 1;
-        }
+    pub fn run_proof_of_burn(&mut self, burn_manager: &BurnManager) -> Result<()> {
+        info!("Mining the block with proof of burn ... nonce: {}", self.nonce);
+
+        let mut proof = burn_manager.create_burn_proof(&self.miner_address, self.height)?;
+
         let data = self.prepare_hash_data()?;
+
+        while !burn_manager.verify_burn_proof(&proof, self.difficulty, &data)? {
+            proof.nonce += 1;
+
+            proof.timestamp = std::time::SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_millis();
+        }
+
         let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
+        hasher.input(&data);
+        hasher.input(&serialize(&proof)?);
         self.hash = hasher.result_str();
+        self.proof_of_burn = Some(proof);
+
         Ok(())
     }
 

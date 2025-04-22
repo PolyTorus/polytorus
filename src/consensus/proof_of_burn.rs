@@ -5,7 +5,7 @@ use bincode::serialize;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const PREFIX: &str = "BURN";
+pub const PREFIX: &str = "BURN";
 const VERIFICATION_DEPTH: i32 = 6;
 const WEIGHT_DECAY: f64 = 0.9;
 
