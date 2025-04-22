@@ -375,9 +375,13 @@ impl Blockchain {
             return Ok(None);
         }
 
+        if tx.vin.is_empty() {
+            return Ok(None);
+        }
+
         let burn_manager = BurnManager::new();
 
-        for (_, output) in tx.vout.iter().enumerate() {
+        for output in &tx.vout {
             let output_addr = Address {
                 body: output.pub_key_hash.clone(),
                 scheme: Scheme::Base58,
@@ -385,11 +389,10 @@ impl Blockchain {
                 ..Default::default()
             };
 
-            let output_addr_str = output_addr.encode()?;
-
-            if tx.vin.is_empty() {
-                continue;
-            }
+            let output_addr_str = match output_addr.encode() {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
 
             let pub_key = &tx.vin[0].pub_key;
             let mut pub_key_hash = pub_key.clone();
@@ -401,7 +404,11 @@ impl Blockchain {
                 hash_type: HashType::Script,
                 ..Default::default()
             };
-            let sender_addr_str = sender_addr.encode()?;
+
+            let sender_addr_str = match sender_addr.encode() {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
 
             if burn_manager.verify_burn_address(&output_addr_str, &sender_addr_str) {
                 return Ok(Some(BurnInfo {

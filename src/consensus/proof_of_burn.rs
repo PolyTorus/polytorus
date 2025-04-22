@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub const PREFIX: &str = "BURN";
-const VERIFICATION_DEPTH: i32 = 6;
+const VERIFICATION_DEPTH: i32 = 10;
 const WEIGHT_DECAY: f64 = 0.9;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -27,7 +27,7 @@ pub struct BurnProof {
 }
 
 pub struct BurnManager {
-    burn_records: HashMap<String, Vec<BurnInfo>>,
+    pub burn_records: HashMap<String, Vec<BurnInfo>>,
 }
 
 impl BurnManager {
@@ -158,5 +158,49 @@ mod tests {
 
         assert!(burn_manager.verify_burn_address(&addr1, tag1), "address should be valid for the tag");
         assert!(!burn_manager.verify_burn_address(&addr1, tag2), "address should not be valid for a different tag");
+    }
+
+    #[test]
+    fn test_burn_registration_and_scoring() {
+        let mut burn_manager = BurnManager::new();
+
+        let burn_info1 = BurnInfo {
+            address: "miner1".to_string(),
+            amount: 100,
+            block_height: 10,
+            burn_txid: "tx1".to_string(),
+        };
+        
+        let burn_info2 = BurnInfo {
+            address: "miner1".to_string(),
+            amount: 50,
+            block_height: 15,
+            burn_txid: "tx2".to_string(),
+        };
+        
+        let burn_info3 = BurnInfo {
+            address: "miner2".to_string(),
+            amount: 200,
+            block_height: 12,
+            burn_txid: "tx3".to_string(),
+        };
+        
+        burn_manager.register_burn(burn_info1.clone());
+        burn_manager.register_burn(burn_info2.clone());
+        burn_manager.register_burn(burn_info3.clone());
+        
+        let current_height = 20;
+        
+        let score_miner1 = burn_manager.calculate_burn_score("miner1", current_height);
+        let score_miner2 = burn_manager.calculate_burn_score("miner2", current_height);
+        let score_nonexistent = burn_manager.calculate_burn_score("nonexistent", current_height);
+        
+        assert!(score_miner1 > 0.0, "burn records should yield a positive score");
+        assert!(score_miner2 > 0.0, "burn records should yield a positive score");
+        assert_eq!(score_nonexistent, 0.0, "nonexistent address should yield a score of 0");
+        
+        let newer_burn_score = burn_manager.calculate_burn_score("miner1", 16);
+        let older_burn_score = burn_manager.calculate_burn_score("miner1", current_height);
+        assert!(newer_burn_score > older_burn_score, "newer burns should yield a higher score");
     }
 }
