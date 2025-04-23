@@ -380,7 +380,7 @@ mod tests {
         assert_eq!(balance2, 0);
 
         // テスト用にバーン情報を作成
-        let bc = Blockchain::new()?;
+        let _bc = Blockchain::new()?;
         let mut burn_manager = BurnManager::new();
         burn_manager.register_burn(BurnInfo {
             address: addr1.clone(),
