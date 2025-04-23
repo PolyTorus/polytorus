@@ -370,7 +370,7 @@ impl Blockchain {
         Ok(false)
     }
 
-    fn extract_burn_info(&self, tx: &Transaction, block_height: i32) -> Result<Option<BurnInfo>> {
+    pub fn extract_burn_info(&self, tx: &Transaction, block_height: i32) -> Result<Option<BurnInfo>> {
         if tx.is_coinbase() {
             return Ok(None);
         }

@@ -2,6 +2,8 @@
 
 use crate::blockchain::blockchain::*;
 use crate::blockchain::utxoset::*;
+use crate::consensus::proof_of_burn::BurnInfo;
+use crate::consensus::proof_of_burn::BurnManager;
 use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::types::EncryptionType;
@@ -11,6 +13,7 @@ use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
 use clap::{App, Arg, ArgMatches};
+use core::hash;
 use std::process::exit;
 use std::vec;
 
@@ -32,7 +35,7 @@ impl Cli {
         let matches = App::new("polytorus")
             .version(env!("CARGO_PKG_VERSION"))
             .author("quantumshiro")
-            .about("post quantum blockchain")
+            .about("new generatoin blockchain for Quantum era")
             .subcommand(App::new("printchain").about("print all the chain blocks"))
             .subcommand(App::new("createwallet").about("create a wallet")
                 .arg(Arg::from_usage("<encryption> 'encryption type'")
@@ -91,6 +94,14 @@ impl Cli {
                             .takes_value(true)
                             .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)"),
                     ),
+            )
+            .subcommand(
+                App::new("burn")
+                    .about("burn coins to participate in mining")
+                    .arg(Arg::from_usage("<from> 'Source wallet address'"))
+                    .arg(Arg::from_usage("<amount> 'Amount to burn'"))
+                    .arg(Arg::from_usage("-m --min 'the from address mine immediately'",)
+                ),
             )
             .subcommand(
                 App::new("remotesend")
@@ -209,8 +220,21 @@ fn cmd_send(
     let crypto = FnDsaCrypto;
     let tx = Transaction::new_UTXO(wallet, to, amount, &utxo_set, &crypto)?;
     if mine_now {
+        let mut burn_manager = utxo_set.blockchain.initial_burn_manager()?;
+
+        let has_burns = burn_manager.burn_records.contains_key(from);
+
+        if !has_burns {
+            burn_manager.register_burn(BurnInfo {
+                address: from.to_string(),
+                amount,
+                block_height: utxo_set.blockchain.get_best_height()?,
+                burn_txid: tx.id.clone(),
+            });
+        }
+
         let cbtx = Transaction::new_coinbase(from.to_string(), String::from("reward!"))?;
-        let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
+        let new_block = utxo_set.blockchain.mine_block_with_pob(vec![cbtx, tx], &burn_manager)?;
 
         utxo_set.update(&new_block)?;
     } else {
@@ -218,6 +242,32 @@ fn cmd_send(
     }
 
     println!("success!");
+    Ok(())
+}
+
+fn cmd_burn(from: &str, amount: i32, mine_now: bool) -> Result<()> {
+    let bc = Blockchain::new()?;
+    let mut utxo_set = UTXOSet { blockchain: bc };
+    let wallets = Wallets::new()?;
+    let wallet = wallets.get_wallet(from).unwrap();
+
+    let mut burn_manager = utxo_set.blockchain.initial_burn_manager()?;
+    let burn_tx = Transaction::new_burn(wallet, amount, &utxo_set, &FnDsaCrypto)?;
+
+    if mine_now {
+        let cbtx = Transaction::new_coinbase(from.to_string(), String::from("reward!"))?;
+
+        let new_block = utxo_set.blockchain.mine_block_with_pob(vec![cbtx, burn_tx.clone()], &burn_manager)?;
+
+        utxo_set.update(&new_block)?;
+
+        if let Some(burn_info) = utxo_set.blockchain.extract_burn_info(&burn_tx, new_block.get_height())? {
+            burn_manager.register_burn(burn_info);
+        }
+    } else {
+        Server::send_transaction(&burn_tx, utxo_set, "0.0.0.0:7000")?;
+    }
+    
     Ok(())
 }
 
@@ -329,6 +379,16 @@ mod tests {
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
 
+        // テスト用にバーン情報を作成
+        let bc = Blockchain::new()?;
+        let mut burn_manager = BurnManager::new();
+        burn_manager.register_burn(BurnInfo {
+            address: addr1.clone(),
+            amount: 5,
+            block_height: 0,
+            burn_txid: String::new(),
+        });
+
         // addr1 から addr2 へ 5 単位送金（-m オプション：即時採掘モード、target_node は None）
         cmd_send(&addr1, &addr2, 5, true, None)?;
 
@@ -349,6 +409,9 @@ mod tests {
         assert_eq!(balance1_final, 15);
         assert_eq!(balance2_final, 5);
 
+        let res = cmd_send(&addr2, &addr1, 15, true, None);
+        assert!(res.is_err());
+
         Ok(())
     }
 
@@ -364,6 +427,36 @@ mod tests {
         assert_eq!(balance2, 0);
 
         let _ = cmd_send(&addr1, &addr2, 5, false, Some("127.0.0.1:7000"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_burn() -> TestResult {
+        // テスト用ウォレットの作成
+        let addr = cmd_create_wallet(EncryptionType::FNDSA)?;
+        
+        // ブロックチェーンの作成
+        cmd_create_blockchain(&addr)?;
+        
+        // 初期残高確認
+        let initial_balance = cmd_get_balance(&addr)?;
+        assert_eq!(initial_balance, 10);
+        
+        // バーントランザクションを作成（1コインをバーン）
+        cmd_burn(&addr, 1, true)?;
+        
+        // バーン後の残高確認（報酬10 - バーン1 + 新しい報酬10 = 19）
+        let final_balance = cmd_get_balance(&addr)?;
+        assert_eq!(final_balance, 19);
+        
+        // バーン情報が正しく登録されているか確認
+        let bc = Blockchain::new()?;
+        let burn_manager = bc.initial_burn_manager()?;
+        
+        // addr のバーンスコアが0より大きいことを確認
+        let score = burn_manager.calculate_burn_score(&addr, 1);
+        assert!(score > 0.0, "バーンスコアは正の値であるべき");
+        
         Ok(())
     }
 }
