@@ -2,7 +2,7 @@ name: Format by `cargo fmt`
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "develop" ]
 
 permissions:
   contents: write
@@ -27,7 +27,7 @@ jobs:
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "action@github.com"
           git add .
           git commit --author=. -m "format by actions" --allow-empty
           git push
