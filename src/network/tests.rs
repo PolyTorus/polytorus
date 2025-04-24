@@ -137,6 +137,8 @@ fn test_version_exchange() {
 /// Test sending a transaction to a remote node
 #[test]
 fn test_send_transaction_to_remote() {
+    use crate::crypto::fndsa::FnDsaCrypto;
+    use crate::crypto::transaction::Transaction;
     let remote_addr = match require_remote_node() {
         Some(addr) => addr,
         None => return, // Skip test if no remote node
@@ -260,6 +262,7 @@ fn test_blockchain_sync() {
 /// Test remote wallet operations (requires a remote node with wallets)
 #[test]
 fn test_remote_wallet_operations() {
+    use crate::crypto::transaction::Transaction;
     let remote_addr = match require_remote_node() {
         Some(addr) => addr,
         None => return, // Skip test if no remote node
@@ -309,6 +312,7 @@ fn test_remote_wallet_operations() {
 /// Test using command-line tools to interact with the server
 #[test]
 fn test_cli_integration() {
+    use std::process::Command;
     let remote_addr = match require_remote_node() {
         Some(addr) => addr,
         None => return, // Skip test if no remote node
