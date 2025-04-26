@@ -2,7 +2,7 @@ name: Format by `cargo fmt`
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "develop", "feature/*" ]
 
 permissions:
   contents: write
