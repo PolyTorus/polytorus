@@ -3,6 +3,7 @@ name: Format by `cargo fmt`
 on:
   push:
     branches: [ "develop" ]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,6 +21,9 @@ jobs:
         with:
           toolchain: stable
           components: clippy, rustfmt
+
+      - name: Cache rust components
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
       - name: Format
         run: cargo fmt --all && cargo clippy --fix --allow-dirty
