@@ -2,7 +2,7 @@ name: Test by `cargo test`
 
 on:
   push:
-    branches: ["feature/**", "fix/**"]
+    branches: ["develop", "feature/**", "fix/**"]
 
 jobs:
   test:
