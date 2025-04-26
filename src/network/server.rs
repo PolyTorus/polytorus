@@ -33,7 +33,7 @@ const NETWORK_TIMEOUT: u64 = 30;
 /// Interval for node discovery (in seconds)
 const DISCOVERY_INTERVAL: u64 = 300; // 5 minutes
 /// Maximum number of peers to connect to
-const MAX_PEERS: usize = 25;
+const _MAX_PEERS: usize = 25;
 /// Buffer size for reading from sockets
 const READ_BUFFER_SIZE: usize = 8192;
 
@@ -189,7 +189,7 @@ struct PongMessage {
 #[derive(Clone, Debug)]
 struct PeerInfo {
     /// Network address
-    address: String,
+    _address: String,
     /// Last seen timestamp
     last_seen: Instant,
     /// Latest known blockchain height
@@ -263,7 +263,7 @@ impl Server {
             peers.insert(
                 bn.to_string(),
                 PeerInfo {
-                    address: bn.to_string(),
+                    _address: bn.to_string(),
                     last_seen: Instant::now(),
                     best_height: -1,
                     status: PeerStatus::New,
@@ -646,7 +646,7 @@ impl Server {
     }
 
     /// Sends a ping to check connectivity
-    fn send_ping(&self, addr: &str) -> Result<()> {
+    fn _send_ping(&self, addr: &str) -> Result<()> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs();
@@ -740,19 +740,18 @@ impl Server {
         stream.set_read_timeout(Some(Duration::from_secs(NETWORK_TIMEOUT)))?;
 
         let mut buffer = vec![0; READ_BUFFER_SIZE];
-        let mut bytes_read = 0;
 
-        match stream.read(&mut buffer) {
+        let bytes_read = match stream.read(&mut buffer) {
             Ok(count) => {
                 if count == 0 {
                     return Err(format_err!("Empty message from {}", peer_addr));
                 }
-                bytes_read = count;
+                count
             }
             Err(e) => {
                 return Err(format_err!("Read error from {}: {}", peer_addr, e));
             }
-        }
+        };
 
         buffer.truncate(bytes_read);
 
@@ -1220,7 +1219,7 @@ impl Server {
             inner.peers.insert(
                 addr.to_string(),
                 PeerInfo {
-                    address: addr.to_string(),
+                    _address: addr.to_string(),
                     last_seen: Instant::now(),
                     best_height: -1,
                     status: PeerStatus::New,
@@ -1241,7 +1240,7 @@ impl Server {
             inner.peers.insert(
                 addr.to_string(),
                 PeerInfo {
-                    address: addr.to_string(),
+                    _address: addr.to_string(),
                     last_seen: Instant::now(),
                     best_height: height,
                     status,
