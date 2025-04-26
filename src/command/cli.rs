@@ -272,7 +272,7 @@ fn cmd_get_balance(address: &str) -> Result<i32> {
     Ok(balance)
 }
 
-fn cmd_print_chain() -> Result<()> {
+pub fn cmd_print_chain() -> Result<()> {
     let bc = Blockchain::new()?;
     for b in bc.iter() {
         println!("{:#?}", b);
