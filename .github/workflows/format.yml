@@ -3,6 +3,7 @@ name: Format by `cargo fmt`
 on:
   push:
     branches: [ "develop" ]
+  workflow_dispatch:
 
 permissions:
   contents: write

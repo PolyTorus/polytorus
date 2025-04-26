@@ -3,6 +3,7 @@ name: Test by `cargo test`
 on:
   push:
     branches: ["develop", "feature/**", "fix/**"]
+  workflow_dispatch:
 
 jobs:
   test:
