@@ -152,12 +152,22 @@ impl Wallets {
 
     /// GetWallet returns a Wallet by its address
     pub fn get_wallet(&self, address: &str) -> Option<&Wallet> {
-        match extract_address(address) {
-            Ok((base_addr, _)) => {
-                self.wallets.get(&base_addr)
-            },
-            Err(_) => None,
+        // 完全なアドレスで検索
+        if let Some(wallet) = self.wallets.get(address) {
+            return Some(wallet);
         }
+        
+        // アドレスが暗号方式情報を含む場合、ベースアドレス部分だけで検索
+        if address.contains('_') {
+            let parts: Vec<&str> = address.split('_').collect();
+            if parts.len() >= 1 {
+                if let Some(wallet) = self.wallets.get(parts[0]) {
+                    return Some(wallet);
+                }
+            }
+        }
+        
+        None
     }
 
     /// SaveToFile saves wallets to a file
@@ -213,11 +223,25 @@ mod test {
         let mut ws = Wallets::new().unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let w1 = ws.get_wallet(&wa1).unwrap().clone();
+        
+        println!("FNDSA wallet address: {}", wa1);
+        
+        let wa2 = ws.create_wallet(EncryptionType::ECDSA);
+        let w2 = ws.get_wallet(&wa2).unwrap().clone();
+        
+        println!("ECDSA wallet address: {}", wa2);
         ws.save_all().unwrap();
 
         let ws2 = Wallets::new().unwrap();
-        let w2 = ws2.get_wallet(&wa1).unwrap();
-        assert_eq!(&w1, w2);
+        
+        let loaded_w1 = ws2.get_wallet(&wa1).unwrap();
+        assert_eq!(&w1, loaded_w1);
+        
+        let loaded_w2 = ws2.get_wallet(&wa2).unwrap();
+        assert_eq!(&w2, loaded_w2);
+        
+        assert_eq!(loaded_w1.encryption, Some(EncryptionType::FNDSA));
+        assert_eq!(loaded_w2.encryption, Some(EncryptionType::ECDSA));
     }
 
     #[test]
