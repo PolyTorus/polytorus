@@ -51,7 +51,12 @@ impl Wallet {
     }
 
     /// GetAddress returns wallet address
-    pub fn get_address(&self, encryption: EncryptionType) -> String {
+    pub fn get_address(&self) -> String {
+        let encryption = if let Some(enc) = &self.encryption {
+            enc.clone()
+        } else {
+            EncryptionType::guess_from_pubkey_size(self.public_key.len()).unwrap()
+        };
         let mut pub_hash: Vec<u8> = self.public_key.clone();
         hash_pub_key(&mut pub_hash);
         let address = Address {

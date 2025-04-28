@@ -13,6 +13,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::vec;
+use crate::crypto::types::EncryptionType;
 
 const SUBSIDY: i32 = 10;
 
@@ -87,9 +88,9 @@ impl Transaction {
             }
         }
 
-        let mut vout = vec![TXOutput::new(amount, to.to_string())?];
+        let mut vout = Vec::new();
         if acc_v.0 > amount {
-            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?);
         }
 
         let mut tx = Transaction {

@@ -7,7 +7,7 @@
 use crate::blockchain::block::Block;
 use crate::blockchain::utxoset::UTXOSet;
 use crate::crypto::fndsa::FnDsaCrypto;
-use crate::crypto::traits::CryptoProvider;
+use crate::crypto::traits::{create_crypto_provider, CryptoProvider};
 use crate::crypto::transaction::Transaction;
 use crate::crypto::wallets::Wallets;
 use crate::Result;
@@ -1107,11 +1107,23 @@ impl Server {
             }
         };
 
+        let enc_type = match wallet.get_encryption_type() {
+            Some(enc_type) => enc_type,
+            None => {
+                return Ok(SignResponseMessage { 
+                    addr_from: self.node_address.clone(), 
+                    transaction: msg.transaction.clone(), 
+                    success: false, 
+                    error_message: format!("Cannot determine encryption type for wallet: {}", msg.address) 
+                });
+            }
+        };
+
         // Sign the transaction
         let mut tx = msg.transaction.clone();
-        let crypto = FnDsaCrypto;
+        let crypto = create_crypto_provider(enc_type);
 
-        match self.sign_transaction(&mut tx, &wallet.secret_key, &crypto) {
+        match self.sign_transaction(&mut tx, &wallet.secret_key, crypto.as_ref()) {
             Ok(_) => {
                 info!("Successfully signed transaction for {}", msg.address);
                 Ok(SignResponseMessage {
