@@ -5,6 +5,7 @@ use bitcoincash_addr::*;
 use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
+use failure::format_err;
 use fn_dsa::{
     sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
 };
@@ -19,6 +20,20 @@ pub struct Wallet {
     pub secret_key: Vec<u8>,
     pub public_key: Vec<u8>,
     pub encryption: Option<EncryptionType>,
+}
+
+pub fn extract_address(address: &str) -> Result<(String, EncryptionType)> {
+    let parts: Vec<&str> = address.split('_').collect();
+    if parts.len() != 2 {
+        return Err(format_err!("Invalid address format: {}", address));
+    }
+    
+    let enc_type = match EncryptionType::from_code(parts[1]) {
+        Some(enc) => enc,
+        None => return Err(format_err!("Unknown encryption type: {}", parts[1])),
+    };
+    
+    Ok((parts[0].to_string(), enc_type))
 }
 
 impl Wallet {
@@ -137,7 +152,12 @@ impl Wallets {
 
     /// GetWallet returns a Wallet by its address
     pub fn get_wallet(&self, address: &str) -> Option<&Wallet> {
-        self.wallets.get(address)
+        match extract_address(address) {
+            Ok((base_addr, _)) => {
+                self.wallets.get(&base_addr)
+            },
+            Err(_) => None,
+        }
     }
 
     /// SaveToFile saves wallets to a file
@@ -164,16 +184,28 @@ mod test {
     };
     #[test]
     fn test_create_wallet_and_hash() {
-        let w1 = Wallet::default();
-        let w2 = Wallet::default();
+        let w1 = Wallet::new(EncryptionType::FNDSA);
+        assert_eq!(w1.encryption, Some(EncryptionType::FNDSA));
+
+        let w2 = Wallet::new(EncryptionType::ECDSA);
+        assert_eq!(w2.encryption, Some(EncryptionType::ECDSA));
+
         assert_ne!(w1, w2);
         assert_ne!(w1.get_address(), w2.get_address());
 
         let mut p2 = w2.public_key.clone();
         hash_pub_key(&mut p2);
         assert_eq!(p2.len(), 20);
-        let pub_key_hash = Address::decode(&w2.get_address()).unwrap().body;
-        assert_eq!(pub_key_hash, p2);
+
+        let addr = w2.get_address();
+        println!("Wallet address: {}", addr);
+        assert!(addr.contains("_ECDSA"));
+        
+        let (base_addr, enc_type) = extract_address(&addr).unwrap();
+        assert_eq!(enc_type, EncryptionType::ECDSA);
+        
+        let decoded_hash = Address::decode(&base_addr).unwrap().body;
+        assert_eq!(decoded_hash, p2);
     }
 
     #[test]

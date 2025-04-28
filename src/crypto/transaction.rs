@@ -264,7 +264,12 @@ impl TXOutput {
     }
     /// Lock signs the output
     fn lock(&mut self, address: &str) -> Result<()> {
-        let pub_key_hash = Address::decode(address).unwrap().body;
+        let (base_addr, _) = match extract_address(address) {
+            Ok(info) => info,
+            Err(_) => (address.to_string(), EncryptionType::FNDSA),
+        };
+
+        let pub_key_hash = Address::decode(&base_addr).unwrap().body;
         debug!("lock: {}", address);
         self.pub_key_hash = pub_key_hash;
         Ok(())

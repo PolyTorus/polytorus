@@ -25,8 +25,8 @@ impl EncryptionType {
 
     pub fn guess_from_pubkey_size(size: usize) -> Option<EncryptionType> {
         match size {
-            65 => Some(EncryptionType::ECDSA),
-            512 => Some(EncryptionType::FNDSA),
+            33 => Some(EncryptionType::ECDSA),
+            897 => Some(EncryptionType::FNDSA),
             _ => None,
         }
         
