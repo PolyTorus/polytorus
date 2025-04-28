@@ -18,6 +18,7 @@ use std::collections::HashMap;
 pub struct Wallet {
     pub secret_key: Vec<u8>,
     pub public_key: Vec<u8>,
+    pub encryption: Option<EncryptionType>,
 }
 
 impl Wallet {
@@ -33,6 +34,7 @@ impl Wallet {
                 Wallet {
                     secret_key: sign_key.to_vec(),
                     public_key: vrfy_key.to_vec(),
+                    encryption: Some(encryption),
                 }
             }
             EncryptionType::ECDSA => {
@@ -42,13 +44,14 @@ impl Wallet {
                 Wallet {
                     secret_key: secret_key.secret_bytes().to_vec(),
                     public_key: public_key.serialize().to_vec(),
+                    encryption: Some(EncryptionType::ECDSA),
                 }
             }
         }
     }
 
     /// GetAddress returns wallet address
-    pub fn get_address(&self) -> String {
+    pub fn get_address(&self, encryption: EncryptionType) -> String {
         let mut pub_hash: Vec<u8> = self.public_key.clone();
         hash_pub_key(&mut pub_hash);
         let address = Address {
@@ -57,7 +60,15 @@ impl Wallet {
             hash_type: HashType::Script,
             ..Default::default()
         };
-        address.encode().unwrap()
+
+        format!("{}_{}", address.encode().unwrap(), encryption.to_code())
+    }
+
+    pub fn get_encryption_type(&self) -> Option<EncryptionType> {
+        match &self.encryption {
+            Some(encryption) => Some(encryption.clone()),
+            None => EncryptionType::guess_from_pubkey_size(self.public_key.len()),
+        }
     }
 }
 
