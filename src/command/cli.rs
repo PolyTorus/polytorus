@@ -33,6 +33,37 @@ impl Cli {
             .version(env!("CARGO_PKG_VERSION"))
             .author("quantumshiro")
             .about("post quantum blockchain")
+            .arg(
+                Arg::with_name("data-dir")
+                    .long("data-dir")
+                    .takes_value(true)
+                    .help("基本データディレクトリのパス")
+            )
+            .arg(
+                Arg::with_name("blocks-dir")
+                    .long("blocks-dir")
+                    .takes_value(true)
+                    .help("ブロックチェーンデータディレクトリのパス")
+            )
+            .arg(
+                Arg::with_name("utxos-dir")
+                    .long("utxos-dir")
+                    .takes_value(true)
+                    .help("UTXOデータディレクトリのパス")
+            )
+            .arg(
+                Arg::with_name("wallets-dir")
+                    .long("wallets-dir")
+                    .takes_value(true)
+                    .help("ウォレットデータディレクトリのパス")
+            )
+            .arg(
+                Arg::with_name("config")
+                    .long("config")
+                    .short("c")
+                    .takes_value(true)
+                    .help("設定ファイルのパス")
+            )
             .subcommand(App::new("printchain").about("print all the chain blocks"))
             .subcommand(
                 App::new("createwallet").about("create a wallet").arg(

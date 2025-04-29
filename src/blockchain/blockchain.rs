@@ -3,7 +3,7 @@
 use crate::blockchain::block::*;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
-use crate::Result;
+use crate::{config, Result};
 use bincode::{deserialize, serialize};
 use failure::format_err;
 use sled;
@@ -30,13 +30,16 @@ impl Blockchain {
     /// NewBlockchain creates a new Blockchain db
     pub fn new() -> Result<Blockchain> {
         info!("open blockchain");
-
-        let db = sled::open("data/blocks")?;
+        let config = config::get_config();
+        let blocks_path = config.blocks_path();
+        
+        let db = sled::open(blocks_path)?;
         let hash = match db.get("LAST")? {
             Some(l) => l.to_vec(),
             None => Vec::new(),
         };
-        info!("Found block database");
+        info!("Found block database path: {}", config.blocks_dir);
+
         let lasthash = if hash.is_empty() {
             String::new()
         } else {
@@ -48,9 +51,11 @@ impl Blockchain {
     /// CreateBlockchain creates a new blockchain DB
     pub fn create_blockchain(address: String) -> Result<Blockchain> {
         info!("Creating new blockchain");
+        let config = config::get_config();
+        let blocks_path = config.blocks_path();
 
-        std::fs::remove_dir_all("data/blocks").ok();
-        let db = sled::open("data/blocks")?;
+        std::fs::remove_dir_all(&blocks_path).ok();
+        let db = sled::open(&blocks_path)?;
         debug!("Creating new block database");
         let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA))?;
         let genesis: Block = Block::new_genesis_block(cbtx);

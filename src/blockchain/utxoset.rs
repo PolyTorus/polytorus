@@ -1,5 +1,6 @@
 use crate::blockchain::block::*;
 use crate::blockchain::blockchain::*;
+use crate::config;
 use crate::crypto::transaction::*;
 use crate::Result;
 use bincode::{deserialize, serialize};
@@ -21,7 +22,10 @@ impl UTXOSet {
         let mut unspent_outputs: HashMap<String, Vec<i32>> = HashMap::new();
         let mut accumulated = 0;
 
-        let db = sled::open("data/utxos")?;
+        let cofig = config::get_config();
+        let utxo_path = cofig.utxos_path();
+
+        let db = sled::open(utxo_path)?;
         for kv in db.iter() {
             let (k, v) = kv?;
             let txid = String::from_utf8(k.to_vec())?;
@@ -77,8 +81,11 @@ impl UTXOSet {
 
     /// Reindex rebuilds the UTXO set
     pub fn reindex(&self) -> Result<()> {
-        std::fs::remove_dir_all("data/utxos").ok();
-        let db = sled::open("data/utxos")?;
+        let cofig = config::get_config();
+        let utxo_path = cofig.utxos_path();
+
+        std::fs::remove_dir_all(&utxo_path).ok();
+        let db = sled::open(utxo_path)?;
 
         let utxos = self.blockchain.find_UTXO();
 
