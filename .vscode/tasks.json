@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Run Tests with Full CPU",
+        "type": "shell",
+        "command": "export RUST_TEST_THREADS=$(nproc) && cargo test --package polytorus --lib",
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      }
+    ]
+}

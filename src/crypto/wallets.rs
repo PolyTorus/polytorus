@@ -80,7 +80,7 @@ pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Wallets {
-    wallets: HashMap<String, Wallet>,
+    pub wallets: HashMap<String, Wallet>,
 }
 
 impl Wallets {
@@ -146,6 +146,30 @@ mod test {
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
         DOMAIN_NONE, HASH_ID_RAW,
     };
+
+    #[test]
+    pub fn new_test_wallets() -> std::result::Result<(), failure::Error> {
+        let path = "data/wallets_test";
+        let mut wlt = Wallets {
+            wallets: HashMap::<String, Wallet>::new(),
+        };
+        
+        let db_config = sled::Config::new()
+            .path(path)
+            .mode(sled::Mode::HighThroughput);
+        
+        let db = db_config.open()?;
+
+        for item in db.iter() {
+            let i = item?;
+            let address = String::from_utf8(i.0.to_vec())?;
+            let wallet = deserialize(&i.1)?;
+            wlt.wallets.insert(address, wallet);
+        }
+        
+        Ok(())
+    }
+
     #[test]
     fn test_create_wallet_and_hash() {
         let w1 = Wallet::default();
