@@ -17,7 +17,7 @@ pub enum DecryptionType {
 #[derive(Debug, Fail)]
 pub enum CryptoTypeError {
     #[fail(display = "Fail Encrypt type: {}", _0)]
-    InvalidKeyLength(String),
+    InvalidEncryptionTypes(String),
 
     #[fail(display = "Fail Decrypt type: {}", _0)]
     InvalidDecryptionType(String),
@@ -45,10 +45,10 @@ impl FromStr for EncryptionType {
     type Err = CryptoTypeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_uppercase().as_str() {
             "ECDSA" => Ok(EncryptionType::ECDSA),
             "FNDSA" => Ok(EncryptionType::FNDSA),
-            _ => Err(CryptoTypeError::InvalidKeyLength(s.to_string())),
+            _ => Err(CryptoTypeError::InvalidEncryptionTypes(s.to_string())),
         }
     }
 }
@@ -88,7 +88,7 @@ impl DecryptionType {
             DecryptionType::FNDSA => "FNDSA",
         }
     }
-    
+
     pub fn to_encryption_type(&self) -> EncryptionType {
         match self {
             DecryptionType::ECDSA => EncryptionType::ECDSA,
