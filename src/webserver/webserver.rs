@@ -15,18 +15,6 @@ impl WebServer {
     }
 }
 
-impl FromStr for EncryptionType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().as_str() {
-            "ECDSA" => Ok(EncryptionType::ECDSA),
-            "FNDSA" => Ok(EncryptionType::FNDSA),
-            _ => Err(()),
-        }
-    }
-}
-
 #[derive(Deserialize)]
 struct CryptoPath {
     encryption: String,
