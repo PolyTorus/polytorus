@@ -14,7 +14,7 @@ const GENESIS_COINBASE_DATA: &str =
     "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
 
 /// Blockchain implements interactions with a DB
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Blockchain {
     pub tip: String,
     pub db: sled::Db,

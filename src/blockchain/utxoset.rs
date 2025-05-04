@@ -7,6 +7,7 @@ use sled;
 use std::collections::HashMap;
 
 /// UTXOSet represents UTXO set
+#[derive(Debug, Clone)]
 pub struct UTXOSet {
     pub blockchain: Blockchain,
 }
