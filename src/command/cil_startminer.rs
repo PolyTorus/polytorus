@@ -1,5 +1,5 @@
-use crate::blockchain::utxoset::UTXOSet;
 use crate::blockchain::blockchain::Blockchain;
+use crate::blockchain::utxoset::UTXOSet;
 use crate::network::server::Server;
 use failure::Error;
 

@@ -1,9 +1,9 @@
 use crate::webserver::createwallet;
-use crate::webserver::printchain;
 use crate::webserver::listaddresses;
+use crate::webserver::printchain;
 use crate::webserver::reindex;
-use crate::webserver::startnode;
 use crate::webserver::startminer;
+use crate::webserver::startnode;
 use actix_web::{App, HttpServer};
 
 pub struct WebServer {}

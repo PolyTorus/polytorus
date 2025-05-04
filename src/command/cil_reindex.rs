@@ -1,5 +1,5 @@
-use crate::blockchain::utxoset::UTXOSet;
 use crate::blockchain::blockchain::Blockchain;
+use crate::blockchain::utxoset::UTXOSet;
 use failure::Error;
 
 pub fn cmd_reindex() -> Result<(), Error> {

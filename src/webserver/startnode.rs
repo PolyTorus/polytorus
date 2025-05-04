@@ -1,5 +1,5 @@
-use actix_web::{post, web, HttpResponse, Responder};
 use crate::command::cil_startnode::cmd_start_node_from_api;
+use actix_web::{post, web, HttpResponse, Responder};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -12,7 +12,10 @@ struct StartNodeRequest {
 #[post("/start-node")]
 pub async fn start_node(req: web::Json<StartNodeRequest>) -> impl Responder {
     let req_data = req.into_inner();
-    println!("@start-Node called: host={}, port={}", req_data.host, req_data.port);
+    println!(
+        "@start-Node called: host={}, port={}",
+        req_data.host, req_data.port
+    );
 
     let host = req_data.host.clone();
     let port = req_data.port.clone();

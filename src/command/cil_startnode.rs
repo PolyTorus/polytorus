@@ -1,9 +1,13 @@
-use crate::blockchain::utxoset::UTXOSet;
 use crate::blockchain::blockchain::Blockchain;
+use crate::blockchain::utxoset::UTXOSet;
 use crate::network::server::Server;
 use failure::Error;
 
-pub fn cmd_start_node_from_api(host: &str, port: &str, bootstrap: Option<&str>) -> Result<(), Error> {
+pub fn cmd_start_node_from_api(
+    host: &str,
+    port: &str,
+    bootstrap: Option<&str>,
+) -> Result<(), Error> {
     println!("Start node...");
 
     let bc = Blockchain::new()?;
@@ -15,6 +19,6 @@ pub fn cmd_start_node_from_api(host: &str, port: &str, bootstrap: Option<&str>) 
             eprintln!("Failed to run node: {}", e);
         }
     });
-    
+
     Ok(())
 }

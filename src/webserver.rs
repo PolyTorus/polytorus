@@ -1,7 +1,7 @@
 pub mod createwallet;
-pub mod printchain;
-pub mod webserver;
 pub mod listaddresses;
+pub mod printchain;
 pub mod reindex;
-pub mod startnode;
 pub mod startminer;
+pub mod startnode;
+pub mod webserver;
