@@ -33,6 +33,7 @@ const NETWORK_TIMEOUT: u64 = 30;
 /// Interval for node discovery (in seconds)
 const DISCOVERY_INTERVAL: u64 = 300; // 5 minutes
 /// Maximum number of peers to connect to
+/// This constant is currently unused but reserved for future implementation.
 const _MAX_PEERS: usize = 25;
 /// Buffer size for reading from sockets
 const READ_BUFFER_SIZE: usize = 8192;
