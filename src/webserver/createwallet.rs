@@ -29,7 +29,8 @@ pub async fn create_wallet_with_param(path: web::Path<CryptoPath>) -> impl Respo
 
 #[post("/create-wallet")]
 pub async fn create_wallet_default() -> impl Responder {
-    handle_create_wallet("FNDSA")
+    let default = "FNDSA";
+    handle_create_wallet(default)
 }
 
 fn handle_create_wallet(enc_str: &str) -> HttpResponse {

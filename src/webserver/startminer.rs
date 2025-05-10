@@ -17,8 +17,8 @@ pub async fn start_miner(req: web::Json<StartMinerRequest>) -> impl Responder {
         "@start-Miner called: host={:?}, port={}",
         req_data.host, req_data.port
     );
-
-    let host = req_data.host.unwrap_or_else(|| "0.0.0.0".to_string());
+    let default_host = "0.0.0.0";
+    let host = req_data.host.unwrap_or_else(|| default_host.to_string());
     let port = req_data.port;
     let bootstrap = req_data.bootstrap;
     let mining_address = req_data.mining_address;
