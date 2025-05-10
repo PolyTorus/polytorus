@@ -22,4 +22,6 @@ jobs:
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
       - name: Test
-        run: cargo test -- --test-threads=1
+        run: cargo test
+        env:
+          RUST_TEST_THREADS: ${{ runner.cpus }}
