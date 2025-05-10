@@ -34,10 +34,10 @@ impl Blockchain {
     }
 
     /// NewBlockchain creates a new Blockchain db
-    pub fn new_with_context(contex: DataContext) -> Result<Blockchain> {
+    pub fn new_with_context(context: DataContext) -> Result<Blockchain> {
         info!("open blockchain");
 
-        let db = sled::open(contex.blocks_dir())?;
+        let db = sled::open(context.blocks_dir())?;
         let hash = match db.get("LAST")? {
             Some(l) => l.to_vec(),
             None => Vec::new(),
@@ -48,7 +48,7 @@ impl Blockchain {
         } else {
             String::from_utf8(hash.to_vec())?
         };
-        Ok(Blockchain { tip: lasthash, db, context: contex })
+        Ok(Blockchain { tip: lasthash, db, context })
     }
 
     pub fn create_blockchain(address: String) -> Result<Blockchain> {
