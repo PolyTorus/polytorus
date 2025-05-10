@@ -92,7 +92,7 @@ impl Cli {
                         Arg::with_name("node")
                             .long("node")
                             .takes_value(true)
-                            .help("ターゲットノードのアドレス (例: 54.123.45.67:7000)"),
+                            .help("Address of target node (e.g., 54.123.45.67:7000)"),
                     ),
             )
             .subcommand(
@@ -110,81 +110,90 @@ impl Cli {
             )
             .get_matches();
 
-        if let Some(matches) = matches.subcommand_matches("getbalance") {
-            if let Some(address) = matches.value_of("address") {
-                let balance = cmd_get_balance(address)?;
-                println!("Balance: {}\n", balance);
+        match matches.subcommand() {
+            ("getbalance", Some(sub_m)) => {
+                if let Some(address) = sub_m.value_of("address") {
+                    let balance = cmd_get_balance(address)?;
+                    println!("Balance: {}\n", balance);
+                }
             }
-        } else if let Some(matches) = matches.subcommand_matches("createwallet") {
-            let encryption = matches.value_of("encryption").unwrap().trim();
-            let encryption: EncryptionType = match encryption {
-                "ECDSA" => EncryptionType::ECDSA,
-                "FNDSA" => EncryptionType::FNDSA,
-                _ => EncryptionType::FNDSA,
-            };
-            println!("address: {}", cmd_create_wallet(encryption)?);
-        } else if matches.subcommand_matches("printchain").is_some() {
-            cmd_print_chain()?;
-        } else if matches.subcommand_matches("reindex").is_some() {
-            let count = cmd_reindex()?;
-            println!("Done! There are {} transactions in the UTXO set.", count);
-        } else if matches.subcommand_matches("listaddresses").is_some() {
-            cmd_list_address()?;
-        } else if matches.subcommand_matches("server").is_some() {
-            cmd_server().await?;
-        } else if let Some(matches) = matches.subcommand_matches("createblockchain") {
-            if let Some(address) = matches.value_of("address") {
-                cmd_create_blockchain(address)?;
+            ("createwallet", Some(sub_m)) => {
+                let encryption = sub_m.value_of("encryption").unwrap().trim();
+                let encryption: EncryptionType = match encryption {
+                    "ECDSA" => EncryptionType::ECDSA,
+                    "FNDSA" => EncryptionType::FNDSA,
+                    _ => EncryptionType::FNDSA,
+                };
+                println!("address: {}", cmd_create_wallet(encryption)?);
             }
-        } else if let Some(matches) = matches.subcommand_matches("send") {
-            let from = get_value("from", matches)?;
-            let to = get_value("to", matches)?;
-
-            let amount: i32 = if let Some(amount) = matches.value_of("amount") {
-                amount.parse()?
-            } else {
-                error_start_miner("amount", matches.usage())
-            };
-            let target_node = matches.value_of("node");
-            cmd_send(from, to, amount, matches.is_present("mine"), target_node)?;
-        } else if let Some(matches) = matches.subcommand_matches("startnode") {
-            if let Some(port) = matches.value_of("port") {
-                println!("Start node...");
+            ("printchain", Some(_)) => {
+                cmd_print_chain()?;
+            }
+            ("reindex", Some(_)) => {
+                let count = cmd_reindex()?;
+                println!("Done! There are {} transactions in the UTXO set.", count);
+            }
+            ("listaddresses", Some(_)) => {
+                cmd_list_address()?;
+            }
+            ("server", Some(_)) => {
+                cmd_server().await?;
+            }
+            ("createblockchain", Some(sub_m)) => {
+                if let Some(address) = sub_m.value_of("address") {
+                    cmd_create_blockchain(address)?;
+                }
+            }
+            ("send", Some(sub_m)) => {
+                let from = get_value("from", sub_m)?;
+                let to = get_value("to", sub_m)?;
+                let amount: i32 = if let Some(amount) = sub_m.value_of("amount") {
+                    amount.parse()?
+                } else {
+                    error_start_miner("amount", sub_m.usage())
+                };
+                let target_node = sub_m.value_of("node");
+                cmd_send(from, to, amount, sub_m.is_present("mine"), target_node)?;
+            }
+            ("startnode", Some(sub_m)) => {
+                if let Some(port) = sub_m.value_of("port") {
+                    println!("Start node...");
+                    let bc = Blockchain::new()?;
+                    let utxo_set = UTXOSet { blockchain: bc };
+                    let server = Server::new(
+                        sub_m.value_of("host").unwrap_or("0.0.0.0"),
+                        port,
+                        "",
+                        sub_m.value_of("bootstrap"),
+                        utxo_set,
+                    )?;
+                    server.start_server()?;
+                }
+            }
+            ("startminer", Some(sub_m)) => {
+                let mining_address = get_value("address", sub_m)?;
+                let port = get_value("port", sub_m)?;
+                println!("Start miner node...");
                 let bc = Blockchain::new()?;
                 let utxo_set = UTXOSet { blockchain: bc };
                 let server = Server::new(
-                    matches.value_of("host").unwrap_or("0.0.0.0"),
+                    sub_m.value_of("host").unwrap_or("0.0.0.0"),
                     port,
-                    "",
-                    matches.value_of("bootstrap"),
+                    mining_address,
+                    sub_m.value_of("bootstrap"),
                     utxo_set,
                 )?;
                 server.start_server()?;
             }
-        } else if let Some(matches) = matches.subcommand_matches("startminer") {
-            let mining_address = get_value("address", matches)?;
-
-            let port = get_value("port", matches)?;
-
-            println!("Start miner node...");
-            let bc = Blockchain::new()?;
-            let utxo_set = UTXOSet { blockchain: bc };
-            let server = Server::new(
-                matches.value_of("host").unwrap_or("0.0.0.0"),
-                port,
-                mining_address,
-                matches.value_of("bootstrap"),
-                utxo_set,
-            )?;
-            server.start_server()?;
-        } else if let Some(matches) = matches.subcommand_matches("remotesend") {
-            let from = matches.value_of("from").unwrap();
-            let to = matches.value_of("to").unwrap();
-            let amount: i32 = matches.value_of("amount").unwrap().parse()?;
-            let node = matches.value_of("node").unwrap();
-            let mine = matches.is_present("mine");
-
-            cmd_remote_send(from, to, amount, node, mine)?;
+            ("remotesend", Some(sub_m)) => {
+                let from = sub_m.value_of("from").unwrap();
+                let to = sub_m.value_of("to").unwrap();
+                let amount: i32 = sub_m.value_of("amount").unwrap().parse()?;
+                let node = sub_m.value_of("node").unwrap();
+                let mine = sub_m.is_present("mine");
+                cmd_remote_send(from, to, amount, node, mine)?;
+            }
+            _ => {}
         }
 
         Ok(())
@@ -272,7 +281,7 @@ fn cmd_get_balance(address: &str) -> Result<i32> {
     Ok(balance)
 }
 
-fn cmd_print_chain() -> Result<()> {
+pub fn cmd_print_chain() -> Result<()> {
     let bc = Blockchain::new()?;
     for b in bc.iter() {
         println!("{:#?}", b);
@@ -290,7 +299,7 @@ fn cmd_list_address() -> Result<()> {
     Ok(())
 }
 
-fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, mine_now: bool) -> Result<()> {
+fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: bool) -> Result<()> {
     let bc = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
 
