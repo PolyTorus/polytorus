@@ -247,7 +247,7 @@ fn error_start_miner(name: &str, usage: &str) -> ! {
     exit(1)
 }
 
-pub fn cmd_create_wallet(encryption: EncryptionType) -> Result<String> {
+fn cmd_create_wallet(encryption: EncryptionType) -> Result<String> {
     let mut ws = Wallets::new()?;
     let address = ws.create_wallet(encryption);
     ws.save_all()?;
@@ -281,7 +281,7 @@ fn cmd_get_balance(address: &str) -> Result<i32> {
     Ok(balance)
 }
 
-pub fn cmd_print_chain() -> Result<()> {
+fn cmd_print_chain() -> Result<()> {
     let bc = Blockchain::new()?;
     for b in bc.iter() {
         println!("{:#?}", b);

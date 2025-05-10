@@ -1,4 +1,4 @@
-use crate::command::cli::cmd_create_wallet;
+use crate::command::cli_createwallet::cmd_create_wallet;
 use crate::crypto::types::EncryptionType;
 use actix_web::{post, web, HttpResponse, Responder};
 use serde::Deserialize;
@@ -21,9 +21,19 @@ struct CryptoPath {
     encryption: String,
 }
 
-#[post("/create_wallet/{encryption}")]
-pub async fn create_wallet(path: web::Path<CryptoPath>) -> impl Responder {
-    match path.encryption.parse::<EncryptionType>() {
+#[post("/create-wallet/{encryption}")]
+pub async fn create_wallet_with_param(path: web::Path<CryptoPath>) -> impl Responder {
+    let enc_str = &path.encryption;
+    handle_create_wallet(enc_str)
+}
+
+#[post("/create-wallet")]
+pub async fn create_wallet_default() -> impl Responder {
+    handle_create_wallet("FNDSA")
+}
+
+fn handle_create_wallet(enc_str: &str) -> HttpResponse {
+    match enc_str.parse::<EncryptionType>() {
         Ok(encryption) => match cmd_create_wallet(encryption) {
             Ok(msg) => HttpResponse::Ok().body(msg),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),

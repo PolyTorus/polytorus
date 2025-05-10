@@ -1,4 +1,4 @@
-use crate::command::cil_listaddresses::cmd_list_address;
+use crate::command::cli_listaddresses::cmd_list_address;
 use actix_web::{post, HttpResponse, Responder};
 
 #[post("/list-addresses")]

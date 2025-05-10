@@ -1,4 +1,4 @@
-use crate::command::cli::cmd_print_chain;
+use crate::command::cli_printchain::cmd_print_chain;
 use actix_web::{post, HttpResponse, Responder};
 
 #[post("/print-chain")]

@@ -1,4 +1,4 @@
-use crate::command::cil_reindex::cmd_reindex;
+use crate::command::cli_reindex::cmd_reindex;
 use actix_web::{post, HttpResponse, Responder};
 
 #[post("/reindex")]

@@ -1,10 +1,10 @@
-use crate::command::cil_startminer::cmd_start_miner_from_api;
+use crate::command::cli_startminer::cmd_start_miner_from_api;
 use actix_web::{post, web, HttpResponse, Responder};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct StartMinerRequest {
-    host: String,
+    host: Option<String>,
     port: String,
     bootstrap: Option<String>,
     mining_address: String,
@@ -14,14 +14,15 @@ struct StartMinerRequest {
 pub async fn start_miner(req: web::Json<StartMinerRequest>) -> impl Responder {
     let req_data = req.into_inner();
     println!(
-        "@start-Miner called: host={}, port={}",
+        "@start-Miner called: host={:?}, port={}",
         req_data.host, req_data.port
     );
 
-    let host = req_data.host.clone();
-    let port = req_data.port.clone();
-    let bootstrap = req_data.bootstrap.clone();
-    let mining_address = req_data.mining_address.clone();
+    let host = req_data.host.unwrap_or_else(|| "0.0.0.0".to_string());
+    let port = req_data.port;
+    let bootstrap = req_data.bootstrap;
+    let mining_address = req_data.mining_address;
+
 
     tokio::task::spawn_blocking(move || {
         if let Err(e) =

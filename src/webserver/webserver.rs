@@ -12,7 +12,8 @@ impl WebServer {
     pub async fn new() -> std::io::Result<()> {
         HttpServer::new(|| {
             App::new()
-                .service(createwallet::create_wallet)
+                .service(createwallet::create_wallet_with_param)
+                .service(createwallet::create_wallet_default)
                 .service(printchain::print_chain)
                 .service(listaddresses::list_addresses)
                 .service(reindex::reindex)
