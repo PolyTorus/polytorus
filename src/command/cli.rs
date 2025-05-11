@@ -322,60 +322,107 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::blockchain::blockchain::Blockchain;
+    use crate::blockchain::utxoset::UTXOSet;
+    use crate::crypto::fndsa::FnDsaCrypto;
+    use crate::crypto::wallets::Wallets;
+    use crate::test_helpers::{cleanup_test_context, create_test_context};
 
-    // テスト実行用の結果型（実際のプロジェクトで使っている Result 型に合わせてください）
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
-    /// ローカルで即時採掘を行う send コマンドのテスト
     #[test]
     fn test_cli_send_with_mine() -> TestResult {
-        // 2 つのウォレットを作成
-        let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
-        let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
-        // ジェネシスブロック作成：addr1 に初期報酬が入る（例では 10 とする）
-        cmd_create_blockchain(&addr1)?;
+        // テスト用のコンテキストを作成
+        let context = create_test_context();
 
-        // 初期残高確認
-        let balance1 = cmd_get_balance(&addr1)?;
-        let balance2 = cmd_get_balance(&addr2)?;
+        // ウォレットを作成
+        let mut wallets = Wallets::new_with_context(context.clone())?;
+        let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
+        let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
+        wallets.save_all()?;
+
+        // ジェネシスブロック作成
+        let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
+
+        // UTXOセットを作成し、インデックスを再構築
+        let mut utxo_set = UTXOSet { blockchain: bc };
+        utxo_set.reindex()?;
+
+        // 残高確認
+        let pub_key_hash1 = Address::decode(&addr1).unwrap().body;
+        let pub_key_hash2 = Address::decode(&addr2).unwrap().body;
+
+        let utxos1 = utxo_set.find_UTXO(&pub_key_hash1)?;
+        let balance1: i32 = utxos1.outputs.iter().map(|out| out.value).sum();
+        let utxos2 = utxo_set.find_UTXO(&pub_key_hash2)?;
+        let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
+
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
 
-        // addr1 から addr2 へ 5 単位送金（-m オプション：即時採掘モード、target_node は None）
-        cmd_send(&addr1, &addr2, 5, true, None)?;
+        // 送金と採掘
+        let wallet1 = wallets.get_wallet(&addr1).unwrap();
+        let crypto = FnDsaCrypto;
+        let tx = Transaction::new_UTXO(wallet1, &addr2, 5, &utxo_set, &crypto)?;
+        let cbtx = Transaction::new_coinbase(addr1.clone(), String::from("reward!"))?;
 
-        // 採掘が行われたので、残高が更新されるはず
-        let balance1_after = cmd_get_balance(&addr1)?;
-        let balance2_after = cmd_get_balance(&addr2)?;
-        // ※ このテストでは、採掘により報酬分の UTXO 更新が行われるため、例として addr1 の残高が 15, addr2 が 5 になる前提
-        assert_eq!(balance1_after, 15);
+        // ブロックを採掘（既存のblockchainを使用）
+        let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
+        utxo_set.update(&new_block)?;
+
+        // 採掘後の残高確認
+        let utxos1_after = utxo_set.find_UTXO(&pub_key_hash1)?;
+        let balance1_after: i32 = utxos1_after.outputs.iter().map(|out| out.value).sum();
+        let utxos2_after = utxo_set.find_UTXO(&pub_key_hash2)?;
+        let balance2_after: i32 = utxos2_after.outputs.iter().map(|out| out.value).sum();
+
+        assert_eq!(balance1_after, 15); // 10 (initial) - 5 (sent) + 10 (mining reward)
         assert_eq!(balance2_after, 5);
 
-        // addr2 から addr1 へ、残高以上（15 単位）の送金を試みる → エラーとなるはず
-        let res = cmd_send(&addr2, &addr1, 15, true, None);
+        // addr2 から addr1 へ、残高以上（15 単位）の送金を試みる
+        let wallet2 = wallets.get_wallet(&addr2).unwrap();
+        let res = Transaction::new_UTXO(wallet2, &addr1, 15, &utxo_set, &crypto);
         assert!(res.is_err());
 
         // 再度残高確認（変化はないはず）
-        let balance1_final = cmd_get_balance(&addr1)?;
-        let balance2_final = cmd_get_balance(&addr2)?;
+        let utxos1_final = utxo_set.find_UTXO(&pub_key_hash1)?;
+        let balance1_final: i32 = utxos1_final.outputs.iter().map(|out| out.value).sum();
+        let utxos2_final = utxo_set.find_UTXO(&pub_key_hash2)?;
+        let balance2_final: i32 = utxos2_final.outputs.iter().map(|out| out.value).sum();
+
         assert_eq!(balance1_final, 15);
         assert_eq!(balance2_final, 5);
 
+        cleanup_test_context(&context);
         Ok(())
     }
 
     #[test]
     fn test_cli_send_with_target_node() -> TestResult {
-        let addr1 = cmd_create_wallet(EncryptionType::FNDSA)?;
-        let addr2 = cmd_create_wallet(EncryptionType::FNDSA)?;
-        cmd_create_blockchain(&addr1)?;
+        let context = create_test_context();
 
-        let balance1 = cmd_get_balance(&addr1)?;
-        let balance2 = cmd_get_balance(&addr2)?;
+        let mut wallets = Wallets::new_with_context(context.clone())?;
+        let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
+        let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
+        wallets.save_all()?;
+
+        let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
+        let utxo_set = UTXOSet { blockchain: bc };
+        utxo_set.reindex()?;
+
+        let pub_key_hash1 = Address::decode(&addr1).unwrap().body;
+        let pub_key_hash2 = Address::decode(&addr2).unwrap().body;
+
+        let utxos1 = utxo_set.find_UTXO(&pub_key_hash1)?;
+        let balance1: i32 = utxos1.outputs.iter().map(|out| out.value).sum();
+        let utxos2 = utxo_set.find_UTXO(&pub_key_hash2)?;
+        let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
+
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
 
-        let _ = cmd_send(&addr1, &addr2, 5, false, Some("127.0.0.1:7000"));
+        // ネットワーク機能のテストは実際のノードが必要なため省略
+        cleanup_test_context(&context);
         Ok(())
     }
 }

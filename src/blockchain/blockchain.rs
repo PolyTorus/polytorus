@@ -1,6 +1,7 @@
 //! Blockchain
 
 use crate::blockchain::block::*;
+use crate::config::DataContext;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
 use crate::Result;
@@ -14,10 +15,11 @@ const GENESIS_COINBASE_DATA: &str =
     "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
 
 /// Blockchain implements interactions with a DB
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Blockchain {
     pub tip: String,
     pub db: sled::Db,
+    pub context: DataContext,
 }
 
 /// BlockchainIterator is used to iterate over blockchain blocks
@@ -27,11 +29,15 @@ pub struct BlockchainIterator<'a> {
 }
 
 impl Blockchain {
-    /// NewBlockchain creates a new Blockchain db
     pub fn new() -> Result<Blockchain> {
+        Self::new_with_context(DataContext::default())
+    }
+
+    /// NewBlockchain creates a new Blockchain db
+    pub fn new_with_context(context: DataContext) -> Result<Blockchain> {
         info!("open blockchain");
 
-        let db = sled::open("data/blocks")?;
+        let db = sled::open(context.blocks_dir())?;
         let hash = match db.get("LAST")? {
             Some(l) => l.to_vec(),
             None => Vec::new(),
@@ -42,15 +48,27 @@ impl Blockchain {
         } else {
             String::from_utf8(hash.to_vec())?
         };
-        Ok(Blockchain { tip: lasthash, db })
+        Ok(Blockchain {
+            tip: lasthash,
+            db,
+            context,
+        })
+    }
+
+    pub fn create_blockchain(address: String) -> Result<Blockchain> {
+        Self::create_blockchain_with_context(address, DataContext::default())
     }
 
     /// CreateBlockchain creates a new blockchain DB
-    pub fn create_blockchain(address: String) -> Result<Blockchain> {
+    pub fn create_blockchain_with_context(
+        address: String,
+        context: DataContext,
+    ) -> Result<Blockchain> {
         info!("Creating new blockchain");
 
-        std::fs::remove_dir_all("data/blocks").ok();
-        let db = sled::open("data/blocks")?;
+        let db_path = context.blocks_dir();
+        std::fs::remove_dir_all(&db_path).ok();
+        let db = sled::open(db_path)?;
         debug!("Creating new block database");
         let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA))?;
         let genesis: Block = Block::new_genesis_block(cbtx);
@@ -59,6 +77,7 @@ impl Blockchain {
         let bc = Blockchain {
             tip: genesis.get_hash(),
             db,
+            context,
         };
         bc.db.flush()?;
         Ok(bc)
