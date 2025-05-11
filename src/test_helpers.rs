@@ -9,7 +9,7 @@ pub fn create_test_context() -> DataContext {
 }
 
 pub fn cleanup_test_context(context: &DataContext) {
-    let _ = std::fs::remove_dir_all(&context.base_dir);
+    std::fs::remove_dir_all(&context.base_dir).ok();
 }
 
 // 自動クリーンアップ用のRAIIガード
