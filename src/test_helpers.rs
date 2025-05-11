@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 pub fn create_test_context() -> DataContext {
-    let test_id = Uuid::new_v4().to_string();
+    let test_id = Uuid::new_v4();
     let base_dir = PathBuf::from(format!("test_data_{}", test_id));
     DataContext::new(base_dir)
 }
