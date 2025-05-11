@@ -146,10 +146,11 @@ impl Wallets {
         Ok(())
     }
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_helpers::{create_test_context, TestContextGuard};
+    use crate::test_helpers::{cleanup_test_context, create_test_context, TestContextGuard};
     use fn_dsa::{
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
         DOMAIN_NONE, HASH_ID_RAW,
@@ -182,6 +183,8 @@ mod test {
         let ws2 = Wallets::new_with_context(context.clone()).unwrap();
         let w2 = ws2.get_wallet(&wa1).unwrap();
         assert_eq!(&w1, w2);
+
+        cleanup_test_context(&context.clone());
     }
 
     #[test]
@@ -191,8 +194,10 @@ mod test {
         let _guard = TestContextGuard::new(context.clone());
         
         let w3 = Wallet::default();
-        let ws2 = Wallets::new_with_context(context).unwrap();
+        let ws2 = Wallets::new_with_context(context.clone()).unwrap();
         ws2.get_wallet(&w3.get_address()).unwrap();
+
+        cleanup_test_context(&context.clone());
     }
 
     #[test]

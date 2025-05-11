@@ -278,11 +278,11 @@ impl TXOutput {
         Ok(txo)
     }
 }
+
 #[cfg(test)]
 mod test {
     use crate::crypto::types::EncryptionType;
-    use crate::test_helpers::create_test_context;
-
+    use crate::test_helpers::{create_test_context, cleanup_test_context};
     use super::*;
     use fn_dsa::{
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
@@ -293,7 +293,7 @@ mod test {
     #[test]
     fn test_signature() {
         let context = create_test_context();
-        let mut ws = Wallets::new_with_context(context).unwrap();
+        let mut ws = Wallets::new_with_context(context.clone()).unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let w = ws.get_wallet(&wa1).unwrap().clone();
         ws.save_all().unwrap();
@@ -318,5 +318,7 @@ mod test {
             &HASH_ID_RAW,
             tx.id.as_bytes()
         ));
+
+        cleanup_test_context(&context.clone());
     }
 }

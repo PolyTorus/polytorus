@@ -322,7 +322,7 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::{create_test_context, TestContextGuard};
+    use crate::test_helpers::{cleanup_test_context, create_test_context, TestContextGuard};
     use crate::crypto::wallets::Wallets;
     use crate::blockchain::blockchain::Blockchain;
     use crate::blockchain::utxoset::UTXOSet;
@@ -394,6 +394,7 @@ mod tests {
         assert_eq!(balance1_final, 15);
         assert_eq!(balance2_final, 5);
 
+        cleanup_test_context(&context);
         Ok(())
     }
 
@@ -423,7 +424,7 @@ mod tests {
         assert_eq!(balance2, 0);
 
         // ネットワーク機能のテストは実際のノードが必要なため省略
-        
+        cleanup_test_context(&context);
         Ok(())
     }
 }
