@@ -1,4 +1,5 @@
 use super::types::*;
+use crate::config::DataContext;
 use crate::Result;
 use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
@@ -13,7 +14,6 @@ use secp256k1::Secp256k1;
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
-use crate::config::DataContext;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -87,8 +87,8 @@ pub struct Wallets {
 }
 
 impl Wallets {
-    pub fn new() -> Result<Wallets> {
-        Self::new_with_context(DataContext::default())
+    pub fn new() -> Result<Wallets> {
+        Self::new_with_context(DataContext::default())
     }
 
     /// NewWallets creates Wallets and fills it from a file if it exists
@@ -155,7 +155,7 @@ mod test {
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
         DOMAIN_NONE, HASH_ID_RAW,
     };
-    
+
     #[test]
     fn test_create_wallet_and_hash() {
         let w1 = Wallet::default();
@@ -174,7 +174,7 @@ mod test {
     fn test_wallets() {
         let context = create_test_context();
         let _guard = TestContextGuard::new(context.clone());
-        
+
         let mut ws = Wallets::new_with_context(context.clone()).unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let w1 = ws.get_wallet(&wa1).unwrap().clone();
@@ -192,7 +192,7 @@ mod test {
     fn test_wallets_not_exist() {
         let context = create_test_context();
         let _guard = TestContextGuard::new(context.clone());
-        
+
         let w3 = Wallet::default();
         let ws2 = Wallets::new_with_context(context.clone()).unwrap();
         ws2.get_wallet(&w3.get_address()).unwrap();

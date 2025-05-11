@@ -1,6 +1,7 @@
 //! Blockchain
 
 use crate::blockchain::block::*;
+use crate::config::DataContext;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
 use crate::Result;
@@ -9,7 +10,6 @@ use failure::format_err;
 use sled;
 use std::collections::HashMap;
 use std::time::SystemTime;
-use crate::config::DataContext;
 
 const GENESIS_COINBASE_DATA: &str =
     "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
@@ -48,7 +48,11 @@ impl Blockchain {
         } else {
             String::from_utf8(hash.to_vec())?
         };
-        Ok(Blockchain { tip: lasthash, db, context })
+        Ok(Blockchain {
+            tip: lasthash,
+            db,
+            context,
+        })
     }
 
     pub fn create_blockchain(address: String) -> Result<Blockchain> {
@@ -56,7 +60,10 @@ impl Blockchain {
     }
 
     /// CreateBlockchain creates a new blockchain DB
-    pub fn create_blockchain_with_context(address: String, context: DataContext) -> Result<Blockchain> {
+    pub fn create_blockchain_with_context(
+        address: String,
+        context: DataContext,
+    ) -> Result<Blockchain> {
         info!("Creating new blockchain");
 
         let db_path = context.blocks_dir();

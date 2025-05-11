@@ -16,7 +16,7 @@ pub const TEST_DIFFICULTY: usize = 1;
 #[cfg(not(test))]
 const INITIAL_DIFFICULTY: usize = 4;
 
-#[cfg(test)] 
+#[cfg(test)]
 const INITIAL_DIFFICULTY: usize = TEST_DIFFICULTY;
 
 const DESIRED_BLOCK_TIME: u128 = 10_000;

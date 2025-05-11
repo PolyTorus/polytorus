@@ -322,11 +322,11 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::{cleanup_test_context, create_test_context};
-    use crate::crypto::wallets::Wallets;
     use crate::blockchain::blockchain::Blockchain;
     use crate::blockchain::utxoset::UTXOSet;
     use crate::crypto::fndsa::FnDsaCrypto;
+    use crate::crypto::wallets::Wallets;
+    use crate::test_helpers::{cleanup_test_context, create_test_context};
 
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
@@ -334,29 +334,29 @@ mod tests {
     fn test_cli_send_with_mine() -> TestResult {
         // テスト用のコンテキストを作成
         let context = create_test_context();
-        
+
         // ウォレットを作成
         let mut wallets = Wallets::new_with_context(context.clone())?;
         let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
         let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
         wallets.save_all()?;
-        
+
         // ジェネシスブロック作成
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
-        
+
         // UTXOセットを作成し、インデックスを再構築
         let mut utxo_set = UTXOSet { blockchain: bc };
         utxo_set.reindex()?;
-        
+
         // 残高確認
         let pub_key_hash1 = Address::decode(&addr1).unwrap().body;
         let pub_key_hash2 = Address::decode(&addr2).unwrap().body;
-        
+
         let utxos1 = utxo_set.find_UTXO(&pub_key_hash1)?;
         let balance1: i32 = utxos1.outputs.iter().map(|out| out.value).sum();
         let utxos2 = utxo_set.find_UTXO(&pub_key_hash2)?;
         let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
-        
+
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
 
@@ -365,7 +365,7 @@ mod tests {
         let crypto = FnDsaCrypto;
         let tx = Transaction::new_UTXO(wallet1, &addr2, 5, &utxo_set, &crypto)?;
         let cbtx = Transaction::new_coinbase(addr1.clone(), String::from("reward!"))?;
-        
+
         // ブロックを採掘（既存のblockchainを使用）
         let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
@@ -375,7 +375,7 @@ mod tests {
         let balance1_after: i32 = utxos1_after.outputs.iter().map(|out| out.value).sum();
         let utxos2_after = utxo_set.find_UTXO(&pub_key_hash2)?;
         let balance2_after: i32 = utxos2_after.outputs.iter().map(|out| out.value).sum();
-        
+
         assert_eq!(balance1_after, 15); // 10 (initial) - 5 (sent) + 10 (mining reward)
         assert_eq!(balance2_after, 5);
 
@@ -389,7 +389,7 @@ mod tests {
         let balance1_final: i32 = utxos1_final.outputs.iter().map(|out| out.value).sum();
         let utxos2_final = utxo_set.find_UTXO(&pub_key_hash2)?;
         let balance2_final: i32 = utxos2_final.outputs.iter().map(|out| out.value).sum();
-        
+
         assert_eq!(balance1_final, 15);
         assert_eq!(balance2_final, 5);
 
@@ -400,24 +400,24 @@ mod tests {
     #[test]
     fn test_cli_send_with_target_node() -> TestResult {
         let context = create_test_context();
-        
+
         let mut wallets = Wallets::new_with_context(context.clone())?;
         let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
         let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
         wallets.save_all()?;
-        
+
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
         let utxo_set = UTXOSet { blockchain: bc };
         utxo_set.reindex()?;
-        
+
         let pub_key_hash1 = Address::decode(&addr1).unwrap().body;
         let pub_key_hash2 = Address::decode(&addr2).unwrap().body;
-        
+
         let utxos1 = utxo_set.find_UTXO(&pub_key_hash1)?;
         let balance1: i32 = utxos1.outputs.iter().map(|out| out.value).sum();
         let utxos2 = utxo_set.find_UTXO(&pub_key_hash2)?;
         let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
-        
+
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
 
@@ -426,4 +426,3 @@ mod tests {
         Ok(())
     }
 }
-

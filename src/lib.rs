@@ -3,11 +3,11 @@
 // src/lib.rs
 pub mod blockchain;
 pub mod command;
+pub mod config;
 pub mod crypto;
 pub mod network;
-pub mod webserver;
-pub mod config;
 pub mod test_helpers;
+pub mod webserver;
 
 #[macro_use]
 extern crate log;

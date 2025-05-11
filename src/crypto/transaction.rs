@@ -281,9 +281,9 @@ impl TXOutput {
 
 #[cfg(test)]
 mod test {
-    use crate::crypto::types::EncryptionType;
-    use crate::test_helpers::{create_test_context, cleanup_test_context};
     use super::*;
+    use crate::crypto::types::EncryptionType;
+    use crate::test_helpers::{cleanup_test_context, create_test_context};
     use fn_dsa::{
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
         DOMAIN_NONE, HASH_ID_RAW,

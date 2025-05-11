@@ -10,15 +10,15 @@ impl DataContext {
     pub fn new(base_dir: PathBuf) -> Self {
         Self { base_dir }
     }
-    
+
     pub fn blocks_dir(&self) -> PathBuf {
         self.base_dir.join("blocks")
     }
-    
+
     pub fn wallets_dir(&self) -> PathBuf {
         self.base_dir.join("wallets")
     }
-    
+
     pub fn utxos_dir(&self) -> PathBuf {
         self.base_dir.join("utxos")
     }

@@ -21,7 +21,7 @@ impl TestContextGuard {
     pub fn new(context: DataContext) -> Self {
         Self { context }
     }
-    
+
     pub fn context(&self) -> &DataContext {
         &self.context
     }
@@ -36,7 +36,7 @@ impl Drop for TestContextGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_context_creation() {
         let context = create_test_context();
