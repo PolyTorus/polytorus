@@ -322,7 +322,7 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::{cleanup_test_context, create_test_context, TestContextGuard};
+    use crate::test_helpers::{cleanup_test_context, create_test_context};
     use crate::crypto::wallets::Wallets;
     use crate::blockchain::blockchain::Blockchain;
     use crate::blockchain::utxoset::UTXOSet;
@@ -334,7 +334,6 @@ mod tests {
     fn test_cli_send_with_mine() -> TestResult {
         // テスト用のコンテキストを作成
         let context = create_test_context();
-        let _guard = TestContextGuard::new(context.clone());
         
         // ウォレットを作成
         let mut wallets = Wallets::new_with_context(context.clone())?;
@@ -401,7 +400,6 @@ mod tests {
     #[test]
     fn test_cli_send_with_target_node() -> TestResult {
         let context = create_test_context();
-        let _guard = TestContextGuard::new(context.clone());
         
         let mut wallets = Wallets::new_with_context(context.clone())?;
         let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
