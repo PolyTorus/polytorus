@@ -13,6 +13,7 @@ use secp256k1::Secp256k1;
 use serde::{Deserialize, Serialize};
 use sled;
 use std::collections::HashMap;
+use crate::config::DataContext;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -81,15 +82,22 @@ pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Wallets {
     wallets: HashMap<String, Wallet>,
+    #[serde(skip)]
+    context: DataContext,
 }
 
 impl Wallets {
+    pub fn new() -> Result<Wallets> {
+        Self::new_with_context(DataContext::default())
+    }
+
     /// NewWallets creates Wallets and fills it from a file if it exists
-    pub fn new() -> Result<Wallets> {
+    pub fn new_with_context(context: DataContext) -> Result<Wallets> {
         let mut wlt = Wallets {
             wallets: HashMap::<String, Wallet>::new(),
+            context: context.clone(),
         };
-        let db = sled::open("data/wallets")?;
+        let db = sled::open(context.wallets_dir())?;
 
         for item in db.into_iter() {
             let i = item?;
@@ -126,7 +134,7 @@ impl Wallets {
 
     /// SaveToFile saves wallets to a file
     pub fn save_all(&self) -> Result<()> {
-        let db = sled::open("data/wallets")?;
+        let db = sled::open(self.context.wallets_dir())?;
 
         for (address, wallet) in &self.wallets {
             let data = serialize(wallet)?;
@@ -142,10 +150,12 @@ impl Wallets {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::test_helpers::{cleanup_test_context, create_test_context, TestContextGuard};
     use fn_dsa::{
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
         DOMAIN_NONE, HASH_ID_RAW,
     };
+    
     #[test]
     fn test_create_wallet_and_hash() {
         let w1 = Wallet::default();
@@ -162,22 +172,32 @@ mod test {
 
     #[test]
     fn test_wallets() {
-        let mut ws = Wallets::new().unwrap();
+        let context = create_test_context();
+        let _guard = TestContextGuard::new(context.clone());
+        
+        let mut ws = Wallets::new_with_context(context.clone()).unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let w1 = ws.get_wallet(&wa1).unwrap().clone();
         ws.save_all().unwrap();
 
-        let ws2 = Wallets::new().unwrap();
+        let ws2 = Wallets::new_with_context(context.clone()).unwrap();
         let w2 = ws2.get_wallet(&wa1).unwrap();
         assert_eq!(&w1, w2);
+
+        cleanup_test_context(&context.clone());
     }
 
     #[test]
     #[should_panic]
     fn test_wallets_not_exist() {
+        let context = create_test_context();
+        let _guard = TestContextGuard::new(context.clone());
+        
         let w3 = Wallet::default();
-        let ws2 = Wallets::new().unwrap();
+        let ws2 = Wallets::new_with_context(context.clone()).unwrap();
         ws2.get_wallet(&w3.get_address()).unwrap();
+
+        cleanup_test_context(&context.clone());
     }
 
     #[test]

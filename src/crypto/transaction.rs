@@ -282,7 +282,7 @@ impl TXOutput {
 #[cfg(test)]
 mod test {
     use crate::crypto::types::EncryptionType;
-
+    use crate::test_helpers::{create_test_context, cleanup_test_context};
     use super::*;
     use fn_dsa::{
         signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
@@ -292,7 +292,8 @@ mod test {
 
     #[test]
     fn test_signature() {
-        let mut ws = Wallets::new().unwrap();
+        let context = create_test_context();
+        let mut ws = Wallets::new_with_context(context.clone()).unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let w = ws.get_wallet(&wa1).unwrap().clone();
         ws.save_all().unwrap();
@@ -302,8 +303,6 @@ mod test {
         let tx = Transaction::new_coinbase(wa1, data).unwrap();
         assert!(tx.is_coinbase());
 
-        // let signature = ed25519::signature(tx.id.as_bytes(), &w.secret_key);
-        // assert!(ed25519::verify(tx.id.as_bytes(), &w.public_key, &signature));
         let mut sk = SigningKeyStandard::decode(&w.secret_key).unwrap();
         let mut signature = vec![0u8; signature_size(sk.get_logn())];
         sk.sign(
@@ -319,5 +318,7 @@ mod test {
             &HASH_ID_RAW,
             tx.id.as_bytes()
         ));
+
+        cleanup_test_context(&context.clone());
     }
 }

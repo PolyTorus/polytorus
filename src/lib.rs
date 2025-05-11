@@ -6,6 +6,8 @@ pub mod command;
 pub mod crypto;
 pub mod network;
 pub mod webserver;
+pub mod config;
+pub mod test_helpers;
 
 #[macro_use]
 extern crate log;
