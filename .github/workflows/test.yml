@@ -23,5 +23,4 @@ jobs:
 
       - name: Test
         run: |
-          export RUST_TEST_THREADS=${{ runner.cpus:-1 }}
-          cargo test
+          export RUST_TEST_THREADS=${{ runner.cpus }}

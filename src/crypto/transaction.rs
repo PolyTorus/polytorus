@@ -281,7 +281,7 @@ impl TXOutput {
 #[cfg(test)]
 mod test {
     use crate::crypto::types::EncryptionType;
-    use crate::test_helpers::{create_test_context, TestContextGuard};
+    use crate::test_helpers::create_test_context;
 
     use super::*;
     use fn_dsa::{
@@ -293,8 +293,6 @@ mod test {
     #[test]
     fn test_signature() {
         let context = create_test_context();
-        let _guard = TestContextGuard::new(context.clone());
-        
         let mut ws = Wallets::new_with_context(context).unwrap();
         let wa1 = ws.create_wallet(EncryptionType::FNDSA);
         let w = ws.get_wallet(&wa1).unwrap().clone();
