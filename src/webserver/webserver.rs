@@ -1,3 +1,4 @@
+use crate::webserver::createblockchain;
 use crate::webserver::createwallet;
 use crate::webserver::listaddresses;
 use crate::webserver::printchain;
@@ -18,6 +19,7 @@ impl WebServer {
                 .service(reindex::reindex)
                 .service(startnode::start_node)
                 .service(startminer::start_miner)
+                .service(createblockchain::create_blockchain)
         })
         .bind(("127.0.0.1", 7000))?
         .run()
