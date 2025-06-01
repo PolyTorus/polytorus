@@ -1107,7 +1107,7 @@ impl Server {
                     error_message: format!("Wallet not found: {}", msg.address),
                 });
             }
-        }
+        };
         let mut tx = msg.transaction.clone();
         
         // Extract encryption type from wallet address
