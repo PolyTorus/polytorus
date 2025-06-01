@@ -184,7 +184,8 @@ mod test {
         let w1 = Wallet::default();
         let w2 = Wallet::default();
         assert_ne!(w1, w2);
-        assert_ne!(w1.get_address(), w2.get_address());        let mut p2 = w2.public_key.clone();
+        assert_ne!(w1.get_address(), w2.get_address());
+        let mut p2 = w2.public_key.clone();
         hash_pub_key(&mut p2);
         assert_eq!(p2.len(), 20);
         let (base_address, _) = extract_encryption_type(&w2.get_address()).unwrap();
