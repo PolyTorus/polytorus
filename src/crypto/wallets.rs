@@ -1,4 +1,7 @@
 use super::types::*;
+// use super::traits::CryptoProvider;
+// use super::ecdsa::EcdsaCrypto;
+// use super::fndsa::FnDsaCrypto;
 use crate::config::DataContext;
 use crate::Result;
 use bincode::{deserialize, serialize};
@@ -19,10 +22,10 @@ use std::collections::HashMap;
 pub struct Wallet {
     pub secret_key: Vec<u8>,
     pub public_key: Vec<u8>,
+    pub encryption_type: EncryptionType,
 }
 
-impl Wallet {
-    /// NewWallet creates and returns a Wallet
+impl Wallet {    /// NewWallet creates and returns a Wallet
     fn new(encryption: EncryptionType) -> Self {
         match encryption {
             EncryptionType::FNDSA => {
@@ -34,6 +37,7 @@ impl Wallet {
                 Wallet {
                     secret_key: sign_key.to_vec(),
                     public_key: vrfy_key.to_vec(),
+                    encryption_type: EncryptionType::FNDSA,
                 }
             }
             EncryptionType::ECDSA => {
@@ -43,12 +47,11 @@ impl Wallet {
                 Wallet {
                     secret_key: secret_key.secret_bytes().to_vec(),
                     public_key: public_key.serialize().to_vec(),
+                    encryption_type: EncryptionType::ECDSA,
                 }
             }
         }
-    }
-
-    /// GetAddress returns wallet address
+    }    /// GetAddress returns wallet address
     pub fn get_address(&self) -> String {
         let mut pub_hash: Vec<u8> = self.public_key.clone();
         hash_pub_key(&mut pub_hash);
@@ -58,7 +61,15 @@ impl Wallet {
             hash_type: HashType::Script,
             ..Default::default()
         };
-        address.encode().unwrap()
+        let base_address = address.encode().unwrap();
+        
+        // 暗号化方式を末尾に追加
+        let encryption_suffix = match self.encryption_type {
+            EncryptionType::ECDSA => "-ECDSA",
+            EncryptionType::FNDSA => "-FNDSA",
+        };
+        
+        format!("{}{}", base_address, encryption_suffix)
     }
 }
 
@@ -77,6 +88,20 @@ pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
     hasher2.input(pubKey);
     pubKey.resize(20, 0);
     hasher2.result(pubKey);
+}
+
+/// Extract encryption type from address
+pub fn extract_encryption_type(address: &str) -> Result<(String, EncryptionType)> {
+    if address.ends_with("-ECDSA") {
+        let base_address = address.strip_suffix("-ECDSA").unwrap().to_string();
+        Ok((base_address, EncryptionType::ECDSA))
+    } else if address.ends_with("-FNDSA") {
+        let base_address = address.strip_suffix("-FNDSA").unwrap().to_string();
+        Ok((base_address, EncryptionType::FNDSA))
+    } else {
+        // 後方互換性のためデフォルトでFNDSAを使用
+        Ok((address.to_string(), EncryptionType::FNDSA))
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -161,12 +186,11 @@ mod test {
         let w1 = Wallet::default();
         let w2 = Wallet::default();
         assert_ne!(w1, w2);
-        assert_ne!(w1.get_address(), w2.get_address());
-
-        let mut p2 = w2.public_key.clone();
+        assert_ne!(w1.get_address(), w2.get_address());        let mut p2 = w2.public_key.clone();
         hash_pub_key(&mut p2);
         assert_eq!(p2.len(), 20);
-        let pub_key_hash = Address::decode(&w2.get_address()).unwrap().body;
+        let (base_address, _) = extract_encryption_type(&w2.get_address()).unwrap();
+        let pub_key_hash = Address::decode(&base_address).unwrap().body;
         assert_eq!(pub_key_hash, p2);
     }
 
