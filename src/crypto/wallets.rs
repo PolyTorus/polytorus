@@ -22,7 +22,8 @@ pub struct Wallet {
     pub encryption_type: EncryptionType,
 }
 
-impl Wallet {    /// NewWallet creates and returns a Wallet
+/// NewWallet creates and returns a Wallet
+impl Wallet {
     fn new(encryption: EncryptionType) -> Self {
         match encryption {
             EncryptionType::FNDSA => {
