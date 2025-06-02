@@ -1,5 +1,6 @@
 use crate::blockchain::utxoset::*;
 use crate::crypto::traits::CryptoProvider;
+use crate::crypto::types::EncryptionType;
 
 use crate::crypto::wallets::*;
 use crate::Result;
@@ -23,6 +24,17 @@ pub struct TXInput {
     pub vout: i32,
     pub signature: Vec<u8>,
     pub pub_key: Vec<u8>,
+}
+
+/// Determine encryption type based on public key size
+fn determine_encryption_type(pub_key: &[u8]) -> EncryptionType {
+    // ECDSA public keys are typically 33 bytes (compressed) or 65 bytes (uncompressed)
+    // FN-DSA public keys are typically much larger (around 897 bytes for LOGN=512)
+    if pub_key.len() <= 65 {
+        EncryptionType::ECDSA
+    } else {
+        EncryptionType::FNDSA
+    }
 }
 
 /// TXOutput represents a transaction output
@@ -160,21 +172,38 @@ impl Transaction {
             // if !ed25519::verify(
             //     &tx_copy.id.as_bytes(), // message
             //     &self.vin[in_id].pub_key, // public key
-            //     &self.vin[in_id].signature, // signature
-            // ) {
+            //     &self.vin[in_id].signature, // signature            // ) {
             //     return Ok(false);
             // }
 
-            if !VerifyingKeyStandard::decode(&self.vin[in_id].pub_key)
-                .unwrap()
-                .verify(
-                    &self.vin[in_id].signature,
-                    &DOMAIN_NONE,
-                    &HASH_ID_RAW,
-                    tx_copy.id.as_bytes(),
-                )
-            {
-                return Ok(false);
+            // Determine encryption type based on public key size
+            let encryption_type = determine_encryption_type(&self.vin[in_id].pub_key);
+            
+            match encryption_type {
+                EncryptionType::FNDSA => {
+                    if !VerifyingKeyStandard::decode(&self.vin[in_id].pub_key)
+                        .unwrap()
+                        .verify(
+                            &self.vin[in_id].signature,
+                            &DOMAIN_NONE,
+                            &HASH_ID_RAW,
+                            tx_copy.id.as_bytes(),
+                        )
+                    {
+                        return Ok(false);
+                    }
+                }
+                EncryptionType::ECDSA => {
+                    use crate::crypto::ecdsa::EcdsaCrypto;
+                    let crypto = EcdsaCrypto;
+                    if !crypto.verify(
+                        &self.vin[in_id].pub_key,
+                        tx_copy.id.as_bytes(),
+                        &self.vin[in_id].signature,
+                    ) {
+                        return Ok(false);
+                    }
+                }
             }
         }
 
@@ -260,10 +289,11 @@ impl TXOutput {
     /// IsLockedWithKey checks if the output can be used by the owner of the pubkey
     pub fn is_locked_with_key(&self, pub_key_hash: &[u8]) -> bool {
         self.pub_key_hash == pub_key_hash
-    }
-    /// Lock signs the output
+    }    /// Lock signs the output
     fn lock(&mut self, address: &str) -> Result<()> {
-        let pub_key_hash = Address::decode(address).unwrap().body;
+        // Extract base address without encryption suffix
+        let (base_address, _) = extract_encryption_type(address)?;
+        let pub_key_hash = Address::decode(&base_address).unwrap().body;
         debug!("lock: {}", address);
         self.pub_key_hash = pub_key_hash;
         Ok(())

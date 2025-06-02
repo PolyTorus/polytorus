@@ -2,3 +2,5 @@
 proptest-regressions/
 data/
 .idea/
+coverage.lcov
+coverage-html

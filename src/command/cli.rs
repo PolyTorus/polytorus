@@ -2,7 +2,6 @@
 
 use crate::blockchain::blockchain::*;
 use crate::blockchain::utxoset::*;
-use crate::crypto::fndsa::*;
 use crate::crypto::transaction::*;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
@@ -217,9 +216,10 @@ fn cmd_send(
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
     let wallet = wallets.get_wallet(from).unwrap();
-    // TODO: 暗号化方式を選択
-    let crypto = FnDsaCrypto;
-    let tx = Transaction::new_UTXO(wallet, to, amount, &utxo_set, &crypto)?;
+    
+    // ウォレットの暗号化方式を使用
+    let crypto = crate::crypto::get_crypto_provider(&wallet.encryption_type);
+    let tx = Transaction::new_UTXO(wallet, to, amount, &utxo_set, crypto.as_ref())?;
     if mine_now {
         let cbtx = Transaction::new_coinbase(from.to_string(), String::from("reward!"))?;
         let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
@@ -272,7 +272,9 @@ fn cmd_create_blockchain(address: &str) -> Result<()> {
 }
 
 fn cmd_get_balance(address: &str) -> Result<i32> {
-    let pub_key_hash = Address::decode(address).unwrap().body;
+    // Extract base address without encryption suffix
+    let (base_address, _) = extract_encryption_type(address)?;
+    let pub_key_hash = Address::decode(&base_address).unwrap().body;
     let bc = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
     let utxos = utxo_set.find_UTXO(&pub_key_hash)?;
@@ -345,12 +347,13 @@ mod tests {
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
 
         // UTXOセットを作成し、インデックスを再構築
-        let mut utxo_set = UTXOSet { blockchain: bc };
-        utxo_set.reindex()?;
+        let mut utxo_set = UTXOSet { blockchain: bc };        utxo_set.reindex()?;
 
         // 残高確認
-        let pub_key_hash1 = Address::decode(&addr1).unwrap().body;
-        let pub_key_hash2 = Address::decode(&addr2).unwrap().body;
+        let (base_addr1, _) = extract_encryption_type(&addr1)?;
+        let (base_addr2, _) = extract_encryption_type(&addr2)?;
+        let pub_key_hash1 = Address::decode(&base_addr1).unwrap().body;
+        let pub_key_hash2 = Address::decode(&base_addr2).unwrap().body;
 
         let utxos1 = utxo_set.find_UTXO(&pub_key_hash1)?;
         let balance1: i32 = utxos1.outputs.iter().map(|out| out.value).sum();
@@ -407,11 +410,12 @@ mod tests {
         wallets.save_all()?;
 
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
-        let utxo_set = UTXOSet { blockchain: bc };
-        utxo_set.reindex()?;
+        let utxo_set = UTXOSet { blockchain: bc };        utxo_set.reindex()?;
 
-        let pub_key_hash1 = Address::decode(&addr1).unwrap().body;
-        let pub_key_hash2 = Address::decode(&addr2).unwrap().body;
+        let (base_addr1, _) = extract_encryption_type(&addr1)?;
+        let (base_addr2, _) = extract_encryption_type(&addr2)?;
+        let pub_key_hash1 = Address::decode(&base_addr1).unwrap().body;
+        let pub_key_hash2 = Address::decode(&base_addr2).unwrap().body;
 
         let utxos1 = utxo_set.find_UTXO(&pub_key_hash1)?;
         let balance1: i32 = utxos1.outputs.iter().map(|out| out.value).sum();
