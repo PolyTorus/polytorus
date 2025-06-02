@@ -10,6 +10,8 @@ use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
 use clap::{App, Arg, ArgMatches};
+use hex;
+use std::fs;
 use std::process::exit;
 use std::vec;
 
@@ -102,10 +104,36 @@ impl Cli {
                     ))
                     .arg(Arg::from_usage("<to> 'Destination wallet address'"))
                     .arg(Arg::from_usage("<amount> 'Amount to send'"))
-                    .arg(Arg::from_usage("<node> 'Remote node address (host:port)'"))
-                    .arg(Arg::from_usage(
+                    .arg(Arg::from_usage("<node> 'Remote node address (host:port)'"))                    .arg(Arg::from_usage(
                         "-m --mine 'mine immediately on the remote node'",
                     )),
+            )
+            .subcommand(
+                App::new("deploycontract")
+                    .about("deploy a smart contract")
+                    .arg(Arg::from_usage("<wallet> 'Wallet address to pay for deployment'"))
+                    .arg(Arg::from_usage("<bytecode-file> 'Path to WASM bytecode file'"))
+                    .arg(Arg::from_usage("[gas-limit] 'Gas limit for deployment (default: 1000000)'"))
+                    .arg(Arg::from_usage("-m --mine 'mine immediately'"))
+            )
+            .subcommand(
+                App::new("callcontract")
+                    .about("call a smart contract function")
+                    .arg(Arg::from_usage("<wallet> 'Wallet address to pay for call'"))
+                    .arg(Arg::from_usage("<contract> 'Contract address'"))
+                    .arg(Arg::from_usage("<function> 'Function name to call'"))
+                    .arg(Arg::from_usage("[value] 'Value to send (default: 0)'"))
+                    .arg(Arg::from_usage("[gas-limit] 'Gas limit for call (default: 100000)'"))
+                    .arg(Arg::from_usage("-m --mine 'mine immediately'"))
+            )
+            .subcommand(
+                App::new("listcontracts")
+                    .about("list all deployed contracts")
+            )
+            .subcommand(
+                App::new("contractstate")
+                    .about("get contract state")
+                    .arg(Arg::from_usage("<contract> 'Contract address'"))
             )
             .get_matches();
 
@@ -183,14 +211,48 @@ impl Cli {
                     utxo_set,
                 )?;
                 server.start_server()?;
-            }
-            ("remotesend", Some(sub_m)) => {
+            }            ("remotesend", Some(sub_m)) => {
                 let from = sub_m.value_of("from").unwrap();
                 let to = sub_m.value_of("to").unwrap();
                 let amount: i32 = sub_m.value_of("amount").unwrap().parse()?;
                 let node = sub_m.value_of("node").unwrap();
                 let mine = sub_m.is_present("mine");
                 cmd_remote_send(from, to, amount, node, mine)?;
+            }
+            ("deploycontract", Some(sub_m)) => {
+                let wallet = get_value("wallet", sub_m)?;
+                let bytecode_file = get_value("bytecode-file", sub_m)?;
+                let gas_limit: u64 = if let Some(gas) = sub_m.value_of("gas-limit") {
+                    gas.parse()?
+                } else {
+                    1000000
+                };
+                let mine_now = sub_m.is_present("mine");
+                cmd_deploy_contract(wallet, bytecode_file, gas_limit, mine_now)?;
+            }
+            ("callcontract", Some(sub_m)) => {
+                let wallet = get_value("wallet", sub_m)?;
+                let contract = get_value("contract", sub_m)?;
+                let function = get_value("function", sub_m)?;
+                let value: i32 = if let Some(v) = sub_m.value_of("value") {
+                    v.parse()?
+                } else {
+                    0
+                };
+                let gas_limit: u64 = if let Some(gas) = sub_m.value_of("gas-limit") {
+                    gas.parse()?
+                } else {
+                    100000
+                };
+                let mine_now = sub_m.is_present("mine");
+                cmd_call_contract(wallet, contract, function, value, gas_limit, mine_now)?;
+            }
+            ("listcontracts", Some(_)) => {
+                cmd_list_contracts()?;
+            }
+            ("contractstate", Some(sub_m)) => {
+                let contract = get_value("contract", sub_m)?;
+                cmd_contract_state(contract)?;
             }
             _ => {}
         }
@@ -309,6 +371,7 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
         id: String::new(),
         vin: Vec::new(),
         vout: vec![TXOutput::new(amount, to.to_string())?],
+        contract_data: None,
     };
 
     let server = Server::new("0.0.0.0", "0", "", None, utxo_set)?;
@@ -318,6 +381,144 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
     server.send_tx(node, &signed_tx)?;
 
     println!("Transaction sent successfully!");
+    Ok(())
+}
+
+// Smart contract command functions
+fn cmd_deploy_contract(wallet: &str, bytecode_file: &str, gas_limit: u64, mine_now: bool) -> Result<()> {    // Read bytecode from file
+    let bytecode = fs::read(bytecode_file)
+        .map_err(|e| failure::Error::from(e))?;
+      // Validate bytecode size
+    if bytecode.len() > 1024 * 1024 {  // 1MB limit
+        return Err(failure::err_msg("Bytecode file too large (max 1MB)"));
+    }
+    
+    let bc = Blockchain::new()?;
+    let mut utxo_set = UTXOSet { blockchain: bc };    let wallets = Wallets::new()?;
+    let wallet_obj = wallets.get_wallet(wallet)
+        .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?;
+
+    // Create contract deployment transaction
+    let crypto = crate::crypto::get_crypto_provider(&wallet_obj.encryption_type);
+    let tx = Transaction::new_contract_deployment(
+        wallet_obj,
+        bytecode,
+        Vec::new(), // constructor_args
+        gas_limit,
+        &utxo_set,
+        crypto.as_ref()    )?;
+
+    if mine_now {
+        // Mine immediately
+        let contract_address = tx.id.clone(); // Store contract address before moving
+        let cbtx = Transaction::new_coinbase(wallet.to_string(), String::from("reward!"))?;
+        let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
+        utxo_set.update(&new_block)?;
+          // Get contract address from the transaction
+        if let Some(contract_data) = new_block.get_transaction().last().unwrap().contract_data.as_ref() {
+            if let ContractTransactionData { tx_type: ContractTransactionType::Deploy { gas_limit, .. }, .. } = contract_data {
+                println!("Contract deployed successfully!");
+                println!("Contract Address: {}", contract_address); // Use stored contract address
+                println!("Gas Limit: {}", gas_limit);
+                return Ok(());
+            }
+        }
+        println!("Contract deployed successfully! (Address will be available after mining)");    } else {
+        // Send to network (not implemented in this example)
+        let tx_id = tx.id.clone(); // Store transaction ID before moving
+        println!("Contract deployment transaction created. Use --mine to deploy immediately.");
+        println!("Transaction ID: {}", tx_id);
+    }
+
+    Ok(())
+}
+
+fn cmd_call_contract(wallet: &str, contract: &str, function: &str, value: i32, gas_limit: u64, mine_now: bool) -> Result<()> {
+    let bc = Blockchain::new()?;
+    let mut utxo_set = UTXOSet { blockchain: bc };    let wallets = Wallets::new()?;
+    let wallet_obj = wallets.get_wallet(wallet)
+        .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?;    // Verify contract exists
+    let contract_state = utxo_set.blockchain.get_contract_state(contract)?;
+    if contract_state.is_empty() {
+        return Err(failure::err_msg(format!("Contract '{}' not found", contract)));
+    }
+
+    // Create function call data (simplified - in practice you'd want proper ABI encoding)
+    let call_data = format!("{}()", function).into_bytes();    // Create contract call transaction
+    let crypto = crate::crypto::get_crypto_provider(&wallet_obj.encryption_type);
+    let tx = Transaction::new_contract_call(
+        wallet_obj,
+        contract.to_string(),
+        function.to_string(),
+        call_data,
+        gas_limit,
+        value as u64,
+        &utxo_set,
+        crypto.as_ref()
+    )?;    if mine_now {
+        // Mine immediately
+        let _tx_id = tx.id.clone(); // Store transaction ID before moving
+        let cbtx = Transaction::new_coinbase(wallet.to_string(), String::from("reward!"))?;
+        let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
+        utxo_set.update(&new_block)?;
+        
+        println!("Contract function called successfully!");
+        println!("Function: {}", function);
+        println!("Gas Limit: {}", gas_limit);
+    } else {
+        // Send to network (not implemented in this example)
+        let tx_id = tx.id.clone(); // Store transaction ID before moving
+        println!("Contract call transaction created. Use --mine to execute immediately.");
+        println!("Transaction ID: {}", tx_id);
+    }
+
+    Ok(())
+}
+
+fn cmd_list_contracts() -> Result<()> {
+    let bc = Blockchain::new()?;
+    let contracts = bc.list_contracts()?;
+    
+    if contracts.is_empty() {
+        println!("No contracts deployed.");
+        return Ok(());
+    }
+      println!("Deployed Contracts:");
+    println!("==================");
+    for contract_metadata in contracts {
+        println!("Address: {}", contract_metadata.address);
+        println!("Creator: {}", contract_metadata.creator);
+        println!("Created At: {}", contract_metadata.created_at);
+        println!("Bytecode Hash: {}", contract_metadata.bytecode_hash);
+        if let Some(abi) = &contract_metadata.abi {
+            println!("ABI: {}", abi);
+        }
+        println!("---");
+    }
+    
+    Ok(())
+}
+
+fn cmd_contract_state(contract: &str) -> Result<()> {
+    let bc = Blockchain::new()?;
+    let state = bc.get_contract_state(contract)?;
+    
+    if !state.is_empty() {
+        println!("Contract State for: {}", contract);
+        println!("==================");
+        
+        // Display storage
+        println!("Storage:");
+        for (key, value) in state {
+            println!("  {}: {}", 
+                hex::encode(key.as_bytes()), 
+                String::from_utf8_lossy(&value)
+            );
+        }
+    } else {
+        println!("Contract '{}' not found or has no state.", contract);
+    }
+    
     Ok(())
 }
 

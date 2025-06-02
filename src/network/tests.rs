@@ -282,13 +282,12 @@ mod tests {
             Err(e) => {
                 panic!("Failed to start test server: {}", e);
             }
-        };
-
-        // Create an unsigned transaction (dummy transaction for testing)
+        };        // Create an unsigned transaction (dummy transaction for testing)
         let tx = Transaction {
             id: String::new(),
             vin: Vec::new(),
             vout: vec![],
+            contract_data: None,
         };
 
         // Try to request remote signing

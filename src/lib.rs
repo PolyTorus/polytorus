@@ -6,6 +6,7 @@ pub mod command;
 pub mod config;
 pub mod crypto;
 pub mod network;
+pub mod smart_contract;
 pub mod test_helpers;
 pub mod webserver;
 

@@ -1,3 +1,4 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/PolyTorus/polytorus)
 <div align="center">
     <h1>PolyTorus</h1>
     <p>A Quantum-Resistant Blockchain Implementation</P>

@@ -50,12 +50,37 @@ pub struct TXOutputs {
     pub outputs: Vec<TXOutput>,
 }
 
-/// Transaction represents a Bitcoin transaction
+/// Transaction represents a blockchain transaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Transaction {
     pub id: String,
     pub vin: Vec<TXInput>,
     pub vout: Vec<TXOutput>,
+    pub contract_data: Option<ContractTransactionData>,
+}
+
+/// Smart contract transaction data
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ContractTransactionData {
+    pub tx_type: ContractTransactionType,
+    pub data: Vec<u8>,
+}
+
+/// Types of contract transactions
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ContractTransactionType {
+    Deploy {
+        bytecode: Vec<u8>,
+        constructor_args: Vec<u8>,
+        gas_limit: u64,
+    },
+    Call {
+        contract_address: String,
+        function_name: String,
+        arguments: Vec<u8>,
+        gas_limit: u64,
+        value: u64,
+    },
 }
 
 impl Transaction {
@@ -108,6 +133,7 @@ impl Transaction {
             id: String::new(),
             vin,
             vout,
+            contract_data: None,
         };
         tx.id = tx.hash()?;
         utxo.blockchain
@@ -136,8 +162,131 @@ impl Transaction {
                 pub_key,
             }],
             vout: vec![TXOutput::new(SUBSIDY, to)?],
+            contract_data: None,
         };
         tx.id = tx.hash()?;
+        Ok(tx)
+    }
+
+    /// Create a new contract deployment transaction
+    pub fn new_contract_deployment(
+        wallet: &Wallet,
+        bytecode: Vec<u8>,
+        constructor_args: Vec<u8>,
+        gas_limit: u64,
+        utxo: &UTXOSet,
+        crypto: &dyn CryptoProvider,
+    ) -> Result<Transaction> {
+        info!("Creating contract deployment transaction from: {}", wallet.get_address());
+        
+        let contract_data = ContractTransactionData {
+            tx_type: ContractTransactionType::Deploy {
+                bytecode,
+                constructor_args,
+                gas_limit,
+            },
+            data: Vec::new(),
+        };
+
+        // Create a transaction with minimal value (gas fee)
+        let gas_fee = (gas_limit / 1000) as i32; // Simple gas fee calculation
+        let mut vin = Vec::new();
+        let mut pub_key_hash = wallet.public_key.clone();
+        hash_pub_key(&mut pub_key_hash);
+
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, gas_fee)?;
+        if acc_v.0 < gas_fee {
+            return Err(format_err!("Not enough balance for gas fees: need {}, have {}", gas_fee, acc_v.0));
+        }
+
+        for tx in acc_v.1 {
+            for out in tx.1 {
+                let input = TXInput {
+                    txid: tx.0.clone(),
+                    vout: out,
+                    signature: Vec::new(),
+                    pub_key: wallet.public_key.clone(),
+                };
+                vin.push(input);
+            }
+        }
+
+        let mut vout = Vec::new();
+        if acc_v.0 > gas_fee {
+            vout.push(TXOutput::new(acc_v.0 - gas_fee, wallet.get_address())?);
+        }
+
+        let mut tx = Transaction {
+            id: String::new(),
+            vin,
+            vout,
+            contract_data: Some(contract_data),
+        };
+        tx.id = tx.hash()?;
+        utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+        Ok(tx)
+    }
+
+    /// Create a new contract call transaction
+    pub fn new_contract_call(
+        wallet: &Wallet,
+        contract_address: String,
+        function_name: String,
+        arguments: Vec<u8>,
+        gas_limit: u64,
+        value: u64,
+        utxo: &UTXOSet,
+        crypto: &dyn CryptoProvider,
+    ) -> Result<Transaction> {
+        info!("Creating contract call transaction from: {} to contract: {}", 
+              wallet.get_address(), contract_address);
+        
+        let contract_data = ContractTransactionData {
+            tx_type: ContractTransactionType::Call {
+                contract_address,
+                function_name,
+                arguments,
+                gas_limit,
+                value,
+            },
+            data: Vec::new(),
+        };
+
+        let total_cost = value as i32 + (gas_limit / 1000) as i32; // value + gas fee
+        let mut vin = Vec::new();
+        let mut pub_key_hash = wallet.public_key.clone();
+        hash_pub_key(&mut pub_key_hash);
+
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, total_cost)?;
+        if acc_v.0 < total_cost {
+            return Err(format_err!("Not enough balance: need {}, have {}", total_cost, acc_v.0));
+        }
+
+        for tx in acc_v.1 {
+            for out in tx.1 {
+                let input = TXInput {
+                    txid: tx.0.clone(),
+                    vout: out,
+                    signature: Vec::new(),
+                    pub_key: wallet.public_key.clone(),
+                };
+                vin.push(input);
+            }
+        }
+
+        let mut vout = Vec::new();
+        if acc_v.0 > total_cost {
+            vout.push(TXOutput::new(acc_v.0 - total_cost, wallet.get_address())?);
+        }
+
+        let mut tx = Transaction {
+            id: String::new(),
+            vin,
+            vout,
+            contract_data: Some(contract_data),
+        };
+        tx.id = tx.hash()?;
+        utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
         Ok(tx)
     }
 
@@ -243,14 +392,18 @@ impl Transaction {
         }
 
         Ok(())
-    }
-
-    /// Hash returns the hash of the Transaction
+    }    /// Hash returns the hash of the Transaction
     #[inline]
     pub fn hash(&self) -> Result<String> {
         let mut buf = Vec::new();
         serialize_into(&mut buf, &self.vin)?;
         serialize_into(&mut buf, &self.vout)?;
+        
+        // Include contract data in hash if present
+        if let Some(contract_data) = &self.contract_data {
+            serialize_into(&mut buf, contract_data)?;
+        }
+        
         let mut hasher = Sha256::new();
         hasher.input(&buf);
         Ok(hasher.result_str())
@@ -281,7 +434,18 @@ impl Transaction {
             id: String::new(),
             vin,
             vout,
+            contract_data: None,
         }
+    }
+
+    /// Check if this is a contract transaction
+    pub fn is_contract_transaction(&self) -> bool {
+        self.contract_data.is_some()
+    }
+
+    /// Get contract data if this is a contract transaction
+    pub fn get_contract_data(&self) -> Option<&ContractTransactionData> {
+        self.contract_data.as_ref()
     }
 }
 
