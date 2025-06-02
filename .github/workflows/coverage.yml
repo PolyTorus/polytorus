@@ -19,14 +19,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@nightly
       with:
-        toolchain: nightly
-        override: true
         components: llvm-tools-preview
 
     - name: Cache cargo dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/bin/
@@ -73,13 +71,11 @@ jobs:
           --output-path coverage.lcov
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.lcov
-        flags: unittests
-        name: codecov-umbrella
         fail_ci_if_error: false
-        verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Upload coverage to Coveralls
       uses: coverallsapp/github-action@v2
@@ -103,7 +99,7 @@ jobs:
           --output-path coverage-html
 
     - name: Upload HTML coverage report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-html-report
         path: coverage-html/
