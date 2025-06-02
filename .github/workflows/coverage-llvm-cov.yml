@@ -1,0 +1,135 @@
+name: Code Coverage (llvm-cov)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+        components: llvm-tools-preview
+
+    - name: Cache cargo dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-coverage-
+          ${{ runner.os }}-cargo-
+
+    - name: Install cargo-llvm-cov
+      run: |
+        if ! command -v cargo-llvm-cov &> /dev/null; then
+          cargo install cargo-llvm-cov
+        fi
+
+    - name: Clean previous coverage data
+      run: cargo llvm-cov clean --workspace
+
+    - name: Run tests with coverage
+      run: |
+        cargo llvm-cov \
+          --workspace \
+          --all-features \
+          --lcov \
+          --output-path coverage.lcov
+
+    - name: Generate HTML report
+      run: |
+        cargo llvm-cov \
+          --workspace \
+          --all-features \
+          --html \
+          --output-dir coverage-html
+
+    - name: Generate summary report
+      run: |
+        cargo llvm-cov \
+          --workspace \
+          --all-features \
+          --summary-only
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.lcov
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Upload coverage to Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: ./coverage.lcov
+
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-html-report
+        path: coverage-html/
+
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const coverage = fs.readFileSync('coverage.lcov', 'utf8');
+            const lines = coverage.split('\n');
+            const summary = lines.filter(line => line.startsWith('LF:') || line.startsWith('LH:'));
+            
+            let totalLines = 0;
+            let hitLines = 0;
+            
+            for (const line of summary) {
+              if (line.startsWith('LF:')) {
+                totalLines += parseInt(line.split(':')[1]);
+              } else if (line.startsWith('LH:')) {
+                hitLines += parseInt(line.split(':')[1]);
+              }
+            }
+            
+            const percentage = totalLines > 0 ? (hitLines / totalLines * 100).toFixed(2) : 0;
+            
+            const comment = `## Code Coverage Report
+            
+            📊 **Coverage: ${percentage}%**
+            - Lines covered: ${hitLines}/${totalLines}
+            
+            📁 [View detailed HTML report in artifacts](${context.payload.pull_request.html_url}/checks)
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Could not generate coverage comment:', error);
+          }

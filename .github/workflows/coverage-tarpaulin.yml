@@ -1,0 +1,87 @@
+name: Code Coverage (Tarpaulin)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Cache cargo dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-coverage-
+          ${{ runner.os }}-cargo-
+
+    - name: Install tarpaulin
+      run: |
+        if ! command -v cargo-tarpaulin &> /dev/null; then
+          cargo install cargo-tarpaulin
+        fi
+
+    - name: Run tests with coverage
+      run: |
+        cargo tarpaulin \
+          --verbose \
+          --all-features \
+          --workspace \
+          --timeout 120 \
+          --out xml \
+          --out lcov \
+          --out html \
+          --output-dir coverage/ \
+          --exclude-files target/* \
+          --exclude-files tests/*
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/cobertura.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Upload coverage to Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: ./coverage/lcov.info
+
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-html-report
+        path: coverage/tarpaulin-report.html
+
+    - name: Coverage Summary
+      run: |
+        if [ -f coverage/cobertura.xml ]; then
+          echo "Coverage report generated successfully"
+          echo "Check the artifacts for detailed HTML report"
+        fi
