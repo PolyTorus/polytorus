@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  id-token: write
+
 env:
   CARGO_TERM_COLOR: always
 
