@@ -6,12 +6,12 @@
 
 use crate::blockchain::block::Block;
 use crate::blockchain::utxoset::UTXOSet;
-use crate::crypto::fndsa::FnDsaCrypto;
 use crate::crypto::ecdsa::EcdsaCrypto;
+use crate::crypto::fndsa::FnDsaCrypto;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::Transaction;
-use crate::crypto::wallets::{Wallets, extract_encryption_type};
 use crate::crypto::types::EncryptionType;
+use crate::crypto::wallets::{extract_encryption_type, Wallets};
 use crate::Result;
 
 use std::collections::HashMap;
@@ -1109,7 +1109,7 @@ impl Server {
             }
         };
         let mut tx = msg.transaction.clone();
-        
+
         // Extract encryption type from wallet address
         let (_, encryption_type) = match extract_encryption_type(&msg.address) {
             Ok(result) => result,
@@ -1484,14 +1484,15 @@ mod tests {
         let bytes = cmd_to_bytes(cmd);
         let decoded = decode_command(&bytes).unwrap();
         assert_eq!(&cmd[..CMD_LEN], decoded);
-    }    #[test]
+    }
+    #[test]
     fn test_server_creation() {
         use crate::config::DataContext;
         use std::path::PathBuf;
-        
+
         // Use a test-specific data directory to avoid conflicts with existing data
         let test_context = DataContext::new(PathBuf::from("test_data_server"));
-        
+
         // Create wallets with test context
         let mut wallets = Wallets::new_with_context(test_context.clone()).unwrap();
         let address = wallets.create_wallet(EncryptionType::FNDSA);
@@ -1500,7 +1501,9 @@ mod tests {
         // Create blockchain with test context
         let bc = match Blockchain::new_with_context(test_context.clone()) {
             Ok(bc) => bc,
-            Err(_) => Blockchain::create_blockchain_with_context(address, test_context.clone()).unwrap(),
+            Err(_) => {
+                Blockchain::create_blockchain_with_context(address, test_context.clone()).unwrap()
+            }
         };
 
         let utxo_set = UTXOSet { blockchain: bc };
@@ -1511,7 +1514,7 @@ mod tests {
 
         let inner = server.inner.lock().unwrap();
         assert!(inner.peers.is_empty());
-        
+
         // Clean up test data
         let _ = std::fs::remove_dir_all("test_data_server");
     }

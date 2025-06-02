@@ -178,7 +178,7 @@ impl Transaction {
 
             // Determine encryption type based on public key size
             let encryption_type = determine_encryption_type(&self.vin[in_id].pub_key);
-            
+
             match encryption_type {
                 EncryptionType::FNDSA => {
                     if !VerifyingKeyStandard::decode(&self.vin[in_id].pub_key)
@@ -289,7 +289,8 @@ impl TXOutput {
     /// IsLockedWithKey checks if the output can be used by the owner of the pubkey
     pub fn is_locked_with_key(&self, pub_key_hash: &[u8]) -> bool {
         self.pub_key_hash == pub_key_hash
-    }    /// Lock signs the output
+    }
+    /// Lock signs the output
     fn lock(&mut self, address: &str) -> Result<()> {
         // Extract base address without encryption suffix
         let (base_address, _) = extract_encryption_type(address)?;

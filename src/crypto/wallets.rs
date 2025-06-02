@@ -49,7 +49,8 @@ impl Wallet {
                 }
             }
         }
-    }    /// GetAddress returns wallet address
+    }
+    /// GetAddress returns wallet address
     pub fn get_address(&self) -> String {
         let mut pub_hash: Vec<u8> = self.public_key.clone();
         hash_pub_key(&mut pub_hash);
@@ -60,13 +61,13 @@ impl Wallet {
             ..Default::default()
         };
         let base_address = address.encode().unwrap();
-        
+
         // 暗号化方式を末尾に追加
         let encryption_suffix = match self.encryption_type {
             EncryptionType::ECDSA => "-ECDSA",
             EncryptionType::FNDSA => "-FNDSA",
         };
-        
+
         format!("{}{}", base_address, encryption_suffix)
     }
 }

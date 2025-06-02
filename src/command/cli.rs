@@ -216,7 +216,7 @@ fn cmd_send(
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
     let wallet = wallets.get_wallet(from).unwrap();
-    
+
     // ウォレットの暗号化方式を使用
     let crypto = crate::crypto::get_crypto_provider(&wallet.encryption_type);
     let tx = Transaction::new_UTXO(wallet, to, amount, &utxo_set, crypto.as_ref())?;
@@ -347,7 +347,8 @@ mod tests {
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
 
         // UTXOセットを作成し、インデックスを再構築
-        let mut utxo_set = UTXOSet { blockchain: bc };        utxo_set.reindex()?;
+        let mut utxo_set = UTXOSet { blockchain: bc };
+        utxo_set.reindex()?;
 
         // 残高確認
         let (base_addr1, _) = extract_encryption_type(&addr1)?;
@@ -410,7 +411,8 @@ mod tests {
         wallets.save_all()?;
 
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
-        let utxo_set = UTXOSet { blockchain: bc };        utxo_set.reindex()?;
+        let utxo_set = UTXOSet { blockchain: bc };
+        utxo_set.reindex()?;
 
         let (base_addr1, _) = extract_encryption_type(&addr1)?;
         let (base_addr2, _) = extract_encryption_type(&addr2)?;
