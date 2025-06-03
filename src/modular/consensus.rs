@@ -31,7 +31,15 @@ impl PolyTorusConsensusLayer {
         is_validator: bool
     ) -> Result<Self> {
         let blockchain = match Blockchain::new_with_context(data_context.clone()) {
-            Ok(bc) => bc,
+            Ok(bc) => {
+                // Check if blockchain is empty (no genesis block)
+                if bc.tip.is_empty() {
+                    let genesis_address = "genesis_address".to_string();
+                    Blockchain::create_blockchain_with_context(genesis_address, data_context)?
+                } else {
+                    bc
+                }
+            },
             Err(_) => {
                 // Create genesis blockchain if it doesn't exist
                 let genesis_address = "genesis_address".to_string();
@@ -147,7 +155,7 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
 
         // Transaction validation would go here
         // For now, we assume all transactions are valid
-
+        
         true
     }
 
@@ -159,7 +167,13 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
     fn get_block_height(&self) -> Result<u64> {
         let blockchain = self.blockchain.lock().unwrap();
         let height = blockchain.get_best_height()?;
-        Ok(height as u64)
+        
+        // Handle the case where blockchain is empty (height = -1)
+        if height < 0 {
+            Ok(0) // Genesis blockchain starts at height 0
+        } else {
+            Ok(height as u64)
+        }
     }
 
     fn get_block_by_hash(&self, hash: &Hash) -> Result<Block> {

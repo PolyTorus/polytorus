@@ -60,6 +60,7 @@ impl PolyTorusDataAvailabilityLayer {
     }
 
     /// Verify merkle proof
+    #[allow(dead_code)]
     fn verify_merkle_proof(&self, proof: &[Hash], root: &Hash, data_hash: &Hash) -> bool {
         // Simplified verification
         // In a real implementation, this would verify the merkle path
@@ -92,6 +93,7 @@ impl PolyTorusDataAvailabilityLayer {
     }
 
     /// Request data from network peers
+    #[allow(dead_code)]
     async fn request_from_network(&self, hash: &Hash) -> Result<Vec<u8>> {
         if let Some(_network_manager) = &self.network_manager {
             // In a real implementation, this would use the network manager

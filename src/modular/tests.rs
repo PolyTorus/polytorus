@@ -3,27 +3,67 @@
 use super::*;
 use crate::config::DataContext;
 use crate::crypto::transaction::Transaction;
-use crate::blockchain::block::Block;
 
 use std::path::PathBuf;
+use uuid::Uuid;
 
-/// Create a test data context
-fn create_test_context(test_name: &str) -> DataContext {
-    let test_dir = PathBuf::from(format!("test_data_modular_{}", test_name));
-    DataContext::new(test_dir)
+/// Test context with automatic cleanup
+pub struct TestContext {
+    pub data_context: DataContext,
+    test_dir: PathBuf,
 }
+
+impl TestContext {
+    fn new(test_name: &str) -> Self {
+        let uuid = Uuid::new_v4();
+        let test_dir = PathBuf::from(format!("test_data_modular_{}_{}", test_name, uuid));
+        
+        // Remove existing test directory if it exists (unlikely with UUID, but safe)
+        if test_dir.exists() {
+            let _ = std::fs::remove_dir_all(&test_dir);
+        }
+        
+        // Create the directory structure
+        std::fs::create_dir_all(&test_dir).expect("Failed to create test directory");
+        
+        let data_context = DataContext::new(test_dir.clone());
+        
+        Self {
+            data_context,
+            test_dir,
+        }
+    }
+    
+    /// Get a clone of the data context for use in tests
+    pub fn get_data_context(&self) -> DataContext {
+        self.data_context.clone()
+    }
+}
+
+impl Drop for TestContext {
+    fn drop(&mut self) {
+        // Cleanup test directory when TestContext is dropped
+        if self.test_dir.exists() {
+            let _ = std::fs::remove_dir_all(&self.test_dir);
+        }
+    }
+}
+
+/// Create a test data context (legacy function for backward compatibility)
+
 
 #[tokio::test]
 async fn test_modular_blockchain_creation() {
     let config = default_modular_config();
-    let data_context = create_test_context("creation");
+    let test_ctx = TestContext::new("creation");
 
     let blockchain = ModularBlockchainBuilder::new()
         .with_config(config)
-        .with_data_context(data_context)
+        .with_data_context(test_ctx.get_data_context())
         .build();
 
     assert!(blockchain.is_ok());
+    // TestContext will automatically cleanup when dropped
 }
 
 #[tokio::test]
@@ -38,14 +78,15 @@ async fn test_execution_layer() {
         },
     };
 
-    let data_context = create_test_context("execution");
-    let execution_layer = PolyTorusExecutionLayer::new(data_context, config);
+    let test_ctx = TestContext::new("execution");
+    let execution_layer = PolyTorusExecutionLayer::new(test_ctx.get_data_context(), config);
 
     assert!(execution_layer.is_ok());
 
     let execution_layer = execution_layer.unwrap();
     let state_root = execution_layer.get_state_root();
     assert!(!state_root.is_empty());
+    // TestContext will automatically cleanup when dropped
 }
 
 #[test]
@@ -56,13 +97,14 @@ fn test_consensus_layer() {
         max_block_size: 1024 * 1024,
     };
 
-    let data_context = create_test_context("consensus");
-    let consensus_layer = PolyTorusConsensusLayer::new(data_context, config, false);
+    let test_ctx = TestContext::new("consensus");
+    let consensus_layer = PolyTorusConsensusLayer::new(test_ctx.get_data_context(), config, false);
 
     assert!(consensus_layer.is_ok());
 
     let consensus_layer = consensus_layer.unwrap();
     assert!(!consensus_layer.is_validator());
+    // TestContext will automatically cleanup when dropped
 }
 
 #[test]
@@ -170,11 +212,11 @@ fn test_fraud_proof_verification() {
 #[tokio::test]
 async fn test_transaction_processing() {
     let config = default_modular_config();
-    let data_context = create_test_context("transaction");
+    let test_ctx = TestContext::new("transaction");
 
     let blockchain = ModularBlockchainBuilder::new()
         .with_config(config)
-        .with_data_context(data_context)
+        .with_data_context(test_ctx.get_data_context())
         .build()
         .unwrap();
 
@@ -188,16 +230,17 @@ async fn test_transaction_processing() {
     let receipt = receipt.unwrap();
     assert!(receipt.success);
     assert!(receipt.gas_used > 0);
+    // TestContext will automatically cleanup when dropped
 }
 
 #[tokio::test]
 async fn test_block_mining() {
     let config = default_modular_config();
-    let data_context = create_test_context("mining");
+    let test_ctx = TestContext::new("mining");
 
     let blockchain = ModularBlockchainBuilder::new()
         .with_config(config)
-        .with_data_context(data_context)
+        .with_data_context(test_ctx.get_data_context())
         .build()
         .unwrap();
 
@@ -207,18 +250,25 @@ async fn test_block_mining() {
     let transactions = vec![tx1, tx2];
 
     let block = blockchain.mine_block(transactions).await;
+    match &block {
+        Ok(b) => println!("Block mining succeeded: {}", b.get_hash()),
+        Err(e) => println!("Block mining failed with error: {}", e),
+    }
     assert!(block.is_ok());
 
     let block = block.unwrap();
     assert_eq!(block.get_transaction().len(), 2);
     assert!(!block.get_hash().is_empty());
+    // TestContext will automatically cleanup when dropped
 }
 
 #[test]
 fn test_layer_builders() {
+    let test_ctx_consensus = TestContext::new("builder_consensus");
+
     // Test consensus layer builder
     let consensus_layer = super::consensus::ConsensusLayerBuilder::new()
-        .with_data_context(create_test_context("builder_consensus"))
+        .with_data_context(test_ctx_consensus.get_data_context())
         .as_validator()
         .build();
     
@@ -242,16 +292,17 @@ fn test_layer_builders() {
         .build();
     
     assert!(da_layer.is_ok());
+    // TestContext instance will automatically cleanup when dropped
 }
 
 #[tokio::test]
 async fn test_state_info() {
     let config = default_modular_config();
-    let data_context = create_test_context("state_info");
+    let test_ctx = TestContext::new("state_info");
 
     let blockchain = ModularBlockchainBuilder::new()
         .with_config(config)
-        .with_data_context(data_context)
+        .with_data_context(test_ctx.get_data_context())
         .build()
         .unwrap();
 
@@ -261,23 +312,8 @@ async fn test_state_info() {
     let state_info = state_info.unwrap();
     assert!(!state_info.execution_state_root.is_empty());
     assert!(!state_info.settlement_root.is_empty());
-    assert_eq!(state_info.block_height, 1); // Genesis block height
+    assert_eq!(state_info.block_height, 0); // Genesis block height is 0
+    // TestContext will automatically cleanup when dropped
 }
 
-// Cleanup test data after tests
-#[tokio::test]
-async fn cleanup_test_data() {
-    let test_dirs = [
-        "test_data_modular_creation",
-        "test_data_modular_execution", 
-        "test_data_modular_consensus",
-        "test_data_modular_transaction",
-        "test_data_modular_mining",
-        "test_data_modular_builder_consensus",
-        "test_data_modular_state_info",
-    ];
 
-    for dir in &test_dirs {
-        let _ = std::fs::remove_dir_all(dir);
-    }
-}

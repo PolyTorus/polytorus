@@ -15,7 +15,7 @@ use crate::config::DataContext;
 use crate::Result;
 
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
+use tokio::sync::{Mutex as AsyncMutex, mpsc};
 
 /// Main modular blockchain orchestrator
 pub struct ModularBlockchain {
@@ -31,7 +31,7 @@ pub struct ModularBlockchain {
     config: ModularConfig,
     /// Event channels for layer communication
     event_tx: mpsc::UnboundedSender<ModularEvent>,
-    event_rx: Arc<Mutex<mpsc::UnboundedReceiver<ModularEvent>>>,
+    event_rx: Arc<AsyncMutex<mpsc::UnboundedReceiver<ModularEvent>>>,
 }
 
 /// Events for communication between layers
@@ -84,7 +84,7 @@ impl ModularBlockchain {
             data_availability_layer: Arc::new(data_availability_layer),
             config,
             event_tx,
-            event_rx: Arc::new(Mutex::new(event_rx)),
+            event_rx: Arc::new(AsyncMutex::new(event_rx)),
         })
     }
 
@@ -122,11 +122,29 @@ impl ModularBlockchain {
 
         // Create block through consensus layer
         let mut consensus_layer = self.consensus_layer.lock().unwrap();
-        let height = consensus_layer.get_block_height()? + 1;
+        let current_height = consensus_layer.get_block_height()?;
+        
+        log::debug!("Current blockchain height: {}", current_height);
+        
+        let height = current_height.checked_add(1).ok_or_else(|| 
+            failure::format_err!("Block height overflow")
+        )?;
         
         // Get previous block hash
         let canonical_chain = consensus_layer.get_canonical_chain();
-        let prev_hash = canonical_chain.last().cloned().unwrap_or_default();
+        log::debug!("Canonical chain length: {}", canonical_chain.len());
+        
+        let prev_hash = if canonical_chain.is_empty() {
+            // No blocks in chain yet - this shouldn't happen if genesis was created
+            log::warn!("No blocks found in canonical chain");
+            String::new()
+        } else {
+            let hash = canonical_chain.last().cloned().unwrap_or_default();
+            log::debug!("Previous block hash: {}", hash);
+            hash
+        };
+
+        log::debug!("Creating block with height: {}, prev_hash: {}", height, prev_hash);
 
         // Create new block
         let block = Block::new_block(
@@ -200,39 +218,47 @@ impl ModularBlockchain {
 
     /// Start the event processing loop
     async fn start_event_loop(&self) -> Result<()> {
-        // Create a separate receiver for this task
-        let (_sender, mut receiver) = mpsc::unbounded_channel::<ModularEvent>();
-        
-        // Store the sender in a way that other methods can use it
-        // For now, we'll create a background task that processes events
+        // Use the existing event receiver
+        let event_rx = self.event_rx.clone();
         let settlement_layer = self.settlement_layer.clone();
 
         tokio::spawn(async move {
-            while let Some(event) = receiver.recv().await {
+            loop {
+                let event = {
+                    let mut receiver = event_rx.lock().await;
+                    receiver.recv().await
+                };
+                
                 match event {
-                    ModularEvent::BatchReady(batch) => {
+                    Some(ModularEvent::BatchReady(batch)) => {
                         log::debug!("Processing batch for settlement: {}", batch.batch_id);
                         
                         if let Err(e) = settlement_layer.settle_batch(&batch) {
                             log::error!("Failed to settle batch: {}", e);
                         }
                     }
-                    ModularEvent::BlockProposed(block) => {
+                    Some(ModularEvent::BlockProposed(block)) => {
                         log::debug!("Block proposed: {}", block.get_hash());
                     }
-                    ModularEvent::ExecutionCompleted(hash, result) => {
+                    Some(ModularEvent::ExecutionCompleted(hash, result)) => {
                         log::debug!("Execution completed for {}: gas_used={}", hash, result.gas_used);
                     }
-                    ModularEvent::SettlementCompleted(result) => {
+                    Some(ModularEvent::SettlementCompleted(result)) => {
                         log::debug!("Settlement completed: {}", result.settlement_root);
                     }
-                    ModularEvent::DataStored(hash, size) => {
+                    Some(ModularEvent::DataStored(hash, size)) => {
                         log::debug!("Data stored: {} ({} bytes)", hash, size);
                     }
-                    ModularEvent::ChallengeSubmitted(challenge) => {
+                    Some(ModularEvent::ChallengeSubmitted(challenge)) => {
                         log::debug!("Challenge submitted: {}", challenge.challenge_id);
                     }
-                    _ => {}
+                    Some(ModularEvent::BlockValidated(block, is_valid)) => {
+                        log::debug!("Block validated: {} - {}", block.get_hash(), is_valid);
+                    }
+                    None => {
+                        log::info!("Event channel closed, stopping event loop");
+                        break;
+                    }
                 }
             }
         });

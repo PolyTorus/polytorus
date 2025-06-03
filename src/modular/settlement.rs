@@ -50,7 +50,7 @@ impl PolyTorusSettlementLayer {
         })
     }
 
-    /// Calculate settlement root from batches
+    /// Calculate settlement root from batches  
     fn calculate_settlement_root(&self, batches: &[Hash]) -> Hash {
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;
@@ -147,9 +147,13 @@ impl SettlementLayer for PolyTorusSettlementLayer {
         // Add to pending batches (subject to challenge period)
         state.pending_batches.insert(batch.batch_id.clone(), batch.clone());
         
+        // Calculate proper settlement root from all pending batches
+        let batch_ids: Vec<Hash> = state.pending_batches.keys().cloned().collect();
+        let settlement_root = self.calculate_settlement_root(&batch_ids);
+        
         // After challenge period, it will be considered settled
         let settlement_result = SettlementResult {
-            settlement_root: batch.new_state_root.clone(),
+            settlement_root,
             settled_batches: vec![batch.batch_id.clone()],
             timestamp,
         };

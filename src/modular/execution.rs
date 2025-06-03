@@ -205,17 +205,27 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
     }
 
     fn execute_transaction(&self, tx: &Transaction) -> Result<TransactionReceipt> {
-        if tx.is_contract_transaction() {
-            self.execute_contract_transaction(tx)
+        let receipt = if tx.is_contract_transaction() {
+            self.execute_contract_transaction(tx)?
         } else {
             // Handle regular transaction
-            Ok(TransactionReceipt {
+            TransactionReceipt {
                 tx_hash: tx.id.clone(),
                 success: true,
                 gas_used: 21000,
                 events: vec![],
-            })
+            }
+        };
+
+        // Update execution context if it exists
+        if let Ok(mut ctx_lock) = self.execution_context.lock() {
+            if let Some(ref mut context) = *ctx_lock {
+                context.gas_used += receipt.gas_used;
+                context.executed_txs.push(receipt.clone());
+            }
         }
+
+        Ok(receipt)
     }
 
     fn get_account_state(&self, address: &str) -> Result<AccountState> {
@@ -249,6 +259,12 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
         let mut ctx_lock = self.execution_context.lock().unwrap();
         
         if let Some(context) = ctx_lock.take() {
+            // Log execution context details
+            log::debug!("Committing execution context: {}", context.context_id);
+            log::debug!("Initial state root: {}", context.initial_state_root);
+            log::debug!("Total gas used: {}", context.gas_used);
+            log::debug!("Executed transactions: {}", context.executed_txs.len());
+            
             // Apply pending changes to account states
             let mut account_states = self.account_states.lock().unwrap();
             for (address, state) in context.pending_changes {
@@ -258,6 +274,11 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
             // Calculate new state root
             let new_state_root = self.calculate_state_root(&context.executed_txs);
             *self.state_root.lock().unwrap() = new_state_root.clone();
+            
+            // Validate state transition
+            if context.initial_state_root == new_state_root && !context.executed_txs.is_empty() {
+                log::warn!("State root unchanged despite executed transactions");
+            }
             
             Ok(new_state_root)
         } else {
