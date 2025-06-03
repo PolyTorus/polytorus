@@ -201,6 +201,7 @@ pub mod advanced_contract_tests {
 
     #[test]
     fn test_token_contract_transfer() {
+        println!("[test_token_contract_transfer] Starting test");
         let (engine, _temp_dir) = create_test_engine();
         
         // Deploy and initialize token contract
@@ -211,7 +212,9 @@ pub mod advanced_contract_tests {
             Some("token_test_003".to_string()), // abi
         ).unwrap();
         
+        println!("[test_token_contract_transfer] Deploying contract");
         engine.deploy_contract(&contract).unwrap();
+        println!("[test_token_contract_transfer] Contract deployed");
 
         // Initialize with 1000 tokens
         let initial_supply = 1000i32;
@@ -223,7 +226,9 @@ pub mod advanced_contract_tests {
             caller: "test_deployer".to_string(),
             value: 0,
         };
+        println!("[test_token_contract_transfer] Executing init");
         engine.execute_contract(init_execution).unwrap();
+        println!("[test_token_contract_transfer] Init executed");
 
         // Transfer 100 tokens to another address
         let recipient = 12345i32; // Simple address representation
@@ -241,9 +246,12 @@ pub mod advanced_contract_tests {
             value: 0,
         };
 
+        println!("[test_token_contract_transfer] Executing transfer");
         let result = engine.execute_contract(transfer_execution).unwrap();
+        println!("[test_token_contract_transfer] Transfer executed");
         assert!(result.success, "Token transfer failed");
         assert_eq!(result.return_value, vec![1, 0, 0, 0]); // Success return value
+        println!("[test_token_contract_transfer] Test finished");
     }
 
     #[test]
