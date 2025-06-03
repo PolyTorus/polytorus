@@ -44,8 +44,20 @@ impl ContractEngine {
     pub fn execute_contract(&self, execution: ContractExecution) -> Result<ContractResult> {
         println!("Executing contract function: {}", execution.function_name);
         
-        // Simple gas limit enforcement
-        let gas_cost = 100; // Fixed gas cost for simplicity
+        // Check maximum gas limit
+        if execution.gas_limit > self.gas_config.max_gas_per_call {
+            return Ok(ContractResult {
+                success: false,
+                return_value: vec![],
+                gas_used: 0,
+                state_changes: HashMap::new(),
+                logs: vec![format!("Gas limit {} exceeds maximum allowed {}", 
+                    execution.gas_limit, self.gas_config.max_gas_per_call)],
+            });
+        }
+        
+        // Simple gas limit enforcement using gas_config
+        let gas_cost = self.gas_config.instruction_cost * 10; // Base cost for function call
         if execution.gas_limit < gas_cost {
             return Ok(ContractResult {
                 success: false,
