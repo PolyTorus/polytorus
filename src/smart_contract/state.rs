@@ -116,13 +116,49 @@ impl ContractState {
 
     /// List all deployed contracts
     pub fn list_contracts(&self) -> Result<Vec<ContractMetadata>> {
+        self.list_contracts_with_limit(None)
+    }
+
+    /// List deployed contracts with optional limit
+    pub fn list_contracts_with_limit(&self, limit: Option<usize>) -> Result<Vec<ContractMetadata>> {
         let mut contracts = Vec::new();
         let prefix = b"contract:";
         
-        for item in self.db.scan_prefix(prefix) {
-            let (_, value) = item?;
-            let metadata: ContractMetadata = bincode::deserialize(&value)?;
-            contracts.push(metadata);
+        // Use iterator with timeout protection
+        let iter = self.db.scan_prefix(prefix);
+        let mut count = 0;
+        let max_items = limit.unwrap_or(100); // Default to 100 contracts
+        
+        for item_result in iter {
+            count += 1;
+            
+            if count > max_items {
+                break;
+            }
+            
+            match item_result {
+                Ok((key, value)) => {
+                    let key_str = String::from_utf8_lossy(&key);
+                    
+                    if !key_str.starts_with("contract:") {
+                        continue;
+                    }
+                    
+                    match bincode::deserialize::<ContractMetadata>(&value) {
+                        Ok(metadata) => {
+                            contracts.push(metadata);
+                        },
+                        Err(e) => {
+                            eprintln!("Warning: Failed to deserialize contract metadata for key {}: {}", key_str, e);
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to read database entry: {}", e);
+                    continue;
+                }
+            }
         }
         
         Ok(contracts)

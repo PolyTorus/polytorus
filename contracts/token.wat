@@ -160,7 +160,7 @@
         (global.get $total_supply_key_ptr)
         (global.get $total_supply_key_len)))
     
-    (if (i32.gt_u (local.get $length) (i32.const 0))
+    (if (result i32) (i32.gt_u (local.get $length) (i32.const 0))
       (then (i32.load (i32.const 200)))
       (else (i32.const 0))
     )
@@ -189,7 +189,7 @@
         (global.get $balance_prefix_ptr)
         (i32.add (global.get $balance_prefix_len) (i32.const 4))))  ;; simplified
     
-    (if (i32.gt_u (local.get $length) (i32.const 0))
+    (if (result i32) (i32.gt_u (local.get $length) (i32.const 0))
       (then (i32.load (i32.const 300)))
       (else (i32.const 0))
     )

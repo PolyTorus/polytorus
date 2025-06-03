@@ -6,6 +6,7 @@ use crate::crypto::transaction::*;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
 use crate::network::server::Server;
+use crate::smart_contract::{SmartContract, ContractState};
 use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
@@ -406,11 +407,25 @@ fn cmd_deploy_contract(wallet: &str, bytecode_file: &str, gas_limit: u64, mine_n
         Vec::new(), // constructor_args
         gas_limit,
         &utxo_set,
-        crypto.as_ref()    )?;
-
-    if mine_now {
+        crypto.as_ref()    )?;    if mine_now {
+        // Calculate contract address before mining
+        let contract_address = if let Some(contract_data) = &tx.contract_data {
+            if let ContractTransactionData { tx_type: ContractTransactionType::Deploy { bytecode, .. }, .. } = contract_data {
+                // Generate the same address that SmartContract::new would generate
+                SmartContract::new(
+                    bytecode.clone(),
+                    wallet.to_string(),
+                    vec![],
+                    None,
+                )?.get_address().to_string()
+            } else {
+                tx.id.clone()
+            }
+        } else {
+            tx.id.clone()
+        };
+        
         // Mine immediately
-        let contract_address = tx.id.clone(); // Store contract address before moving
         let cbtx = Transaction::new_coinbase(wallet.to_string(), String::from("reward!"))?;
         let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
@@ -418,7 +433,7 @@ fn cmd_deploy_contract(wallet: &str, bytecode_file: &str, gas_limit: u64, mine_n
         if let Some(contract_data) = new_block.get_transaction().last().unwrap().contract_data.as_ref() {
             if let ContractTransactionData { tx_type: ContractTransactionType::Deploy { gas_limit, .. }, .. } = contract_data {
                 println!("Contract deployed successfully!");
-                println!("Contract Address: {}", contract_address); // Use stored contract address
+                println!("Contract Address: {}", contract_address);
                 println!("Gas Limit: {}", gas_limit);
                 return Ok(());
             }
@@ -437,9 +452,14 @@ fn cmd_call_contract(wallet: &str, contract: &str, function: &str, value: i32, g
     let bc = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };    let wallets = Wallets::new()?;
     let wallet_obj = wallets.get_wallet(wallet)
-        .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?;    // Verify contract exists
-    let contract_state = utxo_set.blockchain.get_contract_state(contract)?;
-    if contract_state.is_empty() {
+        .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?;    // Verify contract exists by checking metadata instead of state
+    let contract_state_path = utxo_set.blockchain.context.data_dir().join("contracts");
+    let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+    
+    let contracts = contract_state.list_contracts()?;
+    let contract_exists = contracts.iter().any(|c| c.address == contract);
+    
+    if !contract_exists {
         return Err(failure::err_msg(format!("Contract '{}' not found", contract)));
     }
 
@@ -477,13 +497,29 @@ fn cmd_call_contract(wallet: &str, contract: &str, function: &str, value: i32, g
 
 fn cmd_list_contracts() -> Result<()> {
     let bc = Blockchain::new()?;
-    let contracts = bc.list_contracts()?;
+    
+    // Use a reasonable limit to prevent timeouts
+    const MAX_CONTRACTS_TO_LIST: usize = 100;
+    
+    let contracts = match bc.list_contracts_with_limit(Some(MAX_CONTRACTS_TO_LIST)) {
+        Ok(contracts) => contracts,
+        Err(e) => {
+            eprintln!("Error listing contracts: {}", e);
+            println!("Attempting fallback with direct contract state access...");
+            
+            // Fallback approach using direct contract state
+            let contract_state_path = bc.context.data_dir().join("contracts");
+            let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+            contract_state.list_contracts_with_limit(Some(MAX_CONTRACTS_TO_LIST))?
+        }
+    };
     
     if contracts.is_empty() {
         println!("No contracts deployed.");
         return Ok(());
     }
-      println!("Deployed Contracts:");
+    
+    println!("Deployed Contracts ({}):", contracts.len());
     println!("==================");
     for contract_metadata in contracts {
         println!("Address: {}", contract_metadata.address);
@@ -501,7 +537,11 @@ fn cmd_list_contracts() -> Result<()> {
 
 fn cmd_contract_state(contract: &str) -> Result<()> {
     let bc = Blockchain::new()?;
-    let state = bc.get_contract_state(contract)?;
+    
+    // Direct access to contract state instead of going through blockchain
+    let contract_state_path = bc.context.data_dir().join("contracts");
+    let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+    let state = contract_state.get_contract_state(contract)?;
     
     if !state.is_empty() {
         println!("Contract State for: {}", contract);

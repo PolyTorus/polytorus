@@ -276,13 +276,34 @@ impl Blockchain {
             let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
             let engine = ContractEngine::new(contract_state)?;
 
-            match &contract_data.tx_type {                    ContractTransactionType::Deploy { bytecode, constructor_args, gas_limit: _ } => {
+            match &contract_data.tx_type {                ContractTransactionType::Deploy { bytecode, constructor_args, gas_limit: _ } => {
                     info!("Deploying smart contract from transaction {}", tx.id);
+                      // Extract deployer address from transaction inputs
+                    let deployer_address = if let Some(input) = tx.vin.first() {
+                        // Convert public key to wallet address properly
+                        use crate::crypto::wallets::hash_pub_key;
+                        use bitcoincash_addr::{Address, Scheme, HashType};
+                        
+                        let mut pub_key_hash = input.pub_key.clone();
+                        hash_pub_key(&mut pub_key_hash);
+                        
+                        let address = Address {
+                            body: pub_key_hash,
+                            scheme: Scheme::Base58,
+                            hash_type: HashType::Script,
+                            ..Default::default()
+                        };
+                        
+                        // Create base address without encryption suffix for simplicity
+                        address.encode().unwrap_or_else(|_| "unknown_deployer".to_string())
+                    } else {
+                        "unknown_deployer".to_string()
+                    };
                     
                     // Create contract instance
                     let contract = SmartContract::new(
                         bytecode.clone(),
-                        "deployer".to_string(), // In a real implementation, extract from transaction
+                        deployer_address,
                         constructor_args.clone(),
                         None, // ABI not provided in this simple implementation
                     )?;
@@ -335,6 +356,13 @@ impl Blockchain {
         let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
         let engine = ContractEngine::new(contract_state)?;
         engine.list_contracts()
+    }
+
+    /// List deployed contracts with optional limit
+    pub fn list_contracts_with_limit(&self, limit: Option<usize>) -> Result<Vec<crate::smart_contract::types::ContractMetadata>> {
+        let contract_state_path = self.context.data_dir().join("contracts");
+        let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+        contract_state.list_contracts_with_limit(limit)
     }
 }
 

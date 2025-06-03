@@ -102,8 +102,8 @@
         (global.get $counter_key_ptr)
         (global.get $counter_key_len)))
     
-    ;; If we got data, load it from memory
-    (if (i32.gt_u (local.get $length) (i32.const 0))
+    ;; If we got data, load it from memory, otherwise return 0
+    (if (result i32) (i32.gt_u (local.get $length) (i32.const 0))
       (then
         ;; For this simple implementation, assume the value is stored at a known location
         ;; In a real implementation, storage_get would write to a specified memory location
