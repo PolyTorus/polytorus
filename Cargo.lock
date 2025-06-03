@@ -1886,6 +1886,7 @@ dependencies = [
  "sled",
  "tempfile",
  "tokio",
+ "toml",
  "uuid",
  "wasmtime",
  "wat",

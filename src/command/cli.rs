@@ -5,6 +5,7 @@ use crate::blockchain::utxoset::*;
 use crate::crypto::transaction::*;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
+use crate::modular::{ModularBlockchainBuilder, default_modular_config, load_modular_config_from_file};
 use crate::network::server::Server;
 use crate::smart_contract::{SmartContract, ContractState};
 use crate::webserver::webserver::WebServer;
@@ -130,11 +131,39 @@ impl Cli {
             .subcommand(
                 App::new("listcontracts")
                     .about("list all deployed contracts")
-            )
-            .subcommand(
+            )            .subcommand(
                 App::new("contractstate")
                     .about("get contract state")
                     .arg(Arg::from_usage("<contract> 'Contract address'"))
+            )
+            .subcommand(
+                App::new("modular")
+                    .about("Modular blockchain operations")
+                    .subcommand(
+                        App::new("start")
+                            .about("Start modular blockchain")
+                            .arg(Arg::from_usage("[config] 'Path to configuration file'"))
+                    )
+                    .subcommand(
+                        App::new("mine")
+                            .about("Mine block with modular architecture")
+                            .arg(Arg::from_usage("<address> 'Mining reward address'"))
+                            .arg(Arg::from_usage("[tx-count] 'Number of transactions to include (default: 10)'"))
+                    )
+                    .subcommand(
+                        App::new("state")
+                            .about("Get modular blockchain state information")
+                    )
+                    .subcommand(
+                        App::new("layers")
+                            .about("Show information about all layers")
+                    )
+                    .subcommand(
+                        App::new("challenge")
+                            .about("Submit a settlement challenge")
+                            .arg(Arg::from_usage("<batch-id> 'Batch ID to challenge'"))
+                            .arg(Arg::from_usage("<reason> 'Challenge reason'"))
+                    )
             )
             .get_matches();
 
@@ -250,10 +279,40 @@ impl Cli {
             }
             ("listcontracts", Some(_)) => {
                 cmd_list_contracts()?;
-            }
-            ("contractstate", Some(sub_m)) => {
+            }            ("contractstate", Some(sub_m)) => {
                 let contract = get_value("contract", sub_m)?;
                 cmd_contract_state(contract)?;
+            }
+            ("modular", Some(sub_m)) => {
+                match sub_m.subcommand() {
+                    ("start", Some(start_m)) => {
+                        let config_path = start_m.value_of("config");
+                        cmd_modular_start(config_path).await?;
+                    }
+                    ("mine", Some(mine_m)) => {
+                        let address = get_value("address", mine_m)?;
+                        let tx_count: usize = if let Some(count) = mine_m.value_of("tx-count") {
+                            count.parse()?
+                        } else {
+                            10
+                        };
+                        cmd_modular_mine(address, tx_count).await?;
+                    }
+                    ("state", Some(_)) => {
+                        cmd_modular_state().await?;
+                    }
+                    ("layers", Some(_)) => {
+                        cmd_modular_layers().await?;
+                    }
+                    ("challenge", Some(challenge_m)) => {
+                        let batch_id = get_value("batch-id", challenge_m)?;
+                        let reason = get_value("reason", challenge_m)?;
+                        cmd_modular_challenge(batch_id, reason).await?;
+                    }
+                    _ => {
+                        println!("Unknown modular subcommand. Use --help for available commands.");
+                    }
+                }
             }
             _ => {}
         }
@@ -666,10 +725,171 @@ mod tests {
         let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
 
         assert_eq!(balance1, 10);
-        assert_eq!(balance2, 0);
-
-        // ネットワーク機能のテストは実際のノードが必要なため省略
+        assert_eq!(balance2, 0);        // ネットワーク機能のテストは実際のノードが必要なため省略
         cleanup_test_context(&context);
         Ok(())
     }
+}
+
+// Modular blockchain command implementations
+async fn cmd_modular_start(config_path: Option<&str>) -> Result<()> {
+    println!("Starting modular blockchain...");
+    
+    let config = if let Some(path) = config_path {
+        println!("Loading configuration from: {}", path);
+        match load_modular_config_from_file(path) {
+            Ok(cfg) => {
+                println!("Configuration loaded successfully!");
+                cfg
+            }
+            Err(e) => {
+                println!("Failed to load configuration file: {}", e);
+                println!("Using default configuration instead...");
+                default_modular_config()
+            }
+        }
+    } else {
+        println!("No configuration file specified, using defaults...");
+        default_modular_config()
+    };
+    
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+    
+    blockchain.start().await?;
+    println!("Modular blockchain started successfully!");
+    
+    // Keep the blockchain running
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+async fn cmd_modular_mine(address: &str, tx_count: usize) -> Result<()> {
+    println!("Mining block with modular architecture for address: {}", address);
+    println!("Including {} transactions", tx_count);
+    
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+    
+    // Create sample transactions
+    let mut transactions = Vec::new();
+    for i in 0..tx_count {
+        let tx = Transaction::new_coinbase(
+            format!("{}_{}", address, i),
+            format!("Mining reward {}", i)
+        )?;
+        transactions.push(tx);
+    }
+      let block = blockchain.mine_block(transactions).await?;
+    println!("Successfully mined block: {}", block.get_hash());
+    println!("Block height: {}", block.get_height());
+    println!("Timestamp: {}", block.get_timestamp());
+    
+    Ok(())
+}
+
+async fn cmd_modular_state() -> Result<()> {
+    println!("Getting modular blockchain state...");
+    
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+    
+    let state_info = blockchain.get_state_info()?;
+    
+    println!("=== Modular Blockchain State ===");
+    println!("Execution state root: {}", state_info.execution_state_root);
+    println!("Settlement root: {}", state_info.settlement_root);
+    println!("Block height: {}", state_info.block_height);
+    println!("Canonical chain length: {}", state_info.canonical_chain_length);
+    
+    Ok(())
+}
+
+async fn cmd_modular_layers() -> Result<()> {
+    println!("=== Modular Blockchain Layers Information ===\n");
+    
+    println!("1. Execution Layer:");
+    println!("   - Handles transaction execution and smart contracts");
+    println!("   - WASM-based contract engine");
+    println!("   - State management and gas metering");
+    
+    println!("\n2. Settlement Layer:");
+    println!("   - Finalizes state transitions");
+    println!("   - Fraud proof verification");
+    println!("   - Challenge period management");
+    
+    println!("\n3. Consensus Layer:");
+    println!("   - Proof-of-Work block validation");
+    println!("   - Chain management");
+    println!("   - Fork resolution");
+    
+    println!("\n4. Data Availability Layer:");
+    println!("   - P2P data storage and retrieval");
+    println!("   - Availability proof generation");
+    println!("   - Network communication");
+    
+    let config = default_modular_config();
+    println!("\n=== Current Configuration ===");
+    println!("Gas limit: {}", config.execution.gas_limit);
+    println!("Challenge period: {} blocks", config.settlement.challenge_period);
+    println!("Block time: {}ms", config.consensus.block_time);
+    println!("Max block size: {} bytes", config.consensus.max_block_size);
+    
+    Ok(())
+}
+
+async fn cmd_modular_challenge(batch_id: &str, reason: &str) -> Result<()> {
+    use crate::modular::{SettlementChallenge, FraudProof};
+    
+    println!("Submitting settlement challenge...");
+    println!("Batch ID: {}", batch_id);
+    println!("Reason: {}", reason);
+    
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+      // Create a fraud proof with the reason as evidence
+    let fraud_proof = FraudProof {
+        batch_id: batch_id.to_string(),
+        proof_data: reason.as_bytes().to_vec(),
+        expected_state_root: "expected_state".to_string(),
+        actual_state_root: "actual_state".to_string(),
+    };
+    
+    let challenge = SettlementChallenge {
+        challenge_id: format!("challenge_{}", batch_id),
+        batch_id: batch_id.to_string(),
+        proof: fraud_proof,
+        challenger: "cli_user".to_string(),
+        timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    };
+    
+    let result = blockchain.submit_challenge(challenge).await?;
+    
+    println!("Challenge submitted successfully!");
+    println!("Challenge ID: {}", result.challenge_id);
+    println!("Successful: {}", result.successful);
+    if let Some(penalty) = result.penalty {
+        println!("Penalty applied: {}", penalty);
+    }
+    
+    Ok(())
 }

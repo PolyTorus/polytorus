@@ -7,3 +7,4 @@ coverage-html
 temp*
 target/
 *.wasm
+modular_config.toml
