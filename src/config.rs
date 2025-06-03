@@ -17,10 +17,12 @@ impl DataContext {
 
     pub fn wallets_dir(&self) -> PathBuf {
         self.base_dir.join("wallets")
+    }    pub fn utxos_dir(&self) -> PathBuf {
+        self.base_dir.join("utxos")
     }
 
-    pub fn utxos_dir(&self) -> PathBuf {
-        self.base_dir.join("utxos")
+    pub fn data_dir(&self) -> PathBuf {
+        self.base_dir.clone()
     }
 }
 

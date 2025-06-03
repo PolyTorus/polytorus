@@ -4,6 +4,8 @@ use crate::blockchain::block::*;
 use crate::config::DataContext;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
+use crate::smart_contract::{ContractEngine, ContractState, SmartContract};
+use crate::smart_contract::types::ContractExecution;
 use crate::Result;
 use bincode::{deserialize, serialize};
 use failure::format_err;
@@ -81,15 +83,25 @@ impl Blockchain {
         };
         bc.db.flush()?;
         Ok(bc)
-    }
-
-    /// MineBlock mines a new block with the provided transactions
+    }    /// MineBlock mines a new block with the provided transactions
     pub fn mine_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
         info!("mine a new block");
 
         for tx in &transactions {
             if !self.verify_transacton(tx)? {
                 return Err(format_err!("ERROR: Invalid transaction"));
+            }
+        }
+
+        // Execute smart contract transactions before adding to block
+        let mut processed_transactions = transactions;
+        for tx in &mut processed_transactions {
+            if tx.is_contract_transaction() {
+                if let Err(e) = self.execute_contract_transaction(tx) {
+                    warn!("Contract execution failed for tx {}: {}", tx.id, e);
+                    // In a real implementation, you might want to handle this differently
+                    // For now, we'll continue with the transaction as-is
+                }
             }
         }
 
@@ -102,7 +114,7 @@ impl Blockchain {
         let new_difficulty = Block::adjust_difficulty(&prev_block, current_timestamp);
 
         let newblock = Block::new_block(
-            transactions,
+            processed_transactions,
             prev_hash,
             self.get_best_height()? + 1,
             new_difficulty,
@@ -255,6 +267,102 @@ impl Blockchain {
             list.push(b.get_hash());
         }
         list
+    }
+
+    /// Execute a smart contract transaction
+    fn execute_contract_transaction(&self, tx: &Transaction) -> Result<()> {
+        if let Some(contract_data) = tx.get_contract_data() {
+            let contract_state_path = self.context.data_dir().join("contracts");
+            let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+            let engine = ContractEngine::new(contract_state)?;
+
+            match &contract_data.tx_type {                ContractTransactionType::Deploy { bytecode, constructor_args, gas_limit: _ } => {
+                    info!("Deploying smart contract from transaction {}", tx.id);
+                      // Extract deployer address from transaction inputs
+                    let deployer_address = if let Some(input) = tx.vin.first() {
+                        // Convert public key to wallet address properly
+                        use crate::crypto::wallets::hash_pub_key;
+                        use bitcoincash_addr::{Address, Scheme, HashType};
+                        
+                        let mut pub_key_hash = input.pub_key.clone();
+                        hash_pub_key(&mut pub_key_hash);
+                        
+                        let address = Address {
+                            body: pub_key_hash,
+                            scheme: Scheme::Base58,
+                            hash_type: HashType::Script,
+                            ..Default::default()
+                        };
+                        
+                        // Create base address without encryption suffix for simplicity
+                        address.encode().unwrap_or_else(|_| "unknown_deployer".to_string())
+                    } else {
+                        "unknown_deployer".to_string()
+                    };
+                    
+                    // Create contract instance
+                    let contract = SmartContract::new(
+                        bytecode.clone(),
+                        deployer_address,
+                        constructor_args.clone(),
+                        None, // ABI not provided in this simple implementation
+                    )?;
+
+                    // Deploy the contract
+                    engine.deploy_contract(&contract)?;
+                    info!("Contract deployed at address: {}", contract.get_address());
+                }
+                ContractTransactionType::Call { 
+                    contract_address, 
+                    function_name, 
+                    arguments, 
+                    gas_limit, 
+                    value 
+                } => {
+                    info!("Calling smart contract {} function {}", contract_address, function_name);
+                    
+                    let execution = ContractExecution {
+                        contract_address: contract_address.clone(),
+                        function_name: function_name.clone(),
+                        arguments: arguments.clone(),
+                        gas_limit: *gas_limit,
+                        caller: "caller".to_string(), // In a real implementation, extract from transaction
+                        value: *value,
+                    };
+
+                    let result = engine.execute_contract(execution)?;
+                    info!("Contract call result: success={}, gas_used={}", result.success, result.gas_used);
+                    
+                    if !result.logs.is_empty() {
+                        info!("Contract logs: {:?}", result.logs);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Get smart contract state
+    pub fn get_contract_state(&self, contract_address: &str) -> Result<std::collections::HashMap<String, Vec<u8>>> {
+        let contract_state_path = self.context.data_dir().join("contracts");
+        let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+        let engine = ContractEngine::new(contract_state)?;
+        engine.get_contract_state(contract_address)
+    }
+
+    /// List all deployed contracts
+    pub fn list_contracts(&self) -> Result<Vec<crate::smart_contract::types::ContractMetadata>> {
+        let contract_state_path = self.context.data_dir().join("contracts");
+        let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+        let engine = ContractEngine::new(contract_state)?;
+        engine.list_contracts()
+    }
+
+    /// List deployed contracts with optional limit
+    pub fn list_contracts_with_limit(&self, limit: Option<usize>) -> Result<Vec<crate::smart_contract::types::ContractMetadata>> {
+        let contract_state_path = self.context.data_dir().join("contracts");
+        let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
+        contract_state.list_contracts_with_limit(limit)
     }
 }
 
