@@ -4,8 +4,8 @@ use crate::blockchain::block::*;
 use crate::config::DataContext;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
-use crate::smart_contract::{ContractEngine, ContractState, SmartContract};
 use crate::smart_contract::types::ContractExecution;
+use crate::smart_contract::{ContractEngine, ContractState, SmartContract};
 use crate::Result;
 use bincode::{deserialize, serialize};
 use failure::format_err;
@@ -83,7 +83,8 @@ impl Blockchain {
         };
         bc.db.flush()?;
         Ok(bc)
-    }    /// MineBlock mines a new block with the provided transactions
+    }
+    /// MineBlock mines a new block with the provided transactions
     pub fn mine_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
         info!("mine a new block");
 
@@ -276,30 +277,37 @@ impl Blockchain {
             let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
             let engine = ContractEngine::new(contract_state)?;
 
-            match &contract_data.tx_type {                ContractTransactionType::Deploy { bytecode, constructor_args, gas_limit: _ } => {
+            match &contract_data.tx_type {
+                ContractTransactionType::Deploy {
+                    bytecode,
+                    constructor_args,
+                    gas_limit: _,
+                } => {
                     info!("Deploying smart contract from transaction {}", tx.id);
-                      // Extract deployer address from transaction inputs
+                    // Extract deployer address from transaction inputs
                     let deployer_address = if let Some(input) = tx.vin.first() {
                         // Convert public key to wallet address properly
                         use crate::crypto::wallets::hash_pub_key;
-                        use bitcoincash_addr::{Address, Scheme, HashType};
-                        
+                        use bitcoincash_addr::{Address, HashType, Scheme};
+
                         let mut pub_key_hash = input.pub_key.clone();
                         hash_pub_key(&mut pub_key_hash);
-                        
+
                         let address = Address {
                             body: pub_key_hash,
                             scheme: Scheme::Base58,
                             hash_type: HashType::Script,
                             ..Default::default()
                         };
-                        
+
                         // Create base address without encryption suffix for simplicity
-                        address.encode().unwrap_or_else(|_| "unknown_deployer".to_string())
+                        address
+                            .encode()
+                            .unwrap_or_else(|_| "unknown_deployer".to_string())
                     } else {
                         "unknown_deployer".to_string()
                     };
-                    
+
                     // Create contract instance
                     let contract = SmartContract::new(
                         bytecode.clone(),
@@ -312,15 +320,18 @@ impl Blockchain {
                     engine.deploy_contract(&contract)?;
                     info!("Contract deployed at address: {}", contract.get_address());
                 }
-                ContractTransactionType::Call { 
-                    contract_address, 
-                    function_name, 
-                    arguments, 
-                    gas_limit, 
-                    value 
+                ContractTransactionType::Call {
+                    contract_address,
+                    function_name,
+                    arguments,
+                    gas_limit,
+                    value,
                 } => {
-                    info!("Calling smart contract {} function {}", contract_address, function_name);
-                    
+                    info!(
+                        "Calling smart contract {} function {}",
+                        contract_address, function_name
+                    );
+
                     let execution = ContractExecution {
                         contract_address: contract_address.clone(),
                         function_name: function_name.clone(),
@@ -331,8 +342,11 @@ impl Blockchain {
                     };
 
                     let result = engine.execute_contract(execution)?;
-                    info!("Contract call result: success={}, gas_used={}", result.success, result.gas_used);
-                    
+                    info!(
+                        "Contract call result: success={}, gas_used={}",
+                        result.success, result.gas_used
+                    );
+
                     if !result.logs.is_empty() {
                         info!("Contract logs: {:?}", result.logs);
                     }
@@ -343,7 +357,10 @@ impl Blockchain {
     }
 
     /// Get smart contract state
-    pub fn get_contract_state(&self, contract_address: &str) -> Result<std::collections::HashMap<String, Vec<u8>>> {
+    pub fn get_contract_state(
+        &self,
+        contract_address: &str,
+    ) -> Result<std::collections::HashMap<String, Vec<u8>>> {
         let contract_state_path = self.context.data_dir().join("contracts");
         let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
         let engine = ContractEngine::new(contract_state)?;
@@ -359,7 +376,10 @@ impl Blockchain {
     }
 
     /// List deployed contracts with optional limit
-    pub fn list_contracts_with_limit(&self, limit: Option<usize>) -> Result<Vec<crate::smart_contract::types::ContractMetadata>> {
+    pub fn list_contracts_with_limit(
+        &self,
+        limit: Option<usize>,
+    ) -> Result<Vec<crate::smart_contract::types::ContractMetadata>> {
         let contract_state_path = self.context.data_dir().join("contracts");
         let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
         contract_state.list_contracts_with_limit(limit)

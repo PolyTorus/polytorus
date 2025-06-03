@@ -80,7 +80,7 @@ impl ContractState {
     pub fn get_contract_state(&self, contract_address: &str) -> Result<HashMap<String, Vec<u8>>> {
         let prefix = format!("state:{}:", contract_address);
         let mut state = HashMap::new();
-        
+
         for item in self.db.scan_prefix(prefix.as_bytes()) {
             let (key, value) = item?;
             let key_str = String::from_utf8(key.to_vec())?;
@@ -89,7 +89,7 @@ impl ContractState {
                 state.insert(actual_key.to_string(), value.to_vec());
             }
         }
-        
+
         Ok(state)
     }
 
@@ -101,7 +101,8 @@ impl ContractState {
 
         // Delete all state entries
         let state_prefix = format!("state:{}:", contract_address);
-        let keys_to_delete: Vec<_> = self.db
+        let keys_to_delete: Vec<_> = self
+            .db
             .scan_prefix(state_prefix.as_bytes())
             .filter_map(|item| item.ok().map(|(k, _)| k))
             .collect();
@@ -123,33 +124,36 @@ impl ContractState {
     pub fn list_contracts_with_limit(&self, limit: Option<usize>) -> Result<Vec<ContractMetadata>> {
         let mut contracts = Vec::new();
         let prefix = b"contract:";
-        
+
         // Use iterator with timeout protection
         let iter = self.db.scan_prefix(prefix);
         let mut count = 0;
         let max_items = limit.unwrap_or(100); // Default to 100 contracts
-        
+
         for item_result in iter {
             count += 1;
-            
+
             if count > max_items {
                 break;
             }
-            
+
             match item_result {
                 Ok((key, value)) => {
                     let key_str = String::from_utf8_lossy(&key);
-                    
+
                     if !key_str.starts_with("contract:") {
                         continue;
                     }
-                    
+
                     match bincode::deserialize::<ContractMetadata>(&value) {
                         Ok(metadata) => {
                             contracts.push(metadata);
-                        },
+                        }
                         Err(e) => {
-                            eprintln!("Warning: Failed to deserialize contract metadata for key {}: {}", key_str, e);
+                            eprintln!(
+                                "Warning: Failed to deserialize contract metadata for key {}: {}",
+                                key_str, e
+                            );
                             continue;
                         }
                     }
@@ -160,7 +164,7 @@ impl ContractState {
                 }
             }
         }
-        
+
         Ok(contracts)
     }
 }

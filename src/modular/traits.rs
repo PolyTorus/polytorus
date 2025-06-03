@@ -101,102 +101,102 @@ pub struct ExecutionProof {
 }
 
 /// Execution Layer Interface
-/// 
+///
 /// Responsible for transaction execution and state transitions
 pub trait ExecutionLayer: Send + Sync {
     /// Execute a block and return the execution result
     fn execute_block(&self, block: &Block) -> Result<ExecutionResult>;
-    
+
     /// Get the current state root
     fn get_state_root(&self) -> Hash;
-    
+
     /// Verify an execution proof
     fn verify_execution(&self, proof: &ExecutionProof) -> bool;
-    
+
     /// Execute a single transaction
     fn execute_transaction(&self, tx: &Transaction) -> Result<TransactionReceipt>;
-    
+
     /// Get account state
     fn get_account_state(&self, address: &str) -> Result<AccountState>;
-    
+
     /// Begin a new execution context
     fn begin_execution(&mut self) -> Result<()>;
-    
+
     /// Commit the current execution context
     fn commit_execution(&mut self) -> Result<Hash>;
-    
+
     /// Rollback the current execution context
     fn rollback_execution(&mut self) -> Result<()>;
 }
 
 /// Settlement Layer Interface
-/// 
+///
 /// Responsible for finalizing state transitions and handling disputes
 pub trait SettlementLayer: Send + Sync {
     /// Settle a batch of executions
     fn settle_batch(&self, batch: &ExecutionBatch) -> Result<SettlementResult>;
-    
+
     /// Verify a fraud proof
     fn verify_fraud_proof(&self, proof: &FraudProof) -> bool;
-    
+
     /// Get the current settlement root
     fn get_settlement_root(&self) -> Hash;
-    
+
     /// Process a settlement challenge
     fn process_challenge(&self, challenge: &SettlementChallenge) -> Result<ChallengeResult>;
-    
+
     /// Get settlement history
     fn get_settlement_history(&self, limit: usize) -> Result<Vec<SettlementResult>>;
 }
 
 /// Consensus Layer Interface
-/// 
+///
 /// Responsible for block ordering and validator management
 pub trait ConsensusLayer: Send + Sync {
     /// Propose a new block
     fn propose_block(&self, block: Block) -> Result<()>;
-    
+
     /// Validate a proposed block
     fn validate_block(&self, block: &Block) -> bool;
-    
+
     /// Get the canonical chain
     fn get_canonical_chain(&self) -> Vec<Hash>;
-    
+
     /// Get the current block height
     fn get_block_height(&self) -> Result<u64>;
-    
+
     /// Get block by hash
     fn get_block_by_hash(&self, hash: &Hash) -> Result<Block>;
-    
+
     /// Add a block to the chain
     fn add_block(&mut self, block: Block) -> Result<()>;
-    
+
     /// Check if this node is a validator
     fn is_validator(&self) -> bool;
-    
+
     /// Get validator set
     fn get_validator_set(&self) -> Vec<ValidatorInfo>;
 }
 
 /// Data Availability Layer Interface
-/// 
+///
 /// Responsible for data storage and distribution
 pub trait DataAvailabilityLayer: Send + Sync {
     /// Store data and return its hash
     fn store_data(&self, data: &[u8]) -> Result<Hash>;
-    
+
     /// Retrieve data by hash
     fn retrieve_data(&self, hash: &Hash) -> Result<Vec<u8>>;
-    
+
     /// Verify data availability
     fn verify_availability(&self, hash: &Hash) -> bool;
-    
+
     /// Broadcast data to the network
     fn broadcast_data(&self, hash: &Hash, data: &[u8]) -> Result<()>;
-    
+
     /// Request data from peers
     fn request_data(&self, hash: &Hash) -> Result<()>;
-    
+
     /// Get data availability proof
     fn get_availability_proof(&self, hash: &Hash) -> Result<AvailabilityProof>;
 }

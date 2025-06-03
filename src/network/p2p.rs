@@ -95,53 +95,30 @@ pub enum P2PMessage {
         node_type: String,
     },
     /// Handshake acknowledgment
-    HandshakeAck {
-        peer_id: PeerId,
-        accepted: bool,
-    },
+    HandshakeAck { peer_id: PeerId, accepted: bool },
     /// Ping message for connectivity check
-    Ping {
-        nonce: u64,
-        timestamp: u64,
-    },
+    Ping { nonce: u64, timestamp: u64 },
     /// Pong response to ping
-    Pong {
-        nonce: u64,
-        timestamp: u64,
-    },
+    Pong { nonce: u64, timestamp: u64 },
     /// Block announcement
     BlockAnnouncement {
         block_hash: String,
         block_height: i32,
     },
     /// Block data
-    BlockData {
-        block: Block,
-    },
+    BlockData { block: Block },
     /// Transaction announcement
-    TransactionAnnouncement {
-        tx_hash: String,
-    },
+    TransactionAnnouncement { tx_hash: String },
     /// Transaction data
-    TransactionData {
-        transaction: Transaction,
-    },
+    TransactionData { transaction: Transaction },
     /// Request for block data
-    BlockRequest {
-        block_hash: String,
-    },
+    BlockRequest { block_hash: String },
     /// Request for transaction data
-    TransactionRequest {
-        tx_hash: String,
-    },
+    TransactionRequest { tx_hash: String },
     /// Peer list sharing
-    PeerList {
-        peers: Vec<PeerInfo>,
-    },
+    PeerList { peers: Vec<PeerInfo> },
     /// Status update
-    StatusUpdate {
-        best_height: i32,
-    },
+    StatusUpdate { best_height: i32 },
 }
 
 /// Information about a peer
@@ -293,7 +270,7 @@ impl P2PNode {
                         .duration_since(UNIX_EPOCH)
                         .unwrap()
                         .as_nanos() as u64;
-                    
+
                     let ping_msg = P2PMessage::Ping {
                         nonce,
                         timestamp: SystemTime::now()
@@ -347,9 +324,9 @@ impl P2PNode {
             let best_height = self.best_height.clone();
 
             tokio::spawn(async move {
-                if let Err(e) = Self::connect_to_peer(
-                    addr, peers, event_tx, peer_id, best_height
-                ).await {
+                if let Err(e) =
+                    Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await
+                {
                     log::warn!("Failed to connect to bootstrap peer {}: {}", addr, e);
                 }
             });
@@ -367,7 +344,7 @@ impl P2PNode {
         log::debug!("Connecting to peer at {}", addr);
 
         let stream = timeout(Duration::from_secs(10), TcpStream::connect(addr)).await??;
-        
+
         // Send handshake
         let handshake = P2PMessage::Handshake {
             peer_id: our_peer_id,
@@ -380,7 +357,8 @@ impl P2PNode {
             node_type: "full_node".to_string(),
         };
 
-        Self::handle_peer_connection(stream, addr, peers, event_tx, our_peer_id, Some(handshake)).await
+        Self::handle_peer_connection(stream, addr, peers, event_tx, our_peer_id, Some(handshake))
+            .await
     }
 
     /// Handle incoming connection
@@ -405,7 +383,7 @@ impl P2PNode {
         initial_message: Option<P2PMessage>,
     ) -> Result<()> {
         let (_message_tx, mut message_rx) = mpsc::unbounded_channel();
-        
+
         // Send initial message if provided (outgoing connection)
         if let Some(msg) = initial_message {
             Self::send_message(&mut stream, &msg).await?;
@@ -413,7 +391,7 @@ impl P2PNode {
 
         // Read messages from peer
         let mut peer_id_opt = None;
-        
+
         loop {
             tokio::select! {
                 // Read message from peer
@@ -486,13 +464,17 @@ impl P2PNode {
                 node_type: _,
             } => {
                 if protocol_version != PROTOCOL_VERSION {
-                    log::warn!("Protocol version mismatch with {}: {} vs {}", 
-                              peer_id, protocol_version, PROTOCOL_VERSION);
+                    log::warn!(
+                        "Protocol version mismatch with {}: {} vs {}",
+                        peer_id,
+                        protocol_version,
+                        PROTOCOL_VERSION
+                    );
                     return Ok(false);
                 }
 
                 *peer_id_opt = Some(peer_id);
-                
+
                 // Send handshake ack
                 let ack = P2PMessage::HandshakeAck {
                     peer_id: our_peer_id,
@@ -525,7 +507,10 @@ impl P2PNode {
                 }
                 log::debug!("Handshake accepted by {}", peer_id);
             }
-            P2PMessage::Ping { nonce, timestamp: _ } => {
+            P2PMessage::Ping {
+                nonce,
+                timestamp: _,
+            } => {
                 let pong = P2PMessage::Pong {
                     nonce,
                     timestamp: SystemTime::now()
@@ -535,7 +520,10 @@ impl P2PNode {
                 };
                 Self::send_message(stream, &pong).await?;
             }
-            P2PMessage::Pong { nonce: _, timestamp: _ } => {
+            P2PMessage::Pong {
+                nonce: _,
+                timestamp: _,
+            } => {
                 if let Some(peer_id) = peer_id_opt {
                     if let Some(connection) = peers.lock().unwrap().get_mut(peer_id) {
                         connection.last_pong = Instant::now();
@@ -578,7 +566,7 @@ impl P2PNode {
     async fn send_message(stream: &mut TcpStream, message: &P2PMessage) -> Result<()> {
         let data = bincode::serialize(message)?;
         let len = data.len() as u32;
-        
+
         if len > MAX_MESSAGE_SIZE as u32 {
             return Err(format_err!("Message too large: {}", len));
         }
@@ -638,9 +626,9 @@ impl P2PNode {
                 let best_height = self.best_height.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) = Self::connect_to_peer(
-                        addr, peers, event_tx, peer_id, best_height
-                    ).await {
+                    if let Err(e) =
+                        Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await
+                    {
                         log::error!("Failed to connect to peer {}: {}", addr, e);
                     }
                 });
@@ -649,8 +637,12 @@ impl P2PNode {
                 let peers = self.peers.lock().unwrap();
                 log::info!("Connected peers: {}", peers.len());
                 for (peer_id, connection) in peers.iter() {
-                    log::info!("  {} at {} (height: {})", 
-                              peer_id, connection.address, connection.best_height);
+                    log::info!(
+                        "  {} at {} (height: {})",
+                        peer_id,
+                        connection.address,
+                        connection.best_height
+                    );
                 }
             }
             NetworkCommand::SendDirectMessage(peer_id, message) => {
@@ -676,7 +668,9 @@ impl P2PNode {
     async fn send_to_peer(&self, peer_id: PeerId, message: P2PMessage) -> Result<()> {
         let peers = self.peers.lock().unwrap();
         if let Some(connection) = peers.get(&peer_id) {
-            connection.message_tx.send(message)
+            connection
+                .message_tx
+                .send(message)
                 .map_err(|e| format_err!("Failed to send to peer {}: {}", peer_id, e))?;
         } else {
             return Err(format_err!("Peer {} not connected", peer_id));
@@ -691,7 +685,9 @@ impl P2PNode {
 
     /// Get peer heights
     pub fn get_peer_heights(&self) -> HashMap<PeerId, i32> {
-        self.peers.lock().unwrap()
+        self.peers
+            .lock()
+            .unwrap()
             .iter()
             .map(|(id, conn)| (*id, conn.best_height))
             .collect()

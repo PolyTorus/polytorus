@@ -177,8 +177,11 @@ impl Transaction {
         utxo: &UTXOSet,
         crypto: &dyn CryptoProvider,
     ) -> Result<Transaction> {
-        info!("Creating contract deployment transaction from: {}", wallet.get_address());
-        
+        info!(
+            "Creating contract deployment transaction from: {}",
+            wallet.get_address()
+        );
+
         let contract_data = ContractTransactionData {
             tx_type: ContractTransactionType::Deploy {
                 bytecode,
@@ -196,7 +199,11 @@ impl Transaction {
 
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, gas_fee)?;
         if acc_v.0 < gas_fee {
-            return Err(format_err!("Not enough balance for gas fees: need {}, have {}", gas_fee, acc_v.0));
+            return Err(format_err!(
+                "Not enough balance for gas fees: need {}, have {}",
+                gas_fee,
+                acc_v.0
+            ));
         }
 
         for tx in acc_v.1 {
@@ -223,7 +230,8 @@ impl Transaction {
             contract_data: Some(contract_data),
         };
         tx.id = tx.hash()?;
-        utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+        utxo.blockchain
+            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
         Ok(tx)
     }
 
@@ -238,9 +246,12 @@ impl Transaction {
         utxo: &UTXOSet,
         crypto: &dyn CryptoProvider,
     ) -> Result<Transaction> {
-        info!("Creating contract call transaction from: {} to contract: {}", 
-              wallet.get_address(), contract_address);
-        
+        info!(
+            "Creating contract call transaction from: {} to contract: {}",
+            wallet.get_address(),
+            contract_address
+        );
+
         let contract_data = ContractTransactionData {
             tx_type: ContractTransactionType::Call {
                 contract_address,
@@ -259,7 +270,11 @@ impl Transaction {
 
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, total_cost)?;
         if acc_v.0 < total_cost {
-            return Err(format_err!("Not enough balance: need {}, have {}", total_cost, acc_v.0));
+            return Err(format_err!(
+                "Not enough balance: need {}, have {}",
+                total_cost,
+                acc_v.0
+            ));
         }
 
         for tx in acc_v.1 {
@@ -286,7 +301,8 @@ impl Transaction {
             contract_data: Some(contract_data),
         };
         tx.id = tx.hash()?;
-        utxo.blockchain.sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+        utxo.blockchain
+            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
         Ok(tx)
     }
 
@@ -392,18 +408,19 @@ impl Transaction {
         }
 
         Ok(())
-    }    /// Hash returns the hash of the Transaction
+    }
+    /// Hash returns the hash of the Transaction
     #[inline]
     pub fn hash(&self) -> Result<String> {
         let mut buf = Vec::new();
         serialize_into(&mut buf, &self.vin)?;
         serialize_into(&mut buf, &self.vout)?;
-        
+
         // Include contract data in hash if present
         if let Some(contract_data) = &self.contract_data {
             serialize_into(&mut buf, contract_data)?;
         }
-        
+
         let mut hasher = Sha256::new();
         hasher.input(&buf);
         Ok(hasher.result_str())
@@ -453,11 +470,12 @@ impl TXOutput {
     /// IsLockedWithKey checks if the output can be used by the owner of the pubkey
     pub fn is_locked_with_key(&self, pub_key_hash: &[u8]) -> bool {
         self.pub_key_hash == pub_key_hash
-    }    /// Lock signs the output
+    }
+    /// Lock signs the output
     fn lock(&mut self, address: &str) -> Result<()> {
         // Extract base address without encryption suffix
         let (base_address, _) = extract_encryption_type(address)?;
-        
+
         // Try to decode the address, but handle failure gracefully for modular mining
         match Address::decode(&base_address) {
             Ok(addr) => {
@@ -485,7 +503,7 @@ impl TXOutput {
                 }
             }
         }
-        
+
         debug!("lock: {}", address);
         Ok(())
     }

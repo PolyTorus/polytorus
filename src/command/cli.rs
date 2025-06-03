@@ -5,9 +5,11 @@ use crate::blockchain::utxoset::*;
 use crate::crypto::transaction::*;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
-use crate::modular::{ModularBlockchainBuilder, default_modular_config, load_modular_config_from_file};
+use crate::modular::{
+    default_modular_config, load_modular_config_from_file, ModularBlockchainBuilder,
+};
 use crate::network::server::Server;
-use crate::smart_contract::{SmartContract, ContractState};
+use crate::smart_contract::{ContractState, SmartContract};
 use crate::webserver::webserver::WebServer;
 use crate::Result;
 use bitcoincash_addr::Address;
@@ -106,17 +108,24 @@ impl Cli {
                     ))
                     .arg(Arg::from_usage("<to> 'Destination wallet address'"))
                     .arg(Arg::from_usage("<amount> 'Amount to send'"))
-                    .arg(Arg::from_usage("<node> 'Remote node address (host:port)'"))                    .arg(Arg::from_usage(
+                    .arg(Arg::from_usage("<node> 'Remote node address (host:port)'"))
+                    .arg(Arg::from_usage(
                         "-m --mine 'mine immediately on the remote node'",
                     )),
             )
             .subcommand(
                 App::new("deploycontract")
                     .about("deploy a smart contract")
-                    .arg(Arg::from_usage("<wallet> 'Wallet address to pay for deployment'"))
-                    .arg(Arg::from_usage("<bytecode-file> 'Path to WASM bytecode file'"))
-                    .arg(Arg::from_usage("[gas-limit] 'Gas limit for deployment (default: 1000000)'"))
-                    .arg(Arg::from_usage("-m --mine 'mine immediately'"))
+                    .arg(Arg::from_usage(
+                        "<wallet> 'Wallet address to pay for deployment'",
+                    ))
+                    .arg(Arg::from_usage(
+                        "<bytecode-file> 'Path to WASM bytecode file'",
+                    ))
+                    .arg(Arg::from_usage(
+                        "[gas-limit] 'Gas limit for deployment (default: 1000000)'",
+                    ))
+                    .arg(Arg::from_usage("-m --mine 'mine immediately'")),
             )
             .subcommand(
                 App::new("callcontract")
@@ -125,16 +134,16 @@ impl Cli {
                     .arg(Arg::from_usage("<contract> 'Contract address'"))
                     .arg(Arg::from_usage("<function> 'Function name to call'"))
                     .arg(Arg::from_usage("[value] 'Value to send (default: 0)'"))
-                    .arg(Arg::from_usage("[gas-limit] 'Gas limit for call (default: 100000)'"))
-                    .arg(Arg::from_usage("-m --mine 'mine immediately'"))
+                    .arg(Arg::from_usage(
+                        "[gas-limit] 'Gas limit for call (default: 100000)'",
+                    ))
+                    .arg(Arg::from_usage("-m --mine 'mine immediately'")),
             )
+            .subcommand(App::new("listcontracts").about("list all deployed contracts"))
             .subcommand(
-                App::new("listcontracts")
-                    .about("list all deployed contracts")
-            )            .subcommand(
                 App::new("contractstate")
                     .about("get contract state")
-                    .arg(Arg::from_usage("<contract> 'Contract address'"))
+                    .arg(Arg::from_usage("<contract> 'Contract address'")),
             )
             .subcommand(
                 App::new("modular")
@@ -142,28 +151,24 @@ impl Cli {
                     .subcommand(
                         App::new("start")
                             .about("Start modular blockchain")
-                            .arg(Arg::from_usage("[config] 'Path to configuration file'"))
+                            .arg(Arg::from_usage("[config] 'Path to configuration file'")),
                     )
                     .subcommand(
                         App::new("mine")
                             .about("Mine block with modular architecture")
                             .arg(Arg::from_usage("<address> 'Mining reward address'"))
-                            .arg(Arg::from_usage("[tx-count] 'Number of transactions to include (default: 10)'"))
+                            .arg(Arg::from_usage(
+                                "[tx-count] 'Number of transactions to include (default: 10)'",
+                            )),
                     )
-                    .subcommand(
-                        App::new("state")
-                            .about("Get modular blockchain state information")
-                    )
-                    .subcommand(
-                        App::new("layers")
-                            .about("Show information about all layers")
-                    )
+                    .subcommand(App::new("state").about("Get modular blockchain state information"))
+                    .subcommand(App::new("layers").about("Show information about all layers"))
                     .subcommand(
                         App::new("challenge")
                             .about("Submit a settlement challenge")
                             .arg(Arg::from_usage("<batch-id> 'Batch ID to challenge'"))
-                            .arg(Arg::from_usage("<reason> 'Challenge reason'"))
-                    )
+                            .arg(Arg::from_usage("<reason> 'Challenge reason'")),
+                    ),
             )
             .get_matches();
 
@@ -241,7 +246,8 @@ impl Cli {
                     utxo_set,
                 )?;
                 server.start_server()?;
-            }            ("remotesend", Some(sub_m)) => {
+            }
+            ("remotesend", Some(sub_m)) => {
                 let from = sub_m.value_of("from").unwrap();
                 let to = sub_m.value_of("to").unwrap();
                 let amount: i32 = sub_m.value_of("amount").unwrap().parse()?;
@@ -279,41 +285,40 @@ impl Cli {
             }
             ("listcontracts", Some(_)) => {
                 cmd_list_contracts()?;
-            }            ("contractstate", Some(sub_m)) => {
+            }
+            ("contractstate", Some(sub_m)) => {
                 let contract = get_value("contract", sub_m)?;
                 cmd_contract_state(contract)?;
             }
-            ("modular", Some(sub_m)) => {
-                match sub_m.subcommand() {
-                    ("start", Some(start_m)) => {
-                        let config_path = start_m.value_of("config");
-                        cmd_modular_start(config_path).await?;
-                    }
-                    ("mine", Some(mine_m)) => {
-                        let address = get_value("address", mine_m)?;
-                        let tx_count: usize = if let Some(count) = mine_m.value_of("tx-count") {
-                            count.parse()?
-                        } else {
-                            10
-                        };
-                        cmd_modular_mine(address, tx_count).await?;
-                    }
-                    ("state", Some(_)) => {
-                        cmd_modular_state().await?;
-                    }
-                    ("layers", Some(_)) => {
-                        cmd_modular_layers().await?;
-                    }
-                    ("challenge", Some(challenge_m)) => {
-                        let batch_id = get_value("batch-id", challenge_m)?;
-                        let reason = get_value("reason", challenge_m)?;
-                        cmd_modular_challenge(batch_id, reason).await?;
-                    }
-                    _ => {
-                        println!("Unknown modular subcommand. Use --help for available commands.");
-                    }
+            ("modular", Some(sub_m)) => match sub_m.subcommand() {
+                ("start", Some(start_m)) => {
+                    let config_path = start_m.value_of("config");
+                    cmd_modular_start(config_path).await?;
                 }
-            }
+                ("mine", Some(mine_m)) => {
+                    let address = get_value("address", mine_m)?;
+                    let tx_count: usize = if let Some(count) = mine_m.value_of("tx-count") {
+                        count.parse()?
+                    } else {
+                        10
+                    };
+                    cmd_modular_mine(address, tx_count).await?;
+                }
+                ("state", Some(_)) => {
+                    cmd_modular_state().await?;
+                }
+                ("layers", Some(_)) => {
+                    cmd_modular_layers().await?;
+                }
+                ("challenge", Some(challenge_m)) => {
+                    let batch_id = get_value("batch-id", challenge_m)?;
+                    let reason = get_value("reason", challenge_m)?;
+                    cmd_modular_challenge(batch_id, reason).await?;
+                }
+                _ => {
+                    println!("Unknown modular subcommand. Use --help for available commands.");
+                }
+            },
             _ => {}
         }
 
@@ -445,17 +450,25 @@ fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: boo
 }
 
 // Smart contract command functions
-fn cmd_deploy_contract(wallet: &str, bytecode_file: &str, gas_limit: u64, mine_now: bool) -> Result<()> {    // Read bytecode from file
-    let bytecode = fs::read(bytecode_file)
-        .map_err(|e| failure::Error::from(e))?;
-      // Validate bytecode size
-    if bytecode.len() > 1024 * 1024 {  // 1MB limit
+fn cmd_deploy_contract(
+    wallet: &str,
+    bytecode_file: &str,
+    gas_limit: u64,
+    mine_now: bool,
+) -> Result<()> {
+    // Read bytecode from file
+    let bytecode = fs::read(bytecode_file).map_err(failure::Error::from)?;
+    // Validate bytecode size
+    if bytecode.len() > 1024 * 1024 {
+        // 1MB limit
         return Err(failure::err_msg("Bytecode file too large (max 1MB)"));
     }
-    
+
     let bc = Blockchain::new()?;
-    let mut utxo_set = UTXOSet { blockchain: bc };    let wallets = Wallets::new()?;
-    let wallet_obj = wallets.get_wallet(wallet)
+    let mut utxo_set = UTXOSet { blockchain: bc };
+    let wallets = Wallets::new()?;
+    let wallet_obj = wallets
+        .get_wallet(wallet)
         .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?;
 
     // Create contract deployment transaction
@@ -466,38 +479,52 @@ fn cmd_deploy_contract(wallet: &str, bytecode_file: &str, gas_limit: u64, mine_n
         Vec::new(), // constructor_args
         gas_limit,
         &utxo_set,
-        crypto.as_ref()    )?;    if mine_now {
+        crypto.as_ref(),
+    )?;
+    if mine_now {
         // Calculate contract address before mining
         let contract_address = if let Some(contract_data) = &tx.contract_data {
-            if let ContractTransactionData { tx_type: ContractTransactionType::Deploy { bytecode, .. }, .. } = contract_data {
+            if let ContractTransactionData {
+                tx_type: ContractTransactionType::Deploy { bytecode, .. },
+                ..
+            } = contract_data
+            {
                 // Generate the same address that SmartContract::new would generate
-                SmartContract::new(
-                    bytecode.clone(),
-                    wallet.to_string(),
-                    vec![],
-                    None,
-                )?.get_address().to_string()
+                SmartContract::new(bytecode.clone(), wallet.to_string(), vec![], None)?
+                    .get_address()
+                    .to_string()
             } else {
                 tx.id.clone()
             }
         } else {
             tx.id.clone()
         };
-        
+
         // Mine immediately
         let cbtx = Transaction::new_coinbase(wallet.to_string(), String::from("reward!"))?;
         let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
-          // Get contract address from the transaction
-        if let Some(contract_data) = new_block.get_transaction().last().unwrap().contract_data.as_ref() {
-            if let ContractTransactionData { tx_type: ContractTransactionType::Deploy { gas_limit, .. }, .. } = contract_data {
+        // Get contract address from the transaction
+        if let Some(contract_data) = new_block
+            .get_transaction()
+            .last()
+            .unwrap()
+            .contract_data
+            .as_ref()
+        {
+            if let ContractTransactionData {
+                tx_type: ContractTransactionType::Deploy { gas_limit, .. },
+                ..
+            } = contract_data
+            {
                 println!("Contract deployed successfully!");
                 println!("Contract Address: {}", contract_address);
                 println!("Gas Limit: {}", gas_limit);
                 return Ok(());
             }
         }
-        println!("Contract deployed successfully! (Address will be available after mining)");    } else {
+        println!("Contract deployed successfully! (Address will be available after mining)");
+    } else {
         // Send to network (not implemented in this example)
         let tx_id = tx.id.clone(); // Store transaction ID before moving
         println!("Contract deployment transaction created. Use --mine to deploy immediately.");
@@ -507,23 +534,35 @@ fn cmd_deploy_contract(wallet: &str, bytecode_file: &str, gas_limit: u64, mine_n
     Ok(())
 }
 
-fn cmd_call_contract(wallet: &str, contract: &str, function: &str, value: i32, gas_limit: u64, mine_now: bool) -> Result<()> {
+fn cmd_call_contract(
+    wallet: &str,
+    contract: &str,
+    function: &str,
+    value: i32,
+    gas_limit: u64,
+    mine_now: bool,
+) -> Result<()> {
     let bc = Blockchain::new()?;
-    let mut utxo_set = UTXOSet { blockchain: bc };    let wallets = Wallets::new()?;
-    let wallet_obj = wallets.get_wallet(wallet)
-        .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?;    // Verify contract exists by checking metadata instead of state
+    let mut utxo_set = UTXOSet { blockchain: bc };
+    let wallets = Wallets::new()?;
+    let wallet_obj = wallets
+        .get_wallet(wallet)
+        .ok_or_else(|| failure::err_msg(format!("Wallet '{}' not found", wallet)))?; // Verify contract exists by checking metadata instead of state
     let contract_state_path = utxo_set.blockchain.context.data_dir().join("contracts");
     let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
-    
+
     let contracts = contract_state.list_contracts()?;
     let contract_exists = contracts.iter().any(|c| c.address == contract);
-    
+
     if !contract_exists {
-        return Err(failure::err_msg(format!("Contract '{}' not found", contract)));
+        return Err(failure::err_msg(format!(
+            "Contract '{}' not found",
+            contract
+        )));
     }
 
     // Create function call data (simplified - in practice you'd want proper ABI encoding)
-    let call_data = format!("{}()", function).into_bytes();    // Create contract call transaction
+    let call_data = format!("{}()", function).into_bytes(); // Create contract call transaction
     let crypto = crate::crypto::get_crypto_provider(&wallet_obj.encryption_type);
     let tx = Transaction::new_contract_call(
         wallet_obj,
@@ -533,14 +572,15 @@ fn cmd_call_contract(wallet: &str, contract: &str, function: &str, value: i32, g
         gas_limit,
         value as u64,
         &utxo_set,
-        crypto.as_ref()
-    )?;    if mine_now {
+        crypto.as_ref(),
+    )?;
+    if mine_now {
         // Mine immediately
         let _tx_id = tx.id.clone(); // Store transaction ID before moving
         let cbtx = Transaction::new_coinbase(wallet.to_string(), String::from("reward!"))?;
         let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
-        
+
         println!("Contract function called successfully!");
         println!("Function: {}", function);
         println!("Gas Limit: {}", gas_limit);
@@ -556,28 +596,28 @@ fn cmd_call_contract(wallet: &str, contract: &str, function: &str, value: i32, g
 
 fn cmd_list_contracts() -> Result<()> {
     let bc = Blockchain::new()?;
-    
+
     // Use a reasonable limit to prevent timeouts
     const MAX_CONTRACTS_TO_LIST: usize = 100;
-    
+
     let contracts = match bc.list_contracts_with_limit(Some(MAX_CONTRACTS_TO_LIST)) {
         Ok(contracts) => contracts,
         Err(e) => {
             eprintln!("Error listing contracts: {}", e);
             println!("Attempting fallback with direct contract state access...");
-            
+
             // Fallback approach using direct contract state
             let contract_state_path = bc.context.data_dir().join("contracts");
             let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
             contract_state.list_contracts_with_limit(Some(MAX_CONTRACTS_TO_LIST))?
         }
     };
-    
+
     if contracts.is_empty() {
         println!("No contracts deployed.");
         return Ok(());
     }
-    
+
     println!("Deployed Contracts ({}):", contracts.len());
     println!("==================");
     for contract_metadata in contracts {
@@ -590,34 +630,207 @@ fn cmd_list_contracts() -> Result<()> {
         }
         println!("---");
     }
-    
+
     Ok(())
 }
 
 fn cmd_contract_state(contract: &str) -> Result<()> {
     let bc = Blockchain::new()?;
-    
+
     // Direct access to contract state instead of going through blockchain
     let contract_state_path = bc.context.data_dir().join("contracts");
     let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
     let state = contract_state.get_contract_state(contract)?;
-    
+
     if !state.is_empty() {
         println!("Contract State for: {}", contract);
         println!("==================");
-        
+
         // Display storage
         println!("Storage:");
         for (key, value) in state {
-            println!("  {}: {}", 
-                hex::encode(key.as_bytes()), 
+            println!(
+                "  {}: {}",
+                hex::encode(key.as_bytes()),
                 String::from_utf8_lossy(&value)
             );
         }
     } else {
         println!("Contract '{}' not found or has no state.", contract);
     }
-    
+
+    Ok(())
+}
+
+// Modular blockchain command implementations
+async fn cmd_modular_start(config_path: Option<&str>) -> Result<()> {
+    println!("Starting modular blockchain...");
+
+    let config = if let Some(path) = config_path {
+        println!("Loading configuration from: {}", path);
+        match load_modular_config_from_file(path) {
+            Ok(cfg) => {
+                println!("Configuration loaded successfully!");
+                cfg
+            }
+            Err(e) => {
+                println!("Failed to load configuration file: {}", e);
+                println!("Using default configuration instead...");
+                default_modular_config()
+            }
+        }
+    } else {
+        println!("No configuration file specified, using defaults...");
+        default_modular_config()
+    };
+
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+
+    blockchain.start().await?;
+    println!("Modular blockchain started successfully!");
+
+    // Keep the blockchain running
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+async fn cmd_modular_mine(address: &str, tx_count: usize) -> Result<()> {
+    println!(
+        "Mining block with modular architecture for address: {}",
+        address
+    );
+    println!("Including {} transactions", tx_count);
+
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+
+    // Create sample transactions
+    let mut transactions = Vec::new();
+    for i in 0..tx_count {
+        let tx = Transaction::new_coinbase(
+            format!("{}_{}", address, i),
+            format!("Mining reward {}", i),
+        )?;
+        transactions.push(tx);
+    }
+    let block = blockchain.mine_block(transactions).await?;
+    println!("Successfully mined block: {}", block.get_hash());
+    println!("Block height: {}", block.get_height());
+    println!("Timestamp: {}", block.get_timestamp());
+
+    Ok(())
+}
+
+async fn cmd_modular_state() -> Result<()> {
+    println!("Getting modular blockchain state...");
+
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+
+    let state_info = blockchain.get_state_info()?;
+
+    println!("=== Modular Blockchain State ===");
+    println!("Execution state root: {}", state_info.execution_state_root);
+    println!("Settlement root: {}", state_info.settlement_root);
+    println!("Block height: {}", state_info.block_height);
+    println!(
+        "Canonical chain length: {}",
+        state_info.canonical_chain_length
+    );
+
+    Ok(())
+}
+
+async fn cmd_modular_layers() -> Result<()> {
+    println!("=== Modular Blockchain Layers Information ===\n");
+
+    println!("1. Execution Layer:");
+    println!("   - Handles transaction execution and smart contracts");
+    println!("   - WASM-based contract engine");
+    println!("   - State management and gas metering");
+
+    println!("\n2. Settlement Layer:");
+    println!("   - Finalizes state transitions");
+    println!("   - Fraud proof verification");
+    println!("   - Challenge period management");
+
+    println!("\n3. Consensus Layer:");
+    println!("   - Proof-of-Work block validation");
+    println!("   - Chain management");
+    println!("   - Fork resolution");
+
+    println!("\n4. Data Availability Layer:");
+    println!("   - P2P data storage and retrieval");
+    println!("   - Availability proof generation");
+    println!("   - Network communication");
+
+    let config = default_modular_config();
+    println!("\n=== Current Configuration ===");
+    println!("Gas limit: {}", config.execution.gas_limit);
+    println!(
+        "Challenge period: {} blocks",
+        config.settlement.challenge_period
+    );
+    println!("Block time: {}ms", config.consensus.block_time);
+    println!("Max block size: {} bytes", config.consensus.max_block_size);
+
+    Ok(())
+}
+
+async fn cmd_modular_challenge(batch_id: &str, reason: &str) -> Result<()> {
+    use crate::modular::{FraudProof, SettlementChallenge};
+
+    println!("Submitting settlement challenge...");
+    println!("Batch ID: {}", batch_id);
+    println!("Reason: {}", reason);
+
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+    // Create a fraud proof with the reason as evidence
+    let fraud_proof = FraudProof {
+        batch_id: batch_id.to_string(),
+        proof_data: reason.as_bytes().to_vec(),
+        expected_state_root: "expected_state".to_string(),
+        actual_state_root: "actual_state".to_string(),
+    };
+
+    let challenge = SettlementChallenge {
+        challenge_id: format!("challenge_{}", batch_id),
+        batch_id: batch_id.to_string(),
+        proof: fraud_proof,
+        challenger: "cli_user".to_string(),
+        timestamp: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    };
+
+    let result = blockchain.submit_challenge(challenge).await?;
+
+    println!("Challenge submitted successfully!");
+    println!("Challenge ID: {}", result.challenge_id);
+    println!("Successful: {}", result.successful);
+    if let Some(penalty) = result.penalty {
+        println!("Penalty applied: {}", penalty);
+    }
+
     Ok(())
 }
 
@@ -725,171 +938,8 @@ mod tests {
         let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
 
         assert_eq!(balance1, 10);
-        assert_eq!(balance2, 0);        // ネットワーク機能のテストは実際のノードが必要なため省略
+        assert_eq!(balance2, 0); // ネットワーク機能のテストは実際のノードが必要なため省略
         cleanup_test_context(&context);
         Ok(())
     }
-}
-
-// Modular blockchain command implementations
-async fn cmd_modular_start(config_path: Option<&str>) -> Result<()> {
-    println!("Starting modular blockchain...");
-    
-    let config = if let Some(path) = config_path {
-        println!("Loading configuration from: {}", path);
-        match load_modular_config_from_file(path) {
-            Ok(cfg) => {
-                println!("Configuration loaded successfully!");
-                cfg
-            }
-            Err(e) => {
-                println!("Failed to load configuration file: {}", e);
-                println!("Using default configuration instead...");
-                default_modular_config()
-            }
-        }
-    } else {
-        println!("No configuration file specified, using defaults...");
-        default_modular_config()
-    };
-    
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-    
-    blockchain.start().await?;
-    println!("Modular blockchain started successfully!");
-    
-    // Keep the blockchain running
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    }
-}
-
-async fn cmd_modular_mine(address: &str, tx_count: usize) -> Result<()> {
-    println!("Mining block with modular architecture for address: {}", address);
-    println!("Including {} transactions", tx_count);
-    
-    let config = default_modular_config();
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-    
-    // Create sample transactions
-    let mut transactions = Vec::new();
-    for i in 0..tx_count {
-        let tx = Transaction::new_coinbase(
-            format!("{}_{}", address, i),
-            format!("Mining reward {}", i)
-        )?;
-        transactions.push(tx);
-    }
-      let block = blockchain.mine_block(transactions).await?;
-    println!("Successfully mined block: {}", block.get_hash());
-    println!("Block height: {}", block.get_height());
-    println!("Timestamp: {}", block.get_timestamp());
-    
-    Ok(())
-}
-
-async fn cmd_modular_state() -> Result<()> {
-    println!("Getting modular blockchain state...");
-    
-    let config = default_modular_config();
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-    
-    let state_info = blockchain.get_state_info()?;
-    
-    println!("=== Modular Blockchain State ===");
-    println!("Execution state root: {}", state_info.execution_state_root);
-    println!("Settlement root: {}", state_info.settlement_root);
-    println!("Block height: {}", state_info.block_height);
-    println!("Canonical chain length: {}", state_info.canonical_chain_length);
-    
-    Ok(())
-}
-
-async fn cmd_modular_layers() -> Result<()> {
-    println!("=== Modular Blockchain Layers Information ===\n");
-    
-    println!("1. Execution Layer:");
-    println!("   - Handles transaction execution and smart contracts");
-    println!("   - WASM-based contract engine");
-    println!("   - State management and gas metering");
-    
-    println!("\n2. Settlement Layer:");
-    println!("   - Finalizes state transitions");
-    println!("   - Fraud proof verification");
-    println!("   - Challenge period management");
-    
-    println!("\n3. Consensus Layer:");
-    println!("   - Proof-of-Work block validation");
-    println!("   - Chain management");
-    println!("   - Fork resolution");
-    
-    println!("\n4. Data Availability Layer:");
-    println!("   - P2P data storage and retrieval");
-    println!("   - Availability proof generation");
-    println!("   - Network communication");
-    
-    let config = default_modular_config();
-    println!("\n=== Current Configuration ===");
-    println!("Gas limit: {}", config.execution.gas_limit);
-    println!("Challenge period: {} blocks", config.settlement.challenge_period);
-    println!("Block time: {}ms", config.consensus.block_time);
-    println!("Max block size: {} bytes", config.consensus.max_block_size);
-    
-    Ok(())
-}
-
-async fn cmd_modular_challenge(batch_id: &str, reason: &str) -> Result<()> {
-    use crate::modular::{SettlementChallenge, FraudProof};
-    
-    println!("Submitting settlement challenge...");
-    println!("Batch ID: {}", batch_id);
-    println!("Reason: {}", reason);
-    
-    let config = default_modular_config();
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-      // Create a fraud proof with the reason as evidence
-    let fraud_proof = FraudProof {
-        batch_id: batch_id.to_string(),
-        proof_data: reason.as_bytes().to_vec(),
-        expected_state_root: "expected_state".to_string(),
-        actual_state_root: "actual_state".to_string(),
-    };
-    
-    let challenge = SettlementChallenge {
-        challenge_id: format!("challenge_{}", batch_id),
-        batch_id: batch_id.to_string(),
-        proof: fraud_proof,
-        challenger: "cli_user".to_string(),
-        timestamp: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
-    
-    let result = blockchain.submit_challenge(challenge).await?;
-    
-    println!("Challenge submitted successfully!");
-    println!("Challenge ID: {}", result.challenge_id);
-    println!("Successful: {}", result.successful);
-    if let Some(penalty) = result.penalty {
-        println!("Penalty applied: {}", penalty);
-    }
-    
-    Ok(())
 }

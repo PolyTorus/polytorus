@@ -3,19 +3,19 @@
 //! This module coordinates the interaction between different layers
 //! of the modular blockchain architecture.
 
-use super::traits::*;
-use super::execution::PolyTorusExecutionLayer;
 use super::consensus::PolyTorusConsensusLayer;
-use super::settlement::PolyTorusSettlementLayer;
 use super::data_availability::PolyTorusDataAvailabilityLayer;
+use super::execution::PolyTorusExecutionLayer;
+use super::settlement::PolyTorusSettlementLayer;
+use super::traits::*;
 
 use crate::blockchain::block::Block;
-use crate::crypto::transaction::Transaction;
 use crate::config::DataContext;
+use crate::crypto::transaction::Transaction;
 use crate::Result;
 
 use std::sync::{Arc, Mutex};
-use tokio::sync::{Mutex as AsyncMutex, mpsc};
+use tokio::sync::{mpsc, Mutex as AsyncMutex};
 
 /// Main modular blockchain orchestrator
 pub struct ModularBlockchain {
@@ -57,10 +57,8 @@ impl ModularBlockchain {
     /// Create a new modular blockchain instance
     pub fn new(config: ModularConfig, data_context: DataContext) -> Result<Self> {
         // Initialize layers
-        let execution_layer = PolyTorusExecutionLayer::new(
-            data_context.clone(),
-            config.execution.clone(),
-        )?;
+        let execution_layer =
+            PolyTorusExecutionLayer::new(data_context.clone(), config.execution.clone())?;
 
         let consensus_layer = PolyTorusConsensusLayer::new(
             data_context.clone(),
@@ -70,9 +68,8 @@ impl ModularBlockchain {
 
         let settlement_layer = PolyTorusSettlementLayer::new(config.settlement.clone())?;
 
-        let data_availability_layer = PolyTorusDataAvailabilityLayer::new(
-            config.data_availability.clone()
-        )?;
+        let data_availability_layer =
+            PolyTorusDataAvailabilityLayer::new(config.data_availability.clone())?;
 
         // Create event channels
         let (event_tx, event_rx) = mpsc::unbounded_channel();
@@ -99,7 +96,10 @@ impl ModularBlockchain {
     }
 
     /// Process a new transaction
-    pub async fn process_transaction(&self, transaction: Transaction) -> Result<TransactionReceipt> {
+    pub async fn process_transaction(
+        &self,
+        transaction: Transaction,
+    ) -> Result<TransactionReceipt> {
         log::debug!("Processing transaction: {}", transaction.id);
 
         // Execute transaction
@@ -111,7 +111,9 @@ impl ModularBlockchain {
         let data_hash = self.data_availability_layer.store_data(&tx_data)?;
 
         // Send event
-        let _ = self.event_tx.send(ModularEvent::DataStored(data_hash, tx_data.len()));
+        let _ = self
+            .event_tx
+            .send(ModularEvent::DataStored(data_hash, tx_data.len()));
 
         Ok(receipt)
     }
@@ -123,17 +125,17 @@ impl ModularBlockchain {
         // Create block through consensus layer
         let mut consensus_layer = self.consensus_layer.lock().unwrap();
         let current_height = consensus_layer.get_block_height()?;
-        
+
         log::debug!("Current blockchain height: {}", current_height);
-        
-        let height = current_height.checked_add(1).ok_or_else(|| 
-            failure::format_err!("Block height overflow")
-        )?;
-        
+
+        let height = current_height
+            .checked_add(1)
+            .ok_or_else(|| failure::format_err!("Block height overflow"))?;
+
         // Get previous block hash
         let canonical_chain = consensus_layer.get_canonical_chain();
         log::debug!("Canonical chain length: {}", canonical_chain.len());
-        
+
         let prev_hash = if canonical_chain.is_empty() {
             // No blocks in chain yet - this shouldn't happen if genesis was created
             log::warn!("No blocks found in canonical chain");
@@ -144,7 +146,11 @@ impl ModularBlockchain {
             hash
         };
 
-        log::debug!("Creating block with height: {}, prev_hash: {}", height, prev_hash);
+        log::debug!(
+            "Creating block with height: {}, prev_hash: {}",
+            height,
+            prev_hash
+        );
 
         // Create new block
         let block = Block::new_block(
@@ -181,7 +187,9 @@ impl ModularBlockchain {
         };
 
         // Send events
-        let _ = self.event_tx.send(ModularEvent::BlockProposed(block.clone()));
+        let _ = self
+            .event_tx
+            .send(ModularEvent::BlockProposed(block.clone()));
         let _ = self.event_tx.send(ModularEvent::ExecutionCompleted(
             block.get_hash(),
             execution_result,
@@ -192,13 +200,21 @@ impl ModularBlockchain {
     }
 
     /// Submit a settlement challenge
-    pub async fn submit_challenge(&self, challenge: SettlementChallenge) -> Result<ChallengeResult> {
-        log::info!("Processing settlement challenge: {}", challenge.challenge_id);
+    pub async fn submit_challenge(
+        &self,
+        challenge: SettlementChallenge,
+    ) -> Result<ChallengeResult> {
+        log::info!(
+            "Processing settlement challenge: {}",
+            challenge.challenge_id
+        );
 
         let result = self.settlement_layer.process_challenge(&challenge)?;
 
         // Send event
-        let _ = self.event_tx.send(ModularEvent::ChallengeSubmitted(challenge));
+        let _ = self
+            .event_tx
+            .send(ModularEvent::ChallengeSubmitted(challenge));
 
         Ok(result)
     }
@@ -228,11 +244,11 @@ impl ModularBlockchain {
                     let mut receiver = event_rx.lock().await;
                     receiver.recv().await
                 };
-                
+
                 match event {
                     Some(ModularEvent::BatchReady(batch)) => {
                         log::debug!("Processing batch for settlement: {}", batch.batch_id);
-                        
+
                         if let Err(e) = settlement_layer.settle_batch(&batch) {
                             log::error!("Failed to settle batch: {}", e);
                         }
@@ -241,7 +257,11 @@ impl ModularBlockchain {
                         log::debug!("Block proposed: {}", block.get_hash());
                     }
                     Some(ModularEvent::ExecutionCompleted(hash, result)) => {
-                        log::debug!("Execution completed for {}: gas_used={}", hash, result.gas_used);
+                        log::debug!(
+                            "Execution completed for {}: gas_used={}",
+                            hash,
+                            result.gas_used
+                        );
                     }
                     Some(ModularEvent::SettlementCompleted(result)) => {
                         log::debug!("Settlement completed: {}", result.settlement_root);
@@ -341,7 +361,7 @@ impl ModularBlockchainBuilder {
             },
         });
 
-        let data_context = self.data_context.unwrap_or_else(|| DataContext::default());
+        let data_context = self.data_context.unwrap_or_default();
 
         ModularBlockchain::new(config, data_context)
     }

@@ -54,13 +54,13 @@ impl PolyTorusSettlementLayer {
     fn calculate_settlement_root(&self, batches: &[Hash]) -> Hash {
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;
-        
+
         let mut hasher = Sha256::new();
-        
+
         for batch_id in batches {
             hasher.input(batch_id.as_bytes());
         }
-        
+
         hasher.result_str()
     }
 
@@ -87,7 +87,7 @@ impl PolyTorusSettlementLayer {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         now > timestamp + self.config.challenge_period * 12 // Assuming 12 seconds per block
     }
 
@@ -95,18 +95,18 @@ impl PolyTorusSettlementLayer {
     fn process_expired_challenges(&self) -> Result<()> {
         let mut challenges = self.challenges.lock().unwrap();
         let mut to_remove = Vec::new();
-        
+
         for (challenge_id, challenge) in challenges.iter() {
             if self.is_challenge_period_expired(challenge.timestamp) {
                 // Challenge period expired, batch is considered valid
                 to_remove.push(challenge_id.clone());
             }
         }
-        
+
         for challenge_id in to_remove {
             challenges.remove(&challenge_id);
         }
-        
+
         Ok(())
     }
 
@@ -114,17 +114,16 @@ impl PolyTorusSettlementLayer {
     fn validate_fraud_proof(&self, proof: &FraudProof) -> bool {
         // In a real implementation, this would verify the fraud proof
         // by re-executing the disputed batch and comparing results
-        
+
         // For now, we do basic validation
-        !proof.proof_data.is_empty() &&
-        proof.expected_state_root != proof.actual_state_root
+        !proof.proof_data.is_empty() && proof.expected_state_root != proof.actual_state_root
     }
 
     /// Apply penalty for successful fraud proof
     fn apply_fraud_penalty(&self, _batch_id: &Hash) -> Result<u64> {
         // In a real implementation, this would apply penalties
         // to the validator who submitted the fraudulent batch
-        
+
         // Return penalty amount
         Ok(1000) // Fixed penalty for simplicity
     }
@@ -143,14 +142,16 @@ impl SettlementLayer for PolyTorusSettlementLayer {
             .as_secs();
 
         let mut state = self.settlement_state.lock().unwrap();
-        
+
         // Add to pending batches (subject to challenge period)
-        state.pending_batches.insert(batch.batch_id.clone(), batch.clone());
-        
+        state
+            .pending_batches
+            .insert(batch.batch_id.clone(), batch.clone());
+
         // Calculate proper settlement root from all pending batches
         let batch_ids: Vec<Hash> = state.pending_batches.keys().cloned().collect();
         let settlement_root = self.calculate_settlement_root(&batch_ids);
-        
+
         // After challenge period, it will be considered settled
         let settlement_result = SettlementResult {
             settlement_root,
@@ -158,10 +159,10 @@ impl SettlementLayer for PolyTorusSettlementLayer {
             timestamp,
         };
 
-        // For now, immediately add to history (in real implementation, 
+        // For now, immediately add to history (in real implementation,
         // this would happen after challenge period)
         state.settlement_history.push(settlement_result.clone());
-        
+
         Ok(settlement_result)
     }
 
@@ -177,7 +178,7 @@ impl SettlementLayer for PolyTorusSettlementLayer {
     fn process_challenge(&self, challenge: &SettlementChallenge) -> Result<ChallengeResult> {
         // Verify the fraud proof
         let proof_valid = self.verify_fraud_proof(&challenge.proof);
-        
+
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -186,12 +187,12 @@ impl SettlementLayer for PolyTorusSettlementLayer {
         let result = if proof_valid {
             // Apply penalty and rollback
             let penalty = self.apply_fraud_penalty(&challenge.batch_id)?;
-            
+
             // Remove the challenged batch from settled batches
             let mut state = self.settlement_state.lock().unwrap();
             state.settled_batches.remove(&challenge.batch_id);
             state.pending_batches.remove(&challenge.batch_id);
-            
+
             ChallengeResult {
                 challenge_id: challenge.challenge_id.clone(),
                 successful: true,
@@ -223,13 +224,13 @@ impl SettlementLayer for PolyTorusSettlementLayer {
     fn get_settlement_history(&self, limit: usize) -> Result<Vec<SettlementResult>> {
         let state = self.settlement_state.lock().unwrap();
         let history = &state.settlement_history;
-        
+
         let start = if history.len() > limit {
             history.len() - limit
         } else {
             0
         };
-        
+
         Ok(history[start..].to_vec())
     }
 }
@@ -260,7 +261,7 @@ impl SettlementLayerBuilder {
     }
 
     pub fn build(self) -> Result<PolyTorusSettlementLayer> {
-        let config = self.config.unwrap_or_else(|| SettlementConfig {
+        let config = self.config.unwrap_or(SettlementConfig {
             challenge_period: 100, // 100 blocks
             batch_size: 100,
             min_validator_stake: 1000,

@@ -1,10 +1,7 @@
 //! Advanced smart contract integration tests
 
 use crate::smart_contract::{
-    engine::ContractEngine,
-    state::ContractState,
-    contract::SmartContract,
-    types::ContractExecution,
+    contract::SmartContract, engine::ContractEngine, state::ContractState, types::ContractExecution,
 };
 use tempfile::TempDir;
 
@@ -23,40 +20,48 @@ pub mod advanced_contract_tests {
         SmartContract::new(
             vec![1, 2, 3, 4], // Placeholder bytecode
             "test_deployer".to_string(),
-            vec![], // constructor args
+            vec![],                         // constructor args
             Some(address_hint.to_string()), // Use address hint as ABI for testing
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[test]
     fn test_counter_contract_deployment() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Create a counter contract
         let contract = create_test_contract("counter_test_001");
 
         // Deploy the contract
         let result = engine.deploy_contract(&contract);
-        assert!(result.is_ok(), "Failed to deploy counter contract: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to deploy counter contract: {:?}",
+            result
+        );
 
         // Verify contract is listed
         let contracts = engine.list_contracts().unwrap();
         assert_eq!(contracts.len(), 1);
-        assert!(contracts[0].address.contains("counter") || contracts[0].creator == "test_deployer");
+        assert!(
+            contracts[0].address.contains("counter") || contracts[0].creator == "test_deployer"
+        );
     }
 
     #[test]
     fn test_counter_contract_execution() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Deploy counter contract
         let contract = SmartContract::new(
-            vec![1, 2, 3, 4], // bytecode
-            "test_deployer".to_string(), // creator
-            vec![], // constructor_args
+            vec![1, 2, 3, 4],                     // bytecode
+            "test_deployer".to_string(),          // creator
+            vec![],                               // constructor_args
             Some("counter_test_002".to_string()), // abi
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         engine.deploy_contract(&contract).unwrap();
 
         // Initialize the counter
@@ -85,7 +90,7 @@ pub mod advanced_contract_tests {
 
         let result = engine.execute_contract(increment_execution).unwrap();
         assert!(result.success, "Counter increment failed");
-        
+
         // The result should contain the incremented value (1)
         assert_eq!(result.return_value, vec![1, 0, 0, 0]); // i32 little endian
     }
@@ -93,15 +98,16 @@ pub mod advanced_contract_tests {
     #[test]
     fn test_counter_contract_with_parameters() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Deploy counter contract
         let contract = SmartContract::new(
-            vec![1, 2, 3, 4], // bytecode
-            "test_deployer".to_string(), // creator
-            vec![], // constructor_args
+            vec![1, 2, 3, 4],                     // bytecode
+            "test_deployer".to_string(),          // creator
+            vec![],                               // constructor_args
             Some("counter_test_003".to_string()), // abi
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         engine.deploy_contract(&contract).unwrap();
 
         // Initialize the counter
@@ -128,7 +134,7 @@ pub mod advanced_contract_tests {
 
         let result = engine.execute_contract(add_execution).unwrap();
         assert!(result.success, "Counter add failed");
-        
+
         // The result should contain the new value (5)
         assert_eq!(result.return_value, vec![5, 0, 0, 0]); // i32 little endian
     }
@@ -136,18 +142,23 @@ pub mod advanced_contract_tests {
     #[test]
     fn test_token_contract_deployment() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Create a token contract
         let contract = SmartContract::new(
             vec![1, 2, 3, 4], // Placeholder bytecode
             "test_deployer".to_string(),
-            vec![], // constructor_args
+            vec![],                             // constructor_args
             Some("token_test_001".to_string()), // abi
-        ).unwrap();
+        )
+        .unwrap();
 
         // Deploy the contract
         let result = engine.deploy_contract(&contract);
-        assert!(result.is_ok(), "Failed to deploy token contract: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to deploy token contract: {:?}",
+            result
+        );
 
         // Verify contract is listed
         let contracts = engine.list_contracts().unwrap();
@@ -158,15 +169,16 @@ pub mod advanced_contract_tests {
     #[test]
     fn test_token_contract_initialization() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Deploy token contract
         let contract = SmartContract::new(
-            vec![1, 2, 3, 4], // bytecode
-            "test_deployer".to_string(), // creator
-            vec![], // constructor_args
+            vec![1, 2, 3, 4],                   // bytecode
+            "test_deployer".to_string(),        // creator
+            vec![],                             // constructor_args
             Some("token_test_002".to_string()), // abi
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         engine.deploy_contract(&contract).unwrap();
 
         // Initialize the token with 1000 total supply
@@ -203,15 +215,16 @@ pub mod advanced_contract_tests {
     fn test_token_contract_transfer() {
         println!("[test_token_contract_transfer] Starting test");
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Deploy and initialize token contract
         let contract = SmartContract::new(
-            vec![1, 2, 3, 4], // bytecode
-            "test_deployer".to_string(), // creator
-            vec![], // constructor_args
+            vec![1, 2, 3, 4],                   // bytecode
+            "test_deployer".to_string(),        // creator
+            vec![],                             // constructor_args
             Some("token_test_003".to_string()), // abi
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         println!("[test_token_contract_transfer] Deploying contract");
         engine.deploy_contract(&contract).unwrap();
         println!("[test_token_contract_transfer] Contract deployed");
@@ -257,15 +270,16 @@ pub mod advanced_contract_tests {
     #[test]
     fn test_gas_limit_enforcement() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Deploy a contract
         let contract = SmartContract::new(
-            vec![1, 2, 3, 4], // bytecode
-            "test_deployer".to_string(), // creator
-            vec![], // constructor_args
+            vec![1, 2, 3, 4],                 // bytecode
+            "test_deployer".to_string(),      // creator
+            vec![],                           // constructor_args
             Some("gas_test_001".to_string()), // abi
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         engine.deploy_contract(&contract).unwrap();
 
         // Try to execute with very low gas limit
@@ -280,22 +294,26 @@ pub mod advanced_contract_tests {
 
         let result = engine.execute_contract(execution).unwrap();
         // Should fail due to gas limit
-        assert!(!result.success, "Execution should have failed due to gas limit");
+        assert!(
+            !result.success,
+            "Execution should have failed due to gas limit"
+        );
         assert!(result.gas_used > 1, "Gas usage should exceed limit");
     }
 
     #[test]
     fn test_contract_state_persistence() {
         let (engine, _temp_dir) = create_test_engine();
-        
+
         // Deploy counter contract
         let contract = SmartContract::new(
-            vec![1, 2, 3, 4], // bytecode
-            "test_deployer".to_string(), // creator
-            vec![], // constructor_args
+            vec![1, 2, 3, 4],                   // bytecode
+            "test_deployer".to_string(),        // creator
+            vec![],                             // constructor_args
             Some("state_test_001".to_string()), // abi
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         engine.deploy_contract(&contract).unwrap();
 
         // Initialize and increment multiple times
@@ -338,6 +356,9 @@ pub mod advanced_contract_tests {
         assert_eq!(result.return_value, vec![3, 0, 0, 0]); // i32 little endian
 
         // Check that state changes were recorded
-        assert!(!result.state_changes.is_empty(), "No state changes recorded");
+        assert!(
+            !result.state_changes.is_empty(),
+            "No state changes recorded"
+        );
     }
 }

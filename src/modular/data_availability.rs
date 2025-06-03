@@ -46,7 +46,7 @@ impl PolyTorusDataAvailabilityLayer {
     fn calculate_hash(&self, data: &[u8]) -> Hash {
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;
-        
+
         let mut hasher = Sha256::new();
         hasher.input(data);
         hasher.result_str()
@@ -71,24 +71,24 @@ impl PolyTorusDataAvailabilityLayer {
     fn cleanup_old_data(&self) -> Result<()> {
         let now = SystemTime::now();
         let retention_duration = std::time::Duration::from_secs(self.config.retention_period);
-        
+
         let mut proofs = self.availability_proofs.lock().unwrap();
         let mut storage = self.data_storage.lock().unwrap();
-        
+
         let mut to_remove = Vec::new();
-        
+
         for (hash, proof) in proofs.iter() {
             let proof_time = UNIX_EPOCH + std::time::Duration::from_secs(proof.timestamp);
             if now.duration_since(proof_time).unwrap_or_default() > retention_duration {
                 to_remove.push(hash.clone());
             }
         }
-        
+
         for hash in to_remove {
             proofs.remove(&hash);
             storage.remove(&hash);
         }
-        
+
         Ok(())
     }
 
@@ -99,7 +99,7 @@ impl PolyTorusDataAvailabilityLayer {
             // In a real implementation, this would use the network manager
             // to request data from peers
             log::info!("Requesting data {} from network", hash);
-            
+
             // For now, return empty data
             Ok(Vec::new())
         } else {
@@ -116,7 +116,7 @@ impl DataAvailabilityLayer for PolyTorusDataAvailabilityLayer {
         }
 
         let hash = self.calculate_hash(data);
-        
+
         // Store data locally
         {
             let mut storage = self.data_storage.lock().unwrap();
@@ -201,10 +201,11 @@ impl DataAvailabilityLayer for PolyTorusDataAvailabilityLayer {
 
     fn get_availability_proof(&self, hash: &Hash) -> Result<AvailabilityProof> {
         let proofs = self.availability_proofs.lock().unwrap();
-        
-        proofs.get(hash).cloned().ok_or_else(|| {
-            failure::format_err!("Availability proof not found for hash: {}", hash)
-        })
+
+        proofs
+            .get(hash)
+            .cloned()
+            .ok_or_else(|| failure::format_err!("Availability proof not found for hash: {}", hash))
     }
 }
 

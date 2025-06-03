@@ -8,20 +8,20 @@ use crate::Result;
 use std::fs;
 use std::path::Path;
 
-pub mod traits;
-pub mod execution;
-pub mod settlement;
 pub mod consensus;
 pub mod data_availability;
+pub mod execution;
 pub mod orchestrator;
+pub mod settlement;
+pub mod traits;
 
 // Re-export main types and traits
-pub use traits::*;
-pub use execution::PolyTorusExecutionLayer;
-pub use settlement::PolyTorusSettlementLayer;
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
+pub use execution::PolyTorusExecutionLayer;
 pub use orchestrator::{ModularBlockchain, ModularBlockchainBuilder, ModularEvent, StateInfo};
+pub use settlement::PolyTorusSettlementLayer;
+pub use traits::*;
 
 #[cfg(test)]
 mod tests;

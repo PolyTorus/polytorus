@@ -1,7 +1,7 @@
 //! Smart contract definition and management
 
-use crate::smart_contract::types::ContractMetadata;
 use crate::smart_contract::state::ContractState;
+use crate::smart_contract::types::ContractMetadata;
 use crate::Result;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
@@ -26,10 +26,8 @@ impl SmartContract {
     ) -> Result<Self> {
         let address = Self::generate_address(&bytecode, &creator)?;
         let bytecode_hash = Self::hash_bytecode(&bytecode)?;
-        
-        let created_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs();
+
+        let created_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
         let metadata = ContractMetadata {
             address: address.clone(),
@@ -51,8 +49,16 @@ impl SmartContract {
         let mut hasher = Sha256::new();
         hasher.input(creator.as_bytes());
         hasher.input(bytecode);
-        hasher.input(&SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos().to_le_bytes());
-        Ok(format!("contract_{}", hasher.result_str()[..20].to_string()))
+        hasher.input(
+            &SystemTime::now()
+                .duration_since(UNIX_EPOCH)?
+                .as_nanos()
+                .to_le_bytes(),
+        );
+        Ok(format!(
+            "contract_{}",
+            &hasher.result_str()[..20]
+        ))
     }
 
     /// Calculate bytecode hash
@@ -66,11 +72,11 @@ impl SmartContract {
     pub fn deploy(&self, state: &ContractState) -> Result<()> {
         // Store contract metadata
         state.store_contract(&self.metadata)?;
-        
+
         // Initialize contract state if needed
         // This could include running a constructor function
         log::info!("Contract deployed at address: {}", self.address);
-        
+
         Ok(())
     }
 

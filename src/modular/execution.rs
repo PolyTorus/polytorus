@@ -5,10 +5,10 @@
 
 use super::traits::*;
 use crate::blockchain::block::Block;
-use crate::crypto::transaction::Transaction;
-use crate::smart_contract::{ContractEngine, ContractState};
-use crate::smart_contract::types::{ContractExecution, ContractDeployment};
 use crate::config::DataContext;
+use crate::crypto::transaction::Transaction;
+use crate::smart_contract::types::{ContractDeployment, ContractExecution};
+use crate::smart_contract::{ContractEngine, ContractState};
 use crate::Result;
 
 use std::collections::HashMap;
@@ -66,19 +66,19 @@ impl PolyTorusExecutionLayer {
 
         if let Some(contract_data) = tx.get_contract_data() {
             let engine = self.contract_engine.lock().unwrap();
-            
+
             match &contract_data.tx_type {
-                crate::crypto::transaction::ContractTransactionType::Deploy { 
-                    bytecode, 
-                    constructor_args, 
-                    gas_limit 
+                crate::crypto::transaction::ContractTransactionType::Deploy {
+                    bytecode,
+                    constructor_args,
+                    gas_limit,
                 } => {
                     let deployment = ContractDeployment {
                         bytecode: bytecode.clone(),
                         constructor_args: constructor_args.clone(),
                         gas_limit: *gas_limit,
                     };
-                    
+
                     // Create a simple contract and deploy it
                     let contract = crate::smart_contract::SmartContract::new(
                         deployment.bytecode,
@@ -86,10 +86,10 @@ impl PolyTorusExecutionLayer {
                         deployment.constructor_args,
                         None,
                     )?;
-                    
+
                     engine.deploy_contract(&contract)?;
                     gas_used = deployment.gas_limit / 10; // Simple gas calculation
-                    
+
                     // Create deployment event
                     events.push(Event {
                         contract: contract.get_address().to_string(),
@@ -97,12 +97,12 @@ impl PolyTorusExecutionLayer {
                         topics: vec!["deployment".to_string()],
                     });
                 }
-                crate::crypto::transaction::ContractTransactionType::Call { 
-                    contract_address, 
-                    function_name, 
-                    arguments, 
-                    gas_limit, 
-                    value 
+                crate::crypto::transaction::ContractTransactionType::Call {
+                    contract_address,
+                    function_name,
+                    arguments,
+                    gas_limit,
+                    value,
                 } => {
                     let execution = ContractExecution {
                         contract_address: contract_address.clone(),
@@ -112,10 +112,10 @@ impl PolyTorusExecutionLayer {
                         caller: "caller".to_string(), // Extract from transaction
                         value: *value,
                     };
-                    
+
                     let result = engine.execute_contract(execution)?;
                     gas_used = result.gas_used;
-                    
+
                     // Create call event
                     events.push(Event {
                         contract: contract_address.clone(),
@@ -138,16 +138,16 @@ impl PolyTorusExecutionLayer {
     fn calculate_state_root(&self, receipts: &[TransactionReceipt]) -> Hash {
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;
-        
+
         let mut hasher = Sha256::new();
         let current_root = self.state_root.lock().unwrap().clone();
         hasher.input(current_root.as_bytes());
-        
+
         for receipt in receipts {
             hasher.input(receipt.tx_hash.as_bytes());
             hasher.input(&receipt.gas_used.to_le_bytes());
         }
-        
+
         hasher.result_str()
     }
 }
@@ -199,9 +199,9 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
     fn verify_execution(&self, proof: &ExecutionProof) -> bool {
         // Simplified verification - in a real implementation, this would
         // verify the execution proof against the state transition
-        !proof.state_proof.is_empty() && 
-        !proof.execution_trace.is_empty() &&
-        proof.input_state_root != proof.output_state_root
+        !proof.state_proof.is_empty()
+            && !proof.execution_trace.is_empty()
+            && proof.input_state_root != proof.output_state_root
     }
 
     fn execute_transaction(&self, tx: &Transaction) -> Result<TransactionReceipt> {
@@ -230,19 +230,22 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
 
     fn get_account_state(&self, address: &str) -> Result<AccountState> {
         let account_states = self.account_states.lock().unwrap();
-        
-        Ok(account_states.get(address).cloned().unwrap_or(AccountState {
-            balance: 0,
-            nonce: 0,
-            code_hash: None,
-            storage_root: None,
-        }))
+
+        Ok(account_states
+            .get(address)
+            .cloned()
+            .unwrap_or(AccountState {
+                balance: 0,
+                nonce: 0,
+                code_hash: None,
+                storage_root: None,
+            }))
     }
 
     fn begin_execution(&mut self) -> Result<()> {
         let context_id = uuid::Uuid::new_v4().to_string();
         let initial_state_root = self.get_state_root();
-        
+
         let context = ExecutionContext {
             context_id,
             initial_state_root,
@@ -250,36 +253,36 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
             executed_txs: Vec::new(),
             gas_used: 0,
         };
-        
+
         *self.execution_context.lock().unwrap() = Some(context);
         Ok(())
     }
 
     fn commit_execution(&mut self) -> Result<Hash> {
         let mut ctx_lock = self.execution_context.lock().unwrap();
-        
+
         if let Some(context) = ctx_lock.take() {
             // Log execution context details
             log::debug!("Committing execution context: {}", context.context_id);
             log::debug!("Initial state root: {}", context.initial_state_root);
             log::debug!("Total gas used: {}", context.gas_used);
             log::debug!("Executed transactions: {}", context.executed_txs.len());
-            
+
             // Apply pending changes to account states
             let mut account_states = self.account_states.lock().unwrap();
             for (address, state) in context.pending_changes {
                 account_states.insert(address, state);
             }
-            
+
             // Calculate new state root
             let new_state_root = self.calculate_state_root(&context.executed_txs);
             *self.state_root.lock().unwrap() = new_state_root.clone();
-            
+
             // Validate state transition
             if context.initial_state_root == new_state_root && !context.executed_txs.is_empty() {
                 log::warn!("State root unchanged despite executed transactions");
             }
-            
+
             Ok(new_state_root)
         } else {
             Err(failure::format_err!("No active execution context"))
@@ -288,7 +291,7 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
 
     fn rollback_execution(&mut self) -> Result<()> {
         let mut ctx_lock = self.execution_context.lock().unwrap();
-        
+
         if ctx_lock.is_some() {
             *ctx_lock = None;
             Ok(())

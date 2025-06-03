@@ -5,8 +5,8 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::network_config::*;
     use super::super::manager::*;
+    use super::super::network_config::*;
     use super::super::p2p::*;
 
     use std::{net::SocketAddr, time::Duration};
@@ -142,27 +142,43 @@ mod tests {
                 nonce: 12345,
                 timestamp: 1000000,
             },
-            P2PMessage::StatusUpdate {
-                best_height: 42,
-            },
+            P2PMessage::StatusUpdate { best_height: 42 },
         ];
 
         for msg in messages {
             let serialized = bincode::serialize(&msg).unwrap();
             let deserialized: P2PMessage = bincode::deserialize(&serialized).unwrap();
-            
+
             match (&msg, &deserialized) {
-                (P2PMessage::BlockRequest { block_hash: h1 }, P2PMessage::BlockRequest { block_hash: h2 }) => {
+                (
+                    P2PMessage::BlockRequest { block_hash: h1 },
+                    P2PMessage::BlockRequest { block_hash: h2 },
+                ) => {
                     assert_eq!(h1, h2);
                 }
-                (P2PMessage::TransactionRequest { tx_hash: h1 }, P2PMessage::TransactionRequest { tx_hash: h2 }) => {
+                (
+                    P2PMessage::TransactionRequest { tx_hash: h1 },
+                    P2PMessage::TransactionRequest { tx_hash: h2 },
+                ) => {
                     assert_eq!(h1, h2);
                 }
-                (P2PMessage::Ping { nonce: n1, timestamp: t1 }, P2PMessage::Ping { nonce: n2, timestamp: t2 }) => {
+                (
+                    P2PMessage::Ping {
+                        nonce: n1,
+                        timestamp: t1,
+                    },
+                    P2PMessage::Ping {
+                        nonce: n2,
+                        timestamp: t2,
+                    },
+                ) => {
                     assert_eq!(n1, n2);
                     assert_eq!(t1, t2);
                 }
-                (P2PMessage::StatusUpdate { best_height: h1 }, P2PMessage::StatusUpdate { best_height: h2 }) => {
+                (
+                    P2PMessage::StatusUpdate { best_height: h1 },
+                    P2PMessage::StatusUpdate { best_height: h2 },
+                ) => {
                     assert_eq!(h1, h2);
                 }
                 _ => panic!("Message types don't match"),
@@ -231,14 +247,14 @@ mod tests {
     #[test]
     fn test_bootstrap_node_management() {
         let mut config = NetworkConfig::default();
-        
+
         config.add_bootstrap_node("127.0.0.1:9091".to_string());
         assert_eq!(config.bootstrap_nodes.len(), 1);
-        
+
         // Adding the same node again should not duplicate
         config.add_bootstrap_node("127.0.0.1:9091".to_string());
         assert_eq!(config.bootstrap_nodes.len(), 1);
-        
+
         config.remove_bootstrap_node("127.0.0.1:9091");
         assert_eq!(config.bootstrap_nodes.len(), 0);
     }
@@ -247,20 +263,20 @@ mod tests {
     #[test]
     fn test_config_validation_edge_cases() {
         let mut config = NetworkConfig::default();
-        
+
         // Test zero connections
         config.connection.max_inbound = 0;
         config.connection.max_outbound = 0;
         assert!(config.validate().is_err());
-        
+
         // Restore valid connection count
         config.connection.max_outbound = 1;
         assert!(config.validate().is_ok());
-        
+
         // Test zero timeout
         config.connection.connection_timeout = 0;
         assert!(config.validate().is_err());
-        
+
         config.connection.connection_timeout = 1;
         config.discovery.bootstrap_timeout = 0;
         assert!(config.validate().is_err());
@@ -302,7 +318,7 @@ mod tests {
         use std::time::Instant;
 
         let start = Instant::now();
-        
+
         // Simulate processing 1000 messages
         for i in 0..1000 {
             let msg = P2PMessage::StatusUpdate { best_height: i };
@@ -312,7 +328,7 @@ mod tests {
 
         let duration = start.elapsed();
         println!("Processed 1000 messages in {:?}", duration);
-        
+
         // This should complete quickly (less than 1 second on modern hardware)
         assert!(duration < Duration::from_secs(1));
     }
@@ -324,7 +340,7 @@ mod tests {
         // For now, just test that the function doesn't panic
         let result = NetworkConfig::from_env();
         assert!(result.is_ok());
-        
+
         let config = result.unwrap();
         assert!(config.validate().is_ok());
     }
@@ -333,7 +349,7 @@ mod tests {
     #[test]
     fn test_config_helpers() {
         let config = NetworkConfig::default();
-        
+
         assert_eq!(config.max_connections(), 50); // 25 + 25
         assert!(config.is_dht_enabled());
         assert!(config.is_local_discovery_enabled());
@@ -343,7 +359,7 @@ mod tests {
 /// Integration tests that require multiple nodes
 #[cfg(test)]
 mod integration_tests {
-    
+
     /// This would be a comprehensive integration test
     /// In practice, you'd want to set up multiple nodes and test:
     /// - Peer discovery
@@ -358,7 +374,7 @@ mod integration_tests {
         // connect them, and verify full blockchain functionality
         // across the network. It's marked as ignored because
         // it requires significant setup and may be slow.
-        
+
         println!("Full integration test would go here");
         // TODO: Implement comprehensive integration test
     }

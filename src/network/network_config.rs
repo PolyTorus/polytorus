@@ -229,7 +229,9 @@ impl NetworkConfig {
 
         // Validate connection limits
         if self.connection.max_inbound == 0 && self.connection.max_outbound == 0 {
-            return Err("At least one of max_inbound or max_outbound must be greater than 0".to_string());
+            return Err(
+                "At least one of max_inbound or max_outbound must be greater than 0".to_string(),
+            );
         }
 
         // Validate timeouts
@@ -289,14 +291,14 @@ mod tests {
     #[test]
     fn test_bootstrap_node_management() {
         let mut config = NetworkConfig::default();
-        
+
         config.add_bootstrap_node("127.0.0.1:9091".to_string());
         assert_eq!(config.bootstrap_nodes.len(), 1);
-        
+
         // Adding the same node again should not duplicate
         config.add_bootstrap_node("127.0.0.1:9091".to_string());
         assert_eq!(config.bootstrap_nodes.len(), 1);
-        
+
         config.remove_bootstrap_node("127.0.0.1:9091");
         assert_eq!(config.bootstrap_nodes.len(), 0);
     }

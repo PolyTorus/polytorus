@@ -17,23 +17,23 @@ impl TestContext {
     fn new(test_name: &str) -> Self {
         let uuid = Uuid::new_v4();
         let test_dir = PathBuf::from(format!("test_data_modular_{}_{}", test_name, uuid));
-        
+
         // Remove existing test directory if it exists (unlikely with UUID, but safe)
         if test_dir.exists() {
             let _ = std::fs::remove_dir_all(&test_dir);
         }
-        
+
         // Create the directory structure
         std::fs::create_dir_all(&test_dir).expect("Failed to create test directory");
-        
+
         let data_context = DataContext::new(test_dir.clone());
-        
+
         Self {
             data_context,
             test_dir,
         }
     }
-    
+
     /// Get a clone of the data context for use in tests
     pub fn get_data_context(&self) -> DataContext {
         self.data_context.clone()
@@ -50,7 +50,6 @@ impl Drop for TestContext {
 }
 
 /// Create a test data context (legacy function for backward compatibility)
-
 
 #[tokio::test]
 async fn test_modular_blockchain_creation() {
@@ -133,7 +132,7 @@ fn test_data_availability_layer() {
             max_peers: 10,
         },
         retention_period: 3600, // 1 hour for testing
-        max_data_size: 1024,   // 1KB for testing
+        max_data_size: 1024,    // 1KB for testing
     };
 
     let da_layer = PolyTorusDataAvailabilityLayer::new(config);
@@ -141,14 +140,14 @@ fn test_data_availability_layer() {
     assert!(da_layer.is_ok());
 
     let da_layer = da_layer.unwrap();
-    
+
     // Test data storage and retrieval
     let test_data = b"test data for storage";
     let hash = da_layer.store_data(test_data).unwrap();
-    
+
     let retrieved_data = da_layer.retrieve_data(&hash).unwrap();
     assert_eq!(test_data, retrieved_data.as_slice());
-    
+
     assert!(da_layer.verify_availability(&hash));
 }
 
@@ -175,7 +174,10 @@ fn test_batch_settlement() {
     assert!(result.is_ok());
 
     let settlement_result = result.unwrap();
-    assert_eq!(settlement_result.settled_batches, vec!["test_batch_1".to_string()]);
+    assert_eq!(
+        settlement_result.settled_batches,
+        vec!["test_batch_1".to_string()]
+    );
 }
 
 #[test]
@@ -221,8 +223,8 @@ async fn test_transaction_processing() {
         .unwrap();
 
     // Create a test transaction
-    let tx = Transaction::new_coinbase("test_address".to_string(), "test_reward".to_string())
-        .unwrap();
+    let tx =
+        Transaction::new_coinbase("test_address".to_string(), "test_reward".to_string()).unwrap();
 
     let receipt = blockchain.process_transaction(tx).await;
     assert!(receipt.is_ok());
@@ -271,7 +273,7 @@ fn test_layer_builders() {
         .with_data_context(test_ctx_consensus.get_data_context())
         .as_validator()
         .build();
-    
+
     assert!(consensus_layer.is_ok());
     assert!(consensus_layer.unwrap().is_validator());
 
@@ -279,7 +281,7 @@ fn test_layer_builders() {
     let settlement_layer = super::settlement::SettlementLayerBuilder::new()
         .with_challenge_period(50)
         .build();
-    
+
     assert!(settlement_layer.is_ok());
 
     // Test data availability layer builder
@@ -290,7 +292,7 @@ fn test_layer_builders() {
             max_peers: 20,
         })
         .build();
-    
+
     assert!(da_layer.is_ok());
     // TestContext instance will automatically cleanup when dropped
 }
@@ -313,7 +315,5 @@ async fn test_state_info() {
     assert!(!state_info.execution_state_root.is_empty());
     assert!(!state_info.settlement_root.is_empty());
     assert_eq!(state_info.block_height, 0); // Genesis block height is 0
-    // TestContext will automatically cleanup when dropped
+                                            // TestContext will automatically cleanup when dropped
 }
-
-

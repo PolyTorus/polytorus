@@ -2,10 +2,10 @@
 
 #[cfg(test)]
 mod smart_contract_tests {
+    use crate::smart_contract::contract::SmartContract;
     use crate::smart_contract::engine::ContractEngine;
     use crate::smart_contract::state::ContractState;
     use crate::smart_contract::types::{ContractExecution, ContractMetadata};
-    use crate::smart_contract::contract::SmartContract;
     use std::collections::HashMap;
     use tempfile::tempdir;
 
@@ -29,7 +29,9 @@ mod smart_contract_tests {
         assert_eq!(retrieved.unwrap().address, "test_contract");
 
         // Test storing and retrieving state
-        state.set("test_contract", "key1", &b"value1".to_vec()).unwrap();
+        state
+            .set("test_contract", "key1", b"value1".as_ref())
+            .unwrap();
         let value = state.get("test_contract", "key1").unwrap();
         assert!(value.is_some());
         assert_eq!(value.unwrap(), b"value1".to_vec());
@@ -55,7 +57,8 @@ mod smart_contract_tests {
             "owner".to_string(),
             vec![],
             None,
-        ).unwrap();
+        )
+        .unwrap();
 
         let result = engine.deploy_contract(&contract);
         assert!(result.is_ok());

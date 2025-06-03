@@ -62,11 +62,13 @@ impl NetworkManager {
     /// Create a new network manager
     pub async fn new(config: NetworkConfig) -> Result<Self> {
         // Create P2P node
-        let listen_addr: std::net::SocketAddr = config.get_listen_address()
+        let listen_addr: std::net::SocketAddr = config
+            .get_listen_address()
             .parse()
             .map_err(|e| format_err!("Invalid listen address: {}", e))?;
-        
-        let bootstrap_addrs: Vec<std::net::SocketAddr> = config.get_bootstrap_addresses()
+
+        let bootstrap_addrs: Vec<std::net::SocketAddr> = config
+            .get_bootstrap_addresses()
             .iter()
             .filter_map(|addr| addr.parse().ok())
             .collect();
@@ -134,13 +136,17 @@ impl NetworkManager {
                 // Cleanup stale block requests (older than 30 seconds)
                 {
                     let mut pending_blocks = pending_blocks_cleanup.lock().unwrap();
-                    pending_blocks.retain(|_, timestamp| now.duration_since(*timestamp) < Duration::from_secs(30));
+                    pending_blocks.retain(|_, timestamp| {
+                        now.duration_since(*timestamp) < Duration::from_secs(30)
+                    });
                 }
 
                 // Cleanup stale transaction requests
                 {
                     let mut pending_tx = pending_tx_cleanup.lock().unwrap();
-                    pending_tx.retain(|_, timestamp| now.duration_since(*timestamp) < Duration::from_secs(30));
+                    pending_tx.retain(|_, timestamp| {
+                        now.duration_since(*timestamp) < Duration::from_secs(30)
+                    });
                 }
 
                 // Update peer activity
@@ -148,7 +154,8 @@ impl NetworkManager {
                     let mut peers = peers_cleanup.lock().unwrap();
                     for peer_status in peers.values_mut() {
                         // Mark peers as inactive if no activity for 5 minutes
-                        if now.duration_since(peer_status.last_activity) > Duration::from_secs(300) {
+                        if now.duration_since(peer_status.last_activity) > Duration::from_secs(300)
+                        {
                             log::debug!("Peer {} is inactive", peer_status.peer_id);
                         }
                     }
@@ -201,7 +208,7 @@ impl NetworkManager {
             }
             NetworkEvent::BlockReceived(block) => {
                 log::debug!("Received block: {}", block.get_hash());
-                
+
                 // Try to add block to blockchain if available
                 if let Some(blockchain) = &self.blockchain {
                     let mut blockchain = blockchain.lock().unwrap();
@@ -218,11 +225,11 @@ impl NetworkManager {
             }
             NetworkEvent::TransactionReceived(transaction) => {
                 log::debug!("Received transaction: {}", transaction.id);
-                
+
                 // Basic transaction validation would require previous transactions
                 // For now, we accept all transactions - validation should be done
                 // at the blockchain level when adding to mempool
-                
+
                 // Call transaction handler if set
                 if let Some(handler) = &self.transaction_handler {
                     handler(transaction);
@@ -271,7 +278,7 @@ impl NetworkManager {
     /// Request a block from a specific peer
     pub async fn request_block(&self, hash: &str, peer_id: PeerId) -> Result<()> {
         log::debug!("Requesting block {} from {}", hash, peer_id);
-        
+
         // Track the request
         self.pending_block_requests
             .lock()
@@ -287,7 +294,7 @@ impl NetworkManager {
     /// Request a transaction from a specific peer
     pub async fn request_transaction(&self, hash: &str, peer_id: PeerId) -> Result<()> {
         log::debug!("Requesting transaction {} from {}", hash, peer_id);
-        
+
         // Track the request
         self.pending_tx_requests
             .lock()
@@ -295,7 +302,10 @@ impl NetworkManager {
             .insert(hash.to_string(), Instant::now());
 
         self.command_tx
-            .send(NetworkCommand::RequestTransaction(hash.to_string(), peer_id))
+            .send(NetworkCommand::RequestTransaction(
+                hash.to_string(),
+                peer_id,
+            ))
             .map_err(|e| format_err!("Failed to send request command: {}", e))?;
         Ok(())
     }
@@ -306,7 +316,7 @@ impl NetworkManager {
         let socket_addr: std::net::SocketAddr = address
             .parse()
             .map_err(|e| format_err!("Invalid peer address: {}", e))?;
-        
+
         self.command_tx
             .send(NetworkCommand::ConnectPeer(socket_addr))
             .map_err(|e| format_err!("Failed to send connect command: {}", e))?;
@@ -331,9 +341,10 @@ impl NetworkManager {
     /// Sync blockchain with peers
     pub async fn sync_blockchain(&self) -> Result<()> {
         let best_peer = self.get_best_peer();
-        
+
         if let Some(peer_id) = best_peer {
-            let peer_height = self.peers
+            let peer_height = self
+                .peers
                 .lock()
                 .unwrap()
                 .get(&peer_id)
@@ -352,7 +363,7 @@ impl NetworkManager {
                     current_height,
                     peer_height
                 );
-                
+
                 // Request blocks starting from our current height
                 // This is a simplified version - in practice, you'd implement
                 // a more sophisticated block download strategy
@@ -373,7 +384,8 @@ impl NetworkManager {
         let pending_blocks = self.pending_block_requests.lock().unwrap().len();
         let pending_transactions = self.pending_tx_requests.lock().unwrap().len();
 
-        let total_successful_interactions: u64 = peers.values().map(|p| p.successful_interactions).sum();
+        let total_successful_interactions: u64 =
+            peers.values().map(|p| p.successful_interactions).sum();
         let total_failed_interactions: u64 = peers.values().map(|p| p.failed_interactions).sum();
 
         NetworkStats {

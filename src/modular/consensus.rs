@@ -26,9 +26,9 @@ pub struct PolyTorusConsensusLayer {
 impl PolyTorusConsensusLayer {
     /// Create a new consensus layer
     pub fn new(
-        data_context: DataContext, 
+        data_context: DataContext,
         config: ConsensusConfig,
-        is_validator: bool
+        is_validator: bool,
     ) -> Result<Self> {
         let blockchain = match Blockchain::new_with_context(data_context.clone()) {
             Ok(bc) => {
@@ -39,7 +39,7 @@ impl PolyTorusConsensusLayer {
                 } else {
                     bc
                 }
-            },
+            }
             Err(_) => {
                 // Create genesis blockchain if it doesn't exist
                 let genesis_address = "genesis_address".to_string();
@@ -71,7 +71,7 @@ impl PolyTorusConsensusLayer {
         // Recreate the hash and check if it meets difficulty requirement
         let hash = block.get_hash();
         let difficulty_target = "0".repeat(self.config.difficulty);
-        
+
         hash.starts_with(&difficulty_target)
     }
 
@@ -79,7 +79,7 @@ impl PolyTorusConsensusLayer {
     fn validate_block_height(&self, block: &Block) -> Result<bool> {
         let blockchain = self.blockchain.lock().unwrap();
         let current_height = blockchain.get_best_height()?;
-        
+
         // Block height should be current height + 1
         Ok(block.get_height() == current_height + 1)
     }
@@ -87,13 +87,13 @@ impl PolyTorusConsensusLayer {
     /// Validate block against parent
     fn validate_block_parent(&self, block: &Block) -> Result<bool> {
         let blockchain = self.blockchain.lock().unwrap();
-        
+
         // Get the current tip (last block)
         if blockchain.tip.is_empty() {
             // Genesis block case
             return Ok(block.get_prev_hash().is_empty());
         }
-        
+
         // Check if previous hash matches current tip
         Ok(block.get_prev_hash() == blockchain.tip)
     }
@@ -155,7 +155,7 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
 
         // Transaction validation would go here
         // For now, we assume all transactions are valid
-        
+
         true
     }
 
@@ -167,7 +167,7 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
     fn get_block_height(&self) -> Result<u64> {
         let blockchain = self.blockchain.lock().unwrap();
         let height = blockchain.get_best_height()?;
-        
+
         // Handle the case where blockchain is empty (height = -1)
         if height < 0 {
             Ok(0) // Genesis blockchain starts at height 0
@@ -234,8 +234,8 @@ impl ConsensusLayerBuilder {
     }
 
     pub fn build(self) -> Result<PolyTorusConsensusLayer> {
-        let data_context = self.data_context.unwrap_or_else(|| DataContext::default());
-        let config = self.config.unwrap_or_else(|| ConsensusConfig {
+        let data_context = self.data_context.unwrap_or_default();
+        let config = self.config.unwrap_or(ConsensusConfig {
             block_time: 10000, // 10 seconds
             difficulty: 4,
             max_block_size: 1024 * 1024, // 1MB
