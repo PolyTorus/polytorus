@@ -110,7 +110,8 @@ impl Transaction {
         let mut pub_key_hash = wallet.public_key.clone();
         hash_pub_key(&mut pub_key_hash);
 
-        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;        if acc_v.0 < amount {
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
+        if acc_v.0 < amount {
             error!("Not Enough balance");
             return Err(format_err!(
                 "Not Enough balance: current balance {}",
@@ -158,7 +159,8 @@ impl Transaction {
             data = format!("Reward to '{}'", to);
         }
         let mut pub_key = Vec::from(data.as_bytes());
-        pub_key.append(&mut Vec::from(key));        let mut tx = Transaction {
+        pub_key.append(&mut Vec::from(key));
+        let mut tx = Transaction {
             id: String::new(),
             vin: vec![TXInput {
                 txid: String::new(),
@@ -210,7 +212,8 @@ impl Transaction {
                 gas_fee,
                 acc_v.0
             ));
-        }        for tx in acc_v.1 {
+        }
+        for tx in acc_v.1 {
             for out in tx.1 {
                 let input = TXInput {
                     txid: tx.0.clone(),
@@ -280,7 +283,8 @@ impl Transaction {
                 total_cost,
                 acc_v.0
             ));
-        }        for tx in acc_v.1 {
+        }
+        for tx in acc_v.1 {
             for out in tx.1 {
                 let input = TXInput {
                     txid: tx.0.clone(),
@@ -556,7 +560,8 @@ impl Transaction {
     /// TrimmedCopy creates a trimmed copy of Transaction to be used in signing
     fn trim_copy(&self) -> Transaction {
         let mut vin = Vec::with_capacity(self.vin.len());
-        let mut vout = Vec::with_capacity(self.vout.len());        for v in &self.vin {
+        let mut vout = Vec::with_capacity(self.vout.len());
+        for v in &self.vin {
             vin.push(TXInput {
                 txid: v.txid.clone(),
                 vout: v.vout,
@@ -635,7 +640,8 @@ impl TXOutput {
 
         debug!("lock: {}", address);
         Ok(())
-    }    pub fn new(value: i32, address: String) -> Result<Self> {
+    }
+    pub fn new(value: i32, address: String) -> Result<Self> {
         let mut txo = TXOutput {
             value,
             pub_key_hash: Vec::new(),
@@ -670,35 +676,40 @@ impl TXOutput {
     }
 
     /// Validate script execution with redeemer and datum
-    fn validate_script(&self, script: &[u8], redeemer: &[u8], datum: &Option<Vec<u8>>) -> Result<bool> {
+    fn validate_script(
+        &self,
+        script: &[u8],
+        redeemer: &[u8],
+        datum: &Option<Vec<u8>>,
+    ) -> Result<bool> {
         // This is a simplified script validation
         // In a real eUTXO implementation, this would involve:
         // 1. Parsing and executing the script (e.g., Plutus script)
         // 2. Providing the redeemer and datum as inputs to the script
         // 3. Running the script in a secure execution environment
-        
+
         // For demonstration purposes, we'll implement simple validation rules:
-        
+
         // Rule 1: If script is empty, validation fails
         if script.is_empty() {
             return Ok(false);
         }
-        
+
         // Rule 2: Simple hash comparison - script contains expected hash of redeemer
-        if script.len() >= 32 && redeemer.len() > 0 {
+        if script.len() >= 32 && !redeemer.is_empty() {
             use crypto::digest::Digest;
             let mut hasher = Sha256::new();
             hasher.input(redeemer);
             let redeemer_hash = hasher.result_str();
-            
+
             // Convert first 32 bytes of script to hex string
             let script_hash = hex::encode(&script[..32]);
-            
+
             if redeemer_hash == script_hash {
                 return Ok(true);
             }
         }
-        
+
         // Rule 3: If datum exists, include it in validation
         if let Some(ref datum_data) = datum {
             // Simple validation: redeemer must contain datum reference
@@ -709,7 +720,7 @@ impl TXOutput {
                 }
             }
         }
-        
+
         // Default: script validation fails
         Ok(false)
     }
@@ -732,7 +743,8 @@ impl TXOutput {
             pub_key_hash: Vec::new(),
             script,
             datum,
-            reference_script,        };
+            reference_script,
+        };
         txo.lock(&address)?;
         Ok(txo)
     }
@@ -800,14 +812,15 @@ mod test {
         let script = vec![1, 2, 3, 4];
         let datum = vec![5, 6, 7, 8];
         let reference_script = Some("test_script".to_string());
-        
+
         let eUTXO_output = TXOutput::new_eUTXO(
             100,
             wa1.clone(),
             Some(script.clone()),
             Some(datum.clone()),
             reference_script.clone(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(eUTXO_output.value, 100);
         assert_eq!(eUTXO_output.script, Some(script));
@@ -836,18 +849,12 @@ mod test {
         let redeemer_data = vec![1, 2, 3, 4];
         hasher.input(&redeemer_data);
         let expected_hash = hasher.result_str();
-        
+
         // Create script with the expected hash (first 32 bytes)
         let hash_bytes = hex::decode(&expected_hash[..64]).unwrap();
         let script = hash_bytes;
-        
-        let eUTXO_output = TXOutput::new_eUTXO(
-            100,
-            wa1.clone(),
-            Some(script),
-            None,
-            None,
-        ).unwrap();
+
+        let eUTXO_output = TXOutput::new_eUTXO(100, wa1.clone(), Some(script), None, None).unwrap();
 
         // Create input with correct redeemer
         let input_valid = TXInput {
@@ -869,7 +876,7 @@ mod test {
 
         // Validation should pass with correct redeemer
         assert!(eUTXO_output.validate_spending(&input_valid).unwrap());
-        
+
         // Validation should fail with incorrect redeemer
         assert!(!eUTXO_output.validate_spending(&input_invalid).unwrap());
 
@@ -887,13 +894,8 @@ mod test {
         let datum = vec![10, 20, 30, 40];
         let script = vec![1]; // Simple non-empty script
 
-        let eUTXO_output = TXOutput::new_eUTXO(
-            100,
-            wa1.clone(),
-            Some(script),
-            Some(datum.clone()),
-            None,
-        ).unwrap();
+        let eUTXO_output =
+            TXOutput::new_eUTXO(100, wa1.clone(), Some(script), Some(datum.clone()), None).unwrap();
 
         // Create input with redeemer that contains datum
         let mut redeemer = datum.clone();

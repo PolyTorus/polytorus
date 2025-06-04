@@ -55,10 +55,7 @@ impl SmartContract {
                 .as_nanos()
                 .to_le_bytes(),
         );
-        Ok(format!(
-            "contract_{}",
-            &hasher.result_str()[..20]
-        ))
+        Ok(format!("contract_{}", &hasher.result_str()[..20]))
     }
 
     /// Calculate bytecode hash

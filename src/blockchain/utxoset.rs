@@ -147,7 +147,7 @@ impl UTXOSet {
             }
 
             let outputs: TXOutputs = deserialize(&outputs_data.unwrap())?;
-            
+
             // Check if the output index is valid
             if input.vout < 0 || input.vout as usize >= outputs.outputs.len() {
                 return Ok(false); // Invalid output index
