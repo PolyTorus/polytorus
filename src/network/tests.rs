@@ -239,7 +239,8 @@ mod tests {
         thread::sleep(Duration::from_secs(30));
 
         // Stop server
-        let _ = server.stop_server(); // Check if blockchain was synchronized
+        let _ = server.stop_server();
+        // Check if blockchain was synchronized
         let bc_after: Blockchain<network::Mainnet> = Blockchain::new().unwrap();
         let final_height = bc_after.get_best_height().unwrap();
 
