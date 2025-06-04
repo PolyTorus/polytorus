@@ -16,9 +16,18 @@ PolyTorus is a revolutionary modular blockchain platform designed for the post-q
 - **🔧 Smart Contracts**: High-performance WebAssembly (WASM) based smart contract execution engine
 - **🤝 Multiple Consensus Mechanisms**: Support for various consensus algorithms including proof-of-work and future consensus protocols
 - **🔐 Quantum-Resistant Cryptography**: Future-proof security with flexible cryptographic wallet options - users can choose between traditional ECDSA for current compatibility or quantum-resistant FN-DSA for post-quantum security
+- **⛏️ Advanced Difficulty Adjustment**: Sophisticated mining difficulty adjustment system with per-block fine-tuning capabilities
 - **🌐 Advanced P2P Networking**: Robust peer-to-peer communication with TCP and modern networking protocols
 - **💻 CLI Interface**: Comprehensive command-line tools for blockchain interaction and management
 - **🌍 Web Interface**: RESTful HTTP API for external integrations and web applications
+
+### Mining & Difficulty Features
+- **📊 Adaptive Difficulty**: Dynamic difficulty adjustment based on network conditions and recent block times
+- **⚙️ Configurable Parameters**: Customizable difficulty adjustment parameters (min/max difficulty, adjustment factors, tolerance)
+- **📈 Mining Statistics**: Comprehensive mining performance tracking and analysis
+- **🎯 Precision Control**: Per-block difficulty fine-tuning for optimal network performance
+- **🔄 Multiple Mining Modes**: Standard, custom difficulty, and adaptive mining options
+- **📉 Network Analysis**: Advanced algorithms for network hash rate and efficiency calculation
 
 ### Advanced Capabilities
 - **🔄 UTXO Model**: Efficient unspent transaction output management

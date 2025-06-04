@@ -884,8 +884,8 @@ mod tests {
         let tx = Transaction::new_UTXO(wallet1, &addr2, 5, &utxo_set, &crypto)?;
         let cbtx = Transaction::new_coinbase(addr1.clone(), String::from("reward!"))?;
 
-        // ブロックを採掘（既存のblockchainを使用）
-        let new_block = utxo_set.blockchain.mine_block(vec![cbtx, tx])?;
+        // ブロックを採掘（テスト用低難易度を使用）
+        let new_block = utxo_set.blockchain.mine_block_with_test_difficulty(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
 
         // 採掘後の残高確認

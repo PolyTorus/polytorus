@@ -139,6 +139,46 @@ impl<N: NetworkConfig> Blockchain<N> {
         Ok(newblock)
     }
 
+    /// Mine a block with custom difficulty for testing purposes
+    #[cfg(test)]
+    pub fn mine_block_with_test_difficulty(&mut self, transactions: Vec<Transaction>) -> Result<FinalizedBlock<N>> {
+        use crate::blockchain::block::TEST_DIFFICULTY;
+        
+        info!("mine a new block with test difficulty");
+
+        for tx in &transactions {
+            if !self.verify_transacton(tx)? {
+                return Err(format_err!("ERROR: Invalid transaction"));
+            }
+        }
+
+        let mut processed_transactions = transactions;
+        for tx in &mut processed_transactions {
+            if tx.is_contract_transaction() {
+                if let Err(e) = self.execute_contract_transaction(tx) {
+                    warn!("Contract execution failed for tx {}: {}", tx.id, e);
+                }
+            }
+        }
+
+        let lasthash = self.db.get("LAST")?.unwrap();
+        let prev_hash = String::from_utf8(lasthash.to_vec())?;
+        let building_block = Block::<block_states::Building, N>::new_building(
+            processed_transactions,
+            prev_hash,
+            self.get_best_height()? + 1,
+            TEST_DIFFICULTY, // Use test difficulty instead of calculated difficulty
+        );
+
+        let newblock = building_block.mine()?.validate()?.finalize();
+        self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
+        self.db.insert("LAST", newblock.get_hash().as_bytes())?;
+        self.db.flush()?;
+
+        self.tip = newblock.get_hash().to_string();
+        Ok(newblock)
+    }
+
     /// Iterator returns a BlockchainIterator
     pub fn iter(&self) -> BlockchainIterator<N> {
         BlockchainIterator {

@@ -16,6 +16,90 @@ use std::time::SystemTime;
 #[cfg(test)]
 pub const TEST_DIFFICULTY: usize = 1;
 
+/// 難易度調整パラメータ
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DifficultyAdjustmentConfig {
+    /// 基本難易度
+    pub base_difficulty: usize,
+    /// 最小難易度
+    pub min_difficulty: usize,
+    /// 最大難易度
+    pub max_difficulty: usize,
+    /// 難易度調整の強度 (0.0-1.0)
+    pub adjustment_factor: f64,
+    /// 目標ブロック時間からの許容誤差 (%)
+    pub tolerance_percentage: f64,
+}
+
+impl Default for DifficultyAdjustmentConfig {
+    fn default() -> Self {
+        Self {
+            base_difficulty: 4,
+            min_difficulty: 1,
+            max_difficulty: 32,
+            adjustment_factor: 0.25,
+            tolerance_percentage: 20.0,
+        }
+    }
+}
+
+/// マイニング統計情報
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MiningStats {
+    /// 平均マイニング時間
+    pub avg_mining_time: u128,
+    /// 最近のブロック時間
+    pub recent_block_times: Vec<u128>,
+    /// 総マイニング試行回数
+    pub total_attempts: u64,
+    /// 成功したマイニング数
+    pub successful_mines: u64,
+}
+
+impl Default for MiningStats {
+    fn default() -> Self {
+        Self {
+            avg_mining_time: 0,
+            recent_block_times: Vec::with_capacity(10),
+            total_attempts: 0,
+            successful_mines: 0,
+        }
+    }
+}
+
+impl MiningStats {
+    /// 新しいマイニング時間を記録
+    pub fn record_mining_time(&mut self, mining_time: u128) {
+        self.recent_block_times.push(mining_time);
+        if self.recent_block_times.len() > 10 {
+            self.recent_block_times.remove(0);
+        }
+        self.update_average();
+        self.successful_mines += 1;
+    }
+
+    /// マイニング試行を記録
+    pub fn record_attempt(&mut self) {
+        self.total_attempts += 1;
+    }
+
+    /// 平均時間を更新
+    fn update_average(&mut self) {
+        if !self.recent_block_times.is_empty() {
+            self.avg_mining_time = self.recent_block_times.iter().sum::<u128>() / self.recent_block_times.len() as u128;
+        }
+    }
+
+    /// 成功率を計算
+    pub fn success_rate(&self) -> f64 {
+        if self.total_attempts == 0 {
+            0.0
+        } else {
+            self.successful_mines as f64 / self.total_attempts as f64
+        }
+    }
+}
+
 /// Type-safe block with state tracking
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block<S = block_states::Finalized, N = network::Mainnet>
@@ -30,6 +114,10 @@ where
     nonce: i32,
     height: i32,
     difficulty: usize,
+    /// 難易度調整設定
+    difficulty_config: DifficultyAdjustmentConfig,
+    /// マイニング統計
+    mining_stats: MiningStats,
     #[serde(skip)]
     _state: PhantomData<S>,
     #[serde(skip)]
@@ -79,6 +167,37 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
             nonce: 0,
             height,
             difficulty,
+            difficulty_config: DifficultyAdjustmentConfig::default(),
+            mining_stats: MiningStats::default(),
+            _state: PhantomData,
+            _network: PhantomData,
+        }
+    }
+
+    /// Create a new block with custom difficulty configuration
+    pub fn new_building_with_config(
+        transactions: Vec<Transaction>,
+        prev_block_hash: String,
+        height: i32,
+        difficulty: usize,
+        difficulty_config: DifficultyAdjustmentConfig,
+        mining_stats: MiningStats,
+    ) -> BuildingBlock<N> {
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        Block {
+            timestamp,
+            transactions,
+            prev_block_hash,
+            hash: String::new(),
+            nonce: 0,
+            height,
+            difficulty,
+            difficulty_config,
+            mining_stats,
             _state: PhantomData,
             _network: PhantomData,
         }
@@ -111,18 +230,97 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
     pub fn get_nonce(&self) -> i32 {
         self.nonce
     }
+
+    /// 難易度設定を取得
+    pub fn get_difficulty_config(&self) -> &DifficultyAdjustmentConfig {
+        &self.difficulty_config
+    }
+
+    /// 難易度設定を更新
+    pub fn update_difficulty_config(&mut self, config: DifficultyAdjustmentConfig) {
+        self.difficulty_config = config;
+    }
+
+    /// マイニング統計を取得
+    pub fn get_mining_stats(&self) -> &MiningStats {
+        &self.mining_stats
+    }
+
+    /// マイニング統計を更新
+    pub fn update_mining_stats(&mut self, stats: MiningStats) {
+        self.mining_stats = stats;
+    }
+
+    /// 現在の難易度に基づく動的難易度計算
+    pub fn calculate_dynamic_difficulty(&self, recent_blocks: &[&Block<block_states::Finalized, N>]) -> usize {
+        if recent_blocks.is_empty() {
+            return self.difficulty_config.base_difficulty;
+        }
+
+        // 最近のブロック時間を収集
+        let mut block_times = Vec::new();
+        for i in 1..recent_blocks.len() {
+            let time_diff = recent_blocks[i].timestamp - recent_blocks[i-1].timestamp;
+            block_times.push(time_diff);
+        }
+
+        if block_times.is_empty() {
+            return self.difficulty_config.base_difficulty;
+        }
+
+        // 平均ブロック時間を計算
+        let avg_time = block_times.iter().sum::<u128>() / block_times.len() as u128;
+        let target_time = N::DESIRED_BLOCK_TIME;
+        
+        // 目標時間との比較
+        let time_ratio = avg_time as f64 / target_time as f64;
+        let tolerance = self.difficulty_config.tolerance_percentage / 100.0;
+        
+        let mut new_difficulty = self.difficulty as f64;
+        
+        if time_ratio < (1.0 - tolerance) {
+            // ブロック時間が短すぎる場合、難易度を上げる
+            new_difficulty *= 1.0 + (self.difficulty_config.adjustment_factor * (1.0 - time_ratio));
+        } else if time_ratio > (1.0 + tolerance) {
+            // ブロック時間が長すぎる場合、難易度を下げる
+            new_difficulty *= 1.0 - (self.difficulty_config.adjustment_factor * (time_ratio - 1.0));
+        }
+
+        // 最小・最大難易度の制限
+        let adjusted_difficulty = new_difficulty.round() as usize;
+        adjusted_difficulty
+            .max(self.difficulty_config.min_difficulty)
+            .min(self.difficulty_config.max_difficulty)
+    }
 }
 impl<N: NetworkConfig> BuildingBlock<N> {
     /// Mine the block using Proof-of-Work
     pub fn mine(mut self) -> Result<MinedBlock<N>> {
-        info!("Mining the block");
+        info!("Mining the block with difficulty {}", self.difficulty);
+        let start_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+        
+        // マイニング統計の更新
+        self.mining_stats.record_attempt();
+        
         while !self.validate_pow()? {
             self.nonce += 1;
+            if self.nonce % 10000 == 0 {
+                self.mining_stats.record_attempt();
+                info!("Mining attempt: {}, nonce: {}", self.mining_stats.total_attempts, self.nonce);
+            }
         }
+        
+        let end_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+        let mining_time = end_time - start_time;
+        self.mining_stats.record_mining_time(mining_time);
+        
         let data = self.prepare_hash_data()?;
         let mut hasher = Sha256::new();
         hasher.input(&data[..]);
         self.hash = hasher.result_str();
+
+        info!("Block mined successfully! Mining time: {}ms, Nonce: {}, Hash: {}", 
+              mining_time, self.nonce, &self.hash[..8]);
 
         Ok(Block {
             timestamp: self.timestamp,
@@ -132,9 +330,27 @@ impl<N: NetworkConfig> BuildingBlock<N> {
             nonce: self.nonce,
             height: self.height,
             difficulty: self.difficulty,
+            difficulty_config: self.difficulty_config,
+            mining_stats: self.mining_stats,
             _state: PhantomData,
             _network: PhantomData,
         })
+    }
+
+    /// Mine with custom difficulty
+    pub fn mine_with_difficulty(mut self, custom_difficulty: usize) -> Result<MinedBlock<N>> {
+        self.difficulty = custom_difficulty
+            .max(self.difficulty_config.min_difficulty)
+            .min(self.difficulty_config.max_difficulty);
+        self.mine()
+    }
+
+    /// Mine with adaptive difficulty based on recent blocks
+    pub fn mine_adaptive(mut self, recent_blocks: &[&Block<block_states::Finalized, N>]) -> Result<MinedBlock<N>> {
+        let adaptive_difficulty = self.calculate_dynamic_difficulty(recent_blocks);
+        self.difficulty = adaptive_difficulty;
+        info!("Using adaptive difficulty: {}", self.difficulty);
+        self.mine()
     }
 }
 
@@ -171,6 +387,8 @@ impl<N: NetworkConfig> MinedBlock<N> {
             nonce: self.nonce,
             height: self.height,
             difficulty: self.difficulty,
+            difficulty_config: self.difficulty_config,
+            mining_stats: self.mining_stats,
             _state: PhantomData,
             _network: PhantomData,
         })
@@ -188,6 +406,8 @@ impl<N: NetworkConfig> ValidatedBlock<N> {
             nonce: self.nonce,
             height: self.height,
             difficulty: self.difficulty,
+            difficulty_config: self.difficulty_config,
+            mining_stats: self.mining_stats,
             _state: PhantomData,
             _network: PhantomData,
         }
@@ -260,6 +480,7 @@ impl<N: NetworkConfig> Block<block_states::Building, N> {
 
 /// Difficulty adjustment with type safety
 impl<N: NetworkConfig> Block<block_states::Finalized, N> {
+    /// 基本的な難易度調整
     pub fn adjust_difficulty(&self, current_timestamp: u128) -> usize {
         let time_diff = current_timestamp - self.timestamp;
         let mut new_difficulty = self.difficulty;
@@ -270,6 +491,124 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
             new_difficulty -= 1;
         }
         new_difficulty
+    }
+
+    /// 高度な難易度調整（複数ブロックの履歴を考慮）
+    pub fn adjust_difficulty_advanced(&self, recent_blocks: &[&Block<block_states::Finalized, N>]) -> usize {
+        if recent_blocks.len() < 2 {
+            return self.difficulty_config.base_difficulty;
+        }
+
+        // 時間の分散を計算
+        let mut block_times = Vec::new();
+        for i in 1..recent_blocks.len() {
+            let time_diff = recent_blocks[i].timestamp - recent_blocks[i-1].timestamp;
+            block_times.push(time_diff);
+        }
+
+        if block_times.is_empty() {
+            return self.difficulty_config.base_difficulty;
+        }
+
+        // 平均時間と分散を計算
+        let avg_time = block_times.iter().sum::<u128>() / block_times.len() as u128;
+        let variance = block_times.iter()
+            .map(|&time| {
+                let diff = time as f64 - avg_time as f64;
+                diff * diff
+            })
+            .sum::<f64>() / block_times.len() as f64;
+
+        let target_time = N::DESIRED_BLOCK_TIME as f64;
+        let time_ratio = avg_time as f64 / target_time;
+        
+        // 分散を考慮した調整
+        let stability_factor = 1.0 + (variance.sqrt() / target_time).min(0.5);
+        let adjustment = self.difficulty_config.adjustment_factor * stability_factor;
+        
+        let mut new_difficulty = self.difficulty as f64;
+        
+        if time_ratio < 0.8 {
+            // 非常に速い場合、大幅に上げる
+            new_difficulty *= 1.0 + adjustment;
+        } else if time_ratio < 0.9 {
+            // やや速い場合、軽微に上げる
+            new_difficulty *= 1.0 + (adjustment * 0.5);
+        } else if time_ratio > 1.2 {
+            // 非常に遅い場合、大幅に下げる
+            new_difficulty *= 1.0 - adjustment;
+        } else if time_ratio > 1.1 {
+            // やや遅い場合、軽微に下げる
+            new_difficulty *= 1.0 - (adjustment * 0.5);
+        }
+
+        let result = new_difficulty.round() as usize;
+        result
+            .max(self.difficulty_config.min_difficulty)
+            .min(self.difficulty_config.max_difficulty)
+    }
+
+    /// マイニング効率を計算
+    pub fn calculate_mining_efficiency(&self) -> f64 {
+        if self.mining_stats.total_attempts == 0 {
+            return 0.0;
+        }
+
+        let success_rate = self.mining_stats.success_rate();
+        let avg_time = self.mining_stats.avg_mining_time as f64;
+        let target_time = N::DESIRED_BLOCK_TIME as f64;
+        
+        // 効率 = 成功率 * (目標時間 / 実際の時間)
+        let time_efficiency = if avg_time > 0.0 {
+            target_time / avg_time
+        } else {
+            0.0
+        };
+        
+        let efficiency = success_rate * time_efficiency;
+        efficiency.min(2.0) // 最大効率を200%に制限
+    }
+
+    /// ネットワーク全体の難易度推奨値を計算
+    pub fn recommend_network_difficulty(&self, network_hash_rate: f64, target_hash_rate: f64) -> usize {
+        let hash_rate_ratio = network_hash_rate / target_hash_rate;
+        let current_difficulty = self.difficulty as f64;
+        
+        let recommended = current_difficulty * hash_rate_ratio;
+        
+        (recommended.round() as usize)
+            .max(self.difficulty_config.min_difficulty)
+            .min(self.difficulty_config.max_difficulty)
+    }
+
+    /// Test helper to create a finalized block (should only be used in tests)
+    #[cfg(test)]
+    pub fn new_test_finalized(
+        transactions: Vec<Transaction>,
+        prev_block_hash: String,
+        hash: String,
+        nonce: i32,
+        height: i32,
+        difficulty: usize,
+        difficulty_config: DifficultyAdjustmentConfig,
+        mining_stats: MiningStats,
+    ) -> Self {
+        Block {
+            timestamp: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis(),
+            transactions,
+            prev_block_hash,
+            hash,
+            nonce,
+            height,
+            difficulty,
+            difficulty_config,
+            mining_stats,
+            _state: PhantomData,
+            _network: PhantomData,
+        }
     }
 }
 
