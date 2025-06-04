@@ -1,8 +1,4 @@
 #![allow(non_snake_case)]
-#![cfg_attr(test, feature(test))]
-
-#[cfg(test)]
-extern crate test;
 
 // src/lib.rs
 pub mod blockchain;
