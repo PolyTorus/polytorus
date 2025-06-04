@@ -3,7 +3,7 @@
 //! This module provides a modern P2P networking layer for blockchain communication
 //! with features like peer discovery, message broadcasting, and network resilience.
 
-use crate::blockchain::block::Block;
+use crate::blockchain::block::{Block, FinalizedBlock};
 use crate::crypto::transaction::Transaction;
 use crate::Result;
 
@@ -37,7 +37,7 @@ pub enum NetworkEvent {
     /// Peer disconnected
     PeerDisconnected(PeerId),
     /// New block received
-    BlockReceived(Block),
+    BlockReceived(FinalizedBlock),
     /// New transaction received
     TransactionReceived(Transaction),
     /// Block request received
@@ -52,7 +52,7 @@ pub enum NetworkEvent {
 #[derive(Debug, Clone)]
 pub enum NetworkCommand {
     /// Broadcast a block
-    BroadcastBlock(Block),
+    BroadcastBlock(FinalizedBlock),
     /// Broadcast a transaction
     BroadcastTransaction(Transaction),
     /// Request a block by hash

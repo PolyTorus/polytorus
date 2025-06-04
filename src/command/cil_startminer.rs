@@ -1,4 +1,5 @@
 use crate::blockchain::blockchain::Blockchain;
+use crate::blockchain::types::network;
 use crate::blockchain::utxoset::UTXOSet;
 use crate::network::server::Server;
 use failure::Error;
@@ -11,7 +12,7 @@ pub fn cmd_start_miner_from_api(
 ) -> Result<(), Error> {
     println!("Start miner node...");
 
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
     let server = Server::new(host, port, mining_address, bootstrap, utxo_set)?;
 

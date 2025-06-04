@@ -1,17 +1,18 @@
 use crate::blockchain::block::*;
 use crate::blockchain::blockchain::*;
+use crate::blockchain::types::{network, NetworkConfig};
 use crate::crypto::transaction::*;
 use crate::Result;
 use bincode::{deserialize, serialize};
 use sled;
 use std::collections::HashMap;
 
-/// UTXOSet represents UTXO set
-pub struct UTXOSet {
-    pub blockchain: Blockchain,
+/// Type-safe UTXO set
+pub struct UTXOSet<N: NetworkConfig = network::Mainnet> {
+    pub blockchain: Blockchain<N>,
 }
 
-impl UTXOSet {
+impl<N: NetworkConfig> UTXOSet<N> {
     /// FindUnspentTransactions returns a list of transactions containing unspent outputs
     pub fn find_spendable_outputs(
         &self,
@@ -88,15 +89,13 @@ impl UTXOSet {
         }
 
         Ok(())
-    }
-
-    /// Update updates the UTXO set with transactions from the Block
+    }    /// Update updates the UTXO set with transactions from the Block
     ///
     /// The Block is considered to be the tip of a blockchain
-    pub fn update(&self, block: &Block) -> Result<()> {
+    pub fn update(&self, block: &FinalizedBlock<N>) -> Result<()> {
         let db = sled::open(self.blockchain.context.utxos_dir())?;
 
-        for tx in block.get_transaction() {
+        for tx in block.get_transactions() {
             if !tx.is_coinbase() {
                 for vin in &tx.vin {
                     let mut update_outputs = TXOutputs {

@@ -10,6 +10,7 @@ use super::settlement::PolyTorusSettlementLayer;
 use super::traits::*;
 
 use crate::blockchain::block::Block;
+use crate::blockchain::types::{block_states, network};
 use crate::config::DataContext;
 use crate::crypto::transaction::Transaction;
 use crate::Result;
@@ -150,17 +151,22 @@ impl ModularBlockchain {
             "Creating block with height: {}, prev_hash: {}",
             height,
             prev_hash
-        );
-
-        // Create new block
-        let block = Block::new_block(
+        );        // Create new block
+        let building_block = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions.clone(),
             prev_hash,
             height as i32,
             self.config.consensus.difficulty,
-        )?;
+        );// Mine the block
+        let mined_block = building_block.mine()?;
+        
+        // Validate the mined block
+        let validated_block = mined_block.validate()?;
+        
+        // Finalize the validated block
+        let block = validated_block.finalize();
 
-        // Validate block
+        // Validate block with consensus layer
         let is_valid = consensus_layer.validate_block(&block);
         if !is_valid {
             return Err(failure::format_err!("Block validation failed"));
@@ -175,11 +181,9 @@ impl ModularBlockchain {
         let _block_hash = self.data_availability_layer.store_data(&block_data)?;
 
         // Add block to consensus layer
-        consensus_layer.add_block(block.clone())?;
-
-        // Create execution batch for settlement
+        consensus_layer.add_block(block.clone())?;        // Create execution batch for settlement
         let batch = ExecutionBatch {
-            batch_id: block.get_hash(),
+            batch_id: block.get_hash().to_string(),
             transactions,
             results: vec![execution_result.clone()],
             prev_state_root: execution_layer.get_state_root(),
@@ -191,7 +195,7 @@ impl ModularBlockchain {
             .event_tx
             .send(ModularEvent::BlockProposed(block.clone()));
         let _ = self.event_tx.send(ModularEvent::ExecutionCompleted(
-            block.get_hash(),
+            block.get_hash().to_string(),
             execution_result,
         ));
         let _ = self.event_tx.send(ModularEvent::BatchReady(batch));

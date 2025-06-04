@@ -491,7 +491,7 @@ impl Server {
         let peers = self.get_peers();
         for peer in peers {
             if peer != self.node_address {
-                self.send_inv(&peer, "block", vec![new_block.get_hash()])?;
+                self.send_inv(&peer, "block", vec![new_block.get_hash().to_string()])?;
             }
         }
 
@@ -622,13 +622,9 @@ impl Server {
         };
 
         self.send_message(addr, "getdata", &msg)
-    }
-
-    /// Sends a block to a peer
+    }    /// Sends a block to a peer
     fn send_block(&self, addr: &str, block: &Block) -> Result<()> {
-        info!("Sending block to {}: {}", addr, block.get_hash());
-
-        let msg = BlockMessage {
+        info!("Sending block to {}: {}", addr, block.get_hash());        let msg = BlockMessage {
             addr_from: self.node_address.clone(),
             block: block.clone(),
         };
@@ -910,10 +906,8 @@ impl Server {
             "Received block from {}: {}",
             msg.addr_from,
             msg.block.get_hash()
-        );
-
-        // Add block to our chain
-        self.add_block(msg.block.clone())?;
+        );        // Add block to our chain
+        self.add_block(msg.block)?;
 
         // Process any blocks in transit
         let mut in_transit = self.get_blocks_in_transit();

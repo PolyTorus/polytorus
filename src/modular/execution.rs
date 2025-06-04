@@ -159,7 +159,7 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
         let mut all_events = Vec::new();
 
         // Execute each transaction in the block
-        for tx in block.get_transaction() {
+        for tx in block.get_transactions() {
             let receipt = if tx.is_contract_transaction() {
                 self.execute_contract_transaction(tx)?
             } else {

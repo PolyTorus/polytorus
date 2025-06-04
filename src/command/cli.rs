@@ -1,6 +1,7 @@
 //! cli process
 
 use crate::blockchain::blockchain::*;
+use crate::blockchain::types::network;
 use crate::blockchain::utxoset::*;
 use crate::crypto::transaction::*;
 use crate::crypto::types::EncryptionType;
@@ -220,7 +221,7 @@ impl Cli {
             ("startnode", Some(sub_m)) => {
                 if let Some(port) = sub_m.value_of("port") {
                     println!("Start node...");
-                    let bc = Blockchain::new()?;
+                    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
                     let utxo_set = UTXOSet { blockchain: bc };
                     let server = Server::new(
                         sub_m.value_of("host").unwrap_or("0.0.0.0"),
@@ -236,7 +237,7 @@ impl Cli {
                 let mining_address = get_value("address", sub_m)?;
                 let port = get_value("port", sub_m)?;
                 println!("Start miner node...");
-                let bc = Blockchain::new()?;
+                let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
                 let utxo_set = UTXOSet { blockchain: bc };
                 let server = Server::new(
                     sub_m.value_of("host").unwrap_or("0.0.0.0"),
@@ -336,10 +337,9 @@ fn cmd_send(
     from: &str,
     to: &str,
     amount: i32,
-    mine_now: bool,
-    target_node: Option<&str>,
+    mine_now: bool,    target_node: Option<&str>,
 ) -> Result<()> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
     let wallet = wallets.get_wallet(from).unwrap();
@@ -382,7 +382,7 @@ pub fn cmd_create_wallet(encryption: EncryptionType) -> Result<String> {
 }
 
 fn cmd_reindex() -> Result<i32> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
     utxo_set.reindex()?;
     utxo_set.count_transactions()
@@ -390,7 +390,7 @@ fn cmd_reindex() -> Result<i32> {
 
 fn cmd_create_blockchain(address: &str) -> Result<()> {
     let address = String::from(address);
-    let bc = Blockchain::create_blockchain(address)?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::create_blockchain(address)?;
 
     let utxo_set = UTXOSet { blockchain: bc };
     utxo_set.reindex()?;
@@ -398,11 +398,10 @@ fn cmd_create_blockchain(address: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_get_balance(address: &str) -> Result<i32> {
-    // Extract base address without encryption suffix
+fn cmd_get_balance(address: &str) -> Result<i32> {    // Extract base address without encryption suffix
     let (base_address, _) = extract_encryption_type(address)?;
     let pub_key_hash = Address::decode(&base_address).unwrap().body;
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
     let utxos = utxo_set.find_UTXO(&pub_key_hash)?;
 
@@ -411,7 +410,7 @@ fn cmd_get_balance(address: &str) -> Result<i32> {
 }
 
 pub fn cmd_print_chain() -> Result<()> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     for b in bc.iter() {
         println!("{:#?}", b);
     }
@@ -429,7 +428,7 @@ fn cmd_list_address() -> Result<()> {
 }
 
 fn cmd_remote_send(from: &str, to: &str, amount: i32, node: &str, _mine_now: bool) -> Result<()> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let utxo_set = UTXOSet { blockchain: bc };
 
     let tx = Transaction {
@@ -464,7 +463,7 @@ fn cmd_deploy_contract(
         return Err(failure::err_msg("Bytecode file too large (max 1MB)"));
     }
 
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
     let wallet_obj = wallets
@@ -506,7 +505,7 @@ fn cmd_deploy_contract(
         utxo_set.update(&new_block)?;
         // Get contract address from the transaction
         if let Some(contract_data) = new_block
-            .get_transaction()
+            .get_transactions()
             .last()
             .unwrap()
             .contract_data
@@ -542,7 +541,7 @@ fn cmd_call_contract(
     gas_limit: u64,
     mine_now: bool,
 ) -> Result<()> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };
     let wallets = Wallets::new()?;
     let wallet_obj = wallets
@@ -595,7 +594,7 @@ fn cmd_call_contract(
 }
 
 fn cmd_list_contracts() -> Result<()> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
 
     // Use a reasonable limit to prevent timeouts
     const MAX_CONTRACTS_TO_LIST: usize = 100;
@@ -635,7 +634,7 @@ fn cmd_list_contracts() -> Result<()> {
 }
 
 fn cmd_contract_state(contract: &str) -> Result<()> {
-    let bc = Blockchain::new()?;
+    let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
 
     // Direct access to contract state instead of going through blockchain
     let contract_state_path = bc.context.data_dir().join("contracts");
@@ -918,12 +917,11 @@ mod tests {
     fn test_cli_send_with_target_node() -> TestResult {
         let context = create_test_context();
 
-        let mut wallets = Wallets::new_with_context(context.clone())?;
-        let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
+        let mut wallets = Wallets::new_with_context(context.clone())?;        let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
         let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
         wallets.save_all()?;
 
-        let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
+        let bc: Blockchain<network::Mainnet> = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
         let utxo_set = UTXOSet { blockchain: bc };
         utxo_set.reindex()?;
 
