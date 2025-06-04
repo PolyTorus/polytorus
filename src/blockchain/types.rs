@@ -50,17 +50,17 @@ pub mod network {
 /// Sealed trait pattern to prevent external implementation
 pub mod sealed {
     pub trait Sealed {}
-    
+
     impl Sealed for super::block_states::Building {}
     impl Sealed for super::block_states::Mined {}
     impl Sealed for super::block_states::Validated {}
     impl Sealed for super::block_states::Finalized {}
-    
+
     impl Sealed for super::validation::ProofOfWork {}
     impl Sealed for super::validation::Transactions {}
     impl Sealed for super::validation::MerkleTree {}
     impl Sealed for super::validation::Complete {}
-    
+
     impl Sealed for super::network::Mainnet {}
     impl Sealed for super::network::Testnet {}
     impl Sealed for super::network::Development {}
@@ -148,20 +148,11 @@ pub struct Validated<T, V: ValidationLevel> {
 }
 
 impl<T, V: ValidationLevel> Validated<T, V> {
-    /// Create a new validated wrapper (should only be used internally)
-    #[allow(dead_code)]
-    pub(crate) fn new(inner: T) -> Self {
-        Self {
-            inner,
-            _validation: PhantomData,
-        }
-    }
-    
     /// Extract the inner value
     pub fn into_inner(self) -> T {
         self.inner
     }
-    
+
     /// Get a reference to the inner value
     pub fn inner(&self) -> &T {
         &self.inner
@@ -183,30 +174,15 @@ impl<T, N: NetworkConfig> NetworkSpecific<T, N> {
             _network: PhantomData,
         }
     }
-    
+
     /// Extract the inner value
     pub fn into_inner(self) -> T {
         self.inner
     }
-    
+
     /// Get a reference to the inner value
     pub fn inner(&self) -> &T {
         &self.inner
-    }
-}
-
-/// Type-level proof that a value has been validated
-pub struct ValidationProof<V: ValidationLevel> {
-    _validation: PhantomData<V>,
-}
-
-impl<V: ValidationLevel> ValidationProof<V> {
-    /// Create a validation proof (should only be used after actual validation)
-    #[allow(dead_code)]
-    pub(crate) fn new() -> Self {
-        Self {
-            _validation: PhantomData,
-        }
     }
 }
 
@@ -217,30 +193,14 @@ pub struct TypeSafeBuilder<T, S> {
 }
 
 impl<T, S> TypeSafeBuilder<T, S> {
-    #[allow(dead_code)]
-    pub(crate) fn new(inner: T) -> Self {
-        Self {
-            inner,
-            _state: PhantomData,
-        }
-    }
-    
-    #[allow(dead_code)]
-    pub(crate) fn transition<NewS>(self) -> TypeSafeBuilder<T, NewS> {
-        TypeSafeBuilder {
-            inner: self.inner,
-            _state: PhantomData,
-        }
-    }
-    
     pub fn inner(&self) -> &T {
         &self.inner
     }
-    
+
     pub fn inner_mut(&mut self) -> &mut T {
         &mut self.inner
     }
-    
+
     pub fn into_inner(self) -> T {
         self.inner
     }

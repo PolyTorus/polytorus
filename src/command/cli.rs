@@ -337,7 +337,8 @@ fn cmd_send(
     from: &str,
     to: &str,
     amount: i32,
-    mine_now: bool,    target_node: Option<&str>,
+    mine_now: bool,
+    target_node: Option<&str>,
 ) -> Result<()> {
     let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
     let mut utxo_set = UTXOSet { blockchain: bc };
@@ -398,7 +399,8 @@ fn cmd_create_blockchain(address: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_get_balance(address: &str) -> Result<i32> {    // Extract base address without encryption suffix
+fn cmd_get_balance(address: &str) -> Result<i32> {
+    // Extract base address without encryption suffix
     let (base_address, _) = extract_encryption_type(address)?;
     let pub_key_hash = Address::decode(&base_address).unwrap().body;
     let bc: Blockchain<network::Mainnet> = Blockchain::new()?;
@@ -917,11 +919,13 @@ mod tests {
     fn test_cli_send_with_target_node() -> TestResult {
         let context = create_test_context();
 
-        let mut wallets = Wallets::new_with_context(context.clone())?;        let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
+        let mut wallets = Wallets::new_with_context(context.clone())?;
+        let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
         let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
         wallets.save_all()?;
 
-        let bc: Blockchain<network::Mainnet> = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
+        let bc: Blockchain<network::Mainnet> =
+            Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
         let utxo_set = UTXOSet { blockchain: bc };
         utxo_set.reindex()?;
 

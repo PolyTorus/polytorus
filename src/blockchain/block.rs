@@ -1,8 +1,6 @@
 //! Type-safe block implementation with compile-time guarantees
 
-use crate::blockchain::types::{
-    block_states, network, BlockState, NetworkConfig,
-};
+use crate::blockchain::types::{block_states, network, BlockState, NetworkConfig};
 use crate::crypto::transaction::*;
 use crate::Result;
 use bincode::serialize;
@@ -20,8 +18,8 @@ pub const TEST_DIFFICULTY: usize = 1;
 
 /// Type-safe block with state tracking
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Block<S = block_states::Finalized, N = network::Mainnet> 
-where 
+pub struct Block<S = block_states::Finalized, N = network::Mainnet>
+where
     S: BlockState,
     N: NetworkConfig,
 {
@@ -50,12 +48,6 @@ pub type ValidatedBlock<N = network::Mainnet> = Block<block_states::Validated, N
 /// Type alias for finalized blocks
 pub type FinalizedBlock<N = network::Mainnet> = Block<block_states::Finalized, N>;
 
-/// Block builder with type-level guarantees
-pub struct BlockBuilder<S: BlockState, N: NetworkConfig> {
-    #[allow(dead_code)]
-    block: Block<S, N>,
-}
-
 /// Proof-of-Work validator
 pub struct ProofOfWorkValidator<N: NetworkConfig> {
     _network: PhantomData<N>,
@@ -78,7 +70,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_millis();
-        
+
         Block {
             timestamp,
             transactions,
@@ -91,7 +83,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
             _network: PhantomData,
         }
     }
-    
+
     pub fn get_hash(&self) -> &str {
         &self.hash
     }
@@ -111,15 +103,16 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
     pub fn get_timestamp(&self) -> u128 {
         self.timestamp
     }
-    
+
     pub fn get_difficulty(&self) -> usize {
         self.difficulty
     }
-    
+
     pub fn get_nonce(&self) -> i32 {
         self.nonce
     }
-}impl<N: NetworkConfig> BuildingBlock<N> {
+}
+impl<N: NetworkConfig> BuildingBlock<N> {
     /// Mine the block using Proof-of-Work
     pub fn mine(mut self) -> Result<MinedBlock<N>> {
         info!("Mining the block");
@@ -130,7 +123,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
         let mut hasher = Sha256::new();
         hasher.input(&data[..]);
         self.hash = hasher.result_str();
-        
+
         Ok(Block {
             timestamp: self.timestamp,
             transactions: self.transactions,
@@ -152,24 +145,24 @@ impl<N: NetworkConfig> MinedBlock<N> {
         if !self.validate_pow()? {
             return Err(format_err!("Invalid proof of work"));
         }
-        
+
         // Basic transaction validation (more comprehensive validation would require UTXO set)
         if self.transactions.is_empty() {
             return Err(format_err!("Block must contain at least one transaction"));
         }
-        
+
         // Check that the first transaction is coinbase
         if !self.transactions[0].is_coinbase() {
             return Err(format_err!("First transaction must be coinbase"));
         }
-        
+
         // Check that only the first transaction is coinbase
         for tx in &self.transactions[1..] {
             if tx.is_coinbase() {
                 return Err(format_err!("Only first transaction can be coinbase"));
             }
         }
-        
+
         Ok(Block {
             timestamp: self.timestamp,
             transactions: self.transactions,
@@ -211,7 +204,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
         let prefix = "0".repeat(self.difficulty);
         Ok(hash_str.starts_with(&prefix))
     }
-    
+
     /// Hash all transactions using Merkle tree
     fn hash_transactions(&self) -> Result<Vec<u8>> {
         let mut transactions = Vec::new();
@@ -248,18 +241,14 @@ impl<N: NetworkConfig> Block<block_states::Building, N> {
         } else {
             N::INITIAL_DIFFICULTY // This would be calculated based on previous blocks
         };
-        
+
         Self::new_building(transactions, prev_block_hash, height, difficulty)
     }
-    
+
     /// Create genesis block
     pub fn new_genesis(coinbase: Transaction) -> FinalizedBlock<N> {
-        let building_block = Self::new_with_network_config(
-            vec![coinbase], 
-            String::new(), 
-            0
-        );
-        
+        let building_block = Self::new_with_network_config(vec![coinbase], String::new(), 0);
+
         building_block
             .mine()
             .unwrap()
@@ -279,7 +268,8 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
             new_difficulty += 1;
         } else if time_diff > N::DESIRED_BLOCK_TIME && new_difficulty > 1 {
             new_difficulty -= 1;
-        }        new_difficulty
+        }
+        new_difficulty
     }
 }
 

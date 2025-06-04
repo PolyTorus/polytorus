@@ -93,7 +93,8 @@ impl<N: NetworkConfig> Blockchain<N> {
         };
         bc.db.flush()?;
         Ok(bc)
-    }    /// MineBlock mines a new block with the provided transactions
+    }
+    /// MineBlock mines a new block with the provided transactions
     pub fn mine_block(&mut self, transactions: Vec<Transaction>) -> Result<FinalizedBlock<N>> {
         info!("mine a new block");
 
@@ -117,16 +118,18 @@ impl<N: NetworkConfig> Blockchain<N> {
 
         let lasthash = self.db.get("LAST")?.unwrap();
         let prev_hash = String::from_utf8(lasthash.to_vec())?;
-        let prev_block: FinalizedBlock<N> = self.get_block(&prev_hash)?;        let current_timestamp = SystemTime::now()
+        let prev_block: FinalizedBlock<N> = self.get_block(&prev_hash)?;
+        let current_timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_millis();
-        let new_difficulty = prev_block.adjust_difficulty(current_timestamp);        let building_block = Block::<block_states::Building, N>::new_building(
+        let new_difficulty = prev_block.adjust_difficulty(current_timestamp);
+        let building_block = Block::<block_states::Building, N>::new_building(
             processed_transactions,
             prev_hash,
             self.get_best_height()? + 1,
             new_difficulty,
         );
-        
+
         let newblock = building_block.mine()?.validate()?.finalize();
         self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
         self.db.insert("LAST", newblock.get_hash().as_bytes())?;
@@ -231,7 +234,8 @@ impl<N: NetworkConfig> Blockchain<N> {
         }
         let prev_TXs = self.get_prev_TXs(tx)?;
         tx.verify(prev_TXs)
-    }    /// AddBlock saves the block into the blockchain
+    }
+    /// AddBlock saves the block into the blockchain
     pub fn add_block(&mut self, block: FinalizedBlock<N>) -> Result<()> {
         let data = serialize(&block)?;
         if let Some(_) = self.db.get(block.get_hash())? {
@@ -246,12 +250,13 @@ impl<N: NetworkConfig> Blockchain<N> {
             self.db.flush()?;
         }
         Ok(())
-    }// GetBlock finds a block by its hash and returns it
+    } // GetBlock finds a block by its hash and returns it
     pub fn get_block(&self, block_hash: &str) -> Result<FinalizedBlock<N>> {
         let data = self.db.get(block_hash)?.unwrap();
         let block = deserialize(&data)?;
         Ok(block)
-    }    /// GetBestHeight returns the height of the latest block
+    }
+    /// GetBestHeight returns the height of the latest block
     pub fn get_best_height(&self) -> Result<i32> {
         let lasthash = if let Some(h) = self.db.get("LAST")? {
             h
@@ -261,7 +266,8 @@ impl<N: NetworkConfig> Blockchain<N> {
         let last_data = self.db.get(lasthash)?.unwrap();
         let last_block: FinalizedBlock<N> = deserialize(&last_data)?;
         Ok(last_block.get_height())
-    }    /// GetBlockHashes returns a list of hashes of all the blocks in the chain
+    }
+    /// GetBlockHashes returns a list of hashes of all the blocks in the chain
     pub fn get_block_hashs(&self) -> Vec<String> {
         let mut list = Vec::new();
         for b in self.iter() {

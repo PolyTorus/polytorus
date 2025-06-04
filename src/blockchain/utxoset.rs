@@ -89,7 +89,8 @@ impl<N: NetworkConfig> UTXOSet<N> {
         }
 
         Ok(())
-    }    /// Update updates the UTXO set with transactions from the Block
+    }
+    /// Update updates the UTXO set with transactions from the Block
     ///
     /// The Block is considered to be the tip of a blockchain
     pub fn update(&self, block: &FinalizedBlock<N>) -> Result<()> {

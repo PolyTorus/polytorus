@@ -151,18 +151,18 @@ impl ModularBlockchain {
             "Creating block with height: {}, prev_hash: {}",
             height,
             prev_hash
-        );        // Create new block
+        ); // Create new block
         let building_block = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions.clone(),
             prev_hash,
             height as i32,
             self.config.consensus.difficulty,
-        );// Mine the block
+        ); // Mine the block
         let mined_block = building_block.mine()?;
-        
+
         // Validate the mined block
         let validated_block = mined_block.validate()?;
-        
+
         // Finalize the validated block
         let block = validated_block.finalize();
 
@@ -181,7 +181,7 @@ impl ModularBlockchain {
         let _block_hash = self.data_availability_layer.store_data(&block_data)?;
 
         // Add block to consensus layer
-        consensus_layer.add_block(block.clone())?;        // Create execution batch for settlement
+        consensus_layer.add_block(block.clone())?; // Create execution batch for settlement
         let batch = ExecutionBatch {
             batch_id: block.get_hash().to_string(),
             transactions,
