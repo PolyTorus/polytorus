@@ -6,6 +6,8 @@ use crate::webserver::startminer;
 use crate::webserver::startnode;
 use actix_web::{App, HttpServer};
 
+use super::remotesend;
+
 pub struct WebServer {}
 
 impl WebServer {
@@ -18,6 +20,7 @@ impl WebServer {
                 .service(reindex::reindex)
                 .service(startnode::start_node)
                 .service(startminer::start_miner)
+                .service(remotesend::remote_send)
         })
         .bind(("127.0.0.1", 7000))?
         .run()
