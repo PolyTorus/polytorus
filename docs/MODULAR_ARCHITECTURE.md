@@ -1,68 +1,68 @@
-# PolyTorus モジューラーブロックチェーンアーキテクチャ
+# PolyTorus Modular Blockchain Architecture
 
-## 概要
-PolyTorusをモジューラーブロックチェーンとして設計し、各レイヤーを独立して開発・運用できるアーキテクチャを構築します。
+## Overview
+Design PolyTorus as a modular blockchain to build an architecture where each layer can be developed and operated independently.
 
-## アーキテクチャレイヤー
+## Architecture Layers
 
-### 1. 実行レイヤー (Execution Layer)
-- **役割**: トランザクション実行とスマートコントラクト処理
-- **責任範囲**: 
-  - 状態遷移ロジック
-  - WASM実行環境
-  - ガス計測とリソース管理
-- **独立性**: 他のレイヤーから分離され、プラガブル
+### 1. Execution Layer
+- **Role**: Transaction execution and smart contract processing
+- **Responsibilities**: 
+  - State transition logic
+  - WASM execution environment
+  - Gas metering and resource management
+- **Independence**: Separated from other layers and pluggable
 
-### 2. セトルメントレイヤー (Settlement Layer)
-- **役割**: 最終的な状態確定と紛争解決
-- **責任範囲**:
-  - トランザクションの最終確定
-  - 不正証明の検証
-  - ルート状態の管理
-- **独立性**: コンセンサスとデータ可用性から分離
+### 2. Settlement Layer
+- **Role**: Final state confirmation and dispute resolution
+- **Responsibilities**:
+  - Final confirmation of transactions
+  - Fraud proof verification
+  - Root state management
+- **Independence**: Separated from consensus and data availability
 
-### 3. コンセンサスレイヤー (Consensus Layer)
-- **役割**: ブロック順序決定とバリデーター管理
-- **責任範囲**:
-  - プルーフ・オブ・ワーク
-  - バリデーター選択
-  - フォーク解決
-- **独立性**: 実行とデータ可用性から分離
+### 3. Consensus Layer
+- **Role**: Block ordering and validator management
+- **Responsibilities**:
+  - Proof of Work
+  - Validator selection
+  - Fork resolution
+- **Independence**: Separated from execution and data availability
 
-### 4. データ可用性レイヤー (Data Availability Layer)
-- **役割**: データの保存と配布
-- **責任範囲**:
-  - ブロックデータの保存
-  - P2Pネットワーク通信
-  - データ同期
-- **独立性**: 実行とコンセンサスから分離
+### 4. Data Availability Layer
+- **Role**: Data storage and distribution
+- **Responsibilities**:
+  - Block data storage
+  - P2P network communication
+  - Data synchronization
+- **Independence**: Separated from execution and consensus
 
-## モジュール間通信インターフェース
+## Inter-Module Communication Interface
 
-### レイヤー間API
+### Inter-Layer API
 ```rust
-// 実行レイヤーインターフェース
+// Execution layer interface
 pub trait ExecutionLayer {
     fn execute_block(&self, block: Block) -> Result<ExecutionResult>;
     fn get_state_root(&self) -> Hash;
     fn verify_execution(&self, proof: ExecutionProof) -> bool;
 }
 
-// セトルメントレイヤーインターフェース
+// Settlement layer interface
 pub trait SettlementLayer {
     fn settle_batch(&self, batch: ExecutionBatch) -> Result<SettlementResult>;
     fn verify_fraud_proof(&self, proof: FraudProof) -> bool;
     fn get_settlement_root(&self) -> Hash;
 }
 
-// コンセンサスレイヤーインターフェース
+// Consensus layer interface
 pub trait ConsensusLayer {
     fn propose_block(&self, block: Block) -> Result<()>;
     fn validate_block(&self, block: Block) -> bool;
     fn get_canonical_chain(&self) -> Vec<Hash>;
 }
 
-// データ可用性レイヤーインターフェース
+// Data availability layer interface
 pub trait DataAvailabilityLayer {
     fn store_data(&self, data: &[u8]) -> Result<Hash>;
     fn retrieve_data(&self, hash: Hash) -> Result<Vec<u8>>;
@@ -70,56 +70,56 @@ pub trait DataAvailabilityLayer {
 }
 ```
 
-## 実装方針
+## Implementation Strategy
 
-### Phase 1: 現在のモノリシック構造の分析と分離
-1. 既存コードの依存関係マッピング
-2. レイヤー境界の明確化
-3. インターフェース定義
+### Phase 1: Analysis and Separation of Current Monolithic Structure
+1. Dependency mapping of existing code
+2. Clarification of layer boundaries
+3. Interface definition
 
-### Phase 2: インターフェース実装
-1. トレイト定義とモック実装
-2. レイヤー間通信プロトコル
-3. 設定とランタイム管理
+### Phase 2: Interface Implementation
+1. Trait definitions and mock implementations
+2. Inter-layer communication protocol
+3. Configuration and runtime management
 
-### Phase 3: 段階的移行
-1. 実行レイヤーの分離
-2. データ可用性レイヤーの独立化
-3. コンセンサスとセトルメントの分離
+### Phase 3: Gradual Migration
+1. Execution layer separation
+2. Data availability layer independence
+3. Consensus and settlement separation
 
-### Phase 4: 最適化と統合
-1. パフォーマンス最適化
-2. セキュリティ監査
-3. 運用性の向上
+### Phase 4: Optimization and Integration
+1. Performance optimization
+2. Security audit
+3. Operational improvements
 
-## 技術スタック
+## Technology Stack
 
-### インターフェース通信
-- **非同期通信**: Tokio + mpsc channels
-- **同期通信**: 直接関数呼び出し
-- **ネットワーク通信**: libp2p/TCP
+### Interface Communication
+- **Asynchronous communication**: Tokio + mpsc channels
+- **Synchronous communication**: Direct function calls
+- **Network communication**: libp2p/TCP
 
-### 状態管理
-- **ローカル状態**: sled database
-- **グローバル状態**: Merkle trie
-- **キャッシュ**: LRU cache
+### State Management
+- **Local state**: sled database
+- **Global state**: Merkle trie
+- **Cache**: LRU cache
 
-### 設定管理
-- **階層設定**: TOML config files
-- **実行時設定**: Environment variables
-- **動的設定**: API endpoints
+### Configuration Management
+- **Hierarchical configuration**: TOML config files
+- **Runtime configuration**: Environment variables
+- **Dynamic configuration**: API endpoints
 
-## 利点
+## Benefits
 
-1. **スケーラビリティ**: 各レイヤーを独立してスケール
-2. **モジュラリティ**: レイヤーの交換・アップグレードが容易
-3. **開発効率**: チーム毎に異なるレイヤーを並行開発
-4. **テスト容易性**: レイヤー毎の単体テストが可能
-5. **再利用性**: 他のブロックチェーンでの利用が可能
+1. **Scalability**: Scale each layer independently
+2. **Modularity**: Easy layer replacement and upgrades
+3. **Development efficiency**: Teams can develop different layers in parallel
+4. **Testability**: Unit testing per layer possible
+5. **Reusability**: Can be used in other blockchains
 
-## 次のステップ
+## Next Steps
 
-1. 現在のコードベースのレイヤー分析
-2. インターフェース設計と実装
-3. 段階的なリファクタリング
-4. 統合テストとベンチマーク
+1. Layer analysis of current codebase
+2. Interface design and implementation
+3. Gradual refactoring
+4. Integration testing and benchmarking

@@ -1,43 +1,43 @@
-# 難易度調整システム使用ガイド
+# Difficulty Adjustment System Usage Guide
 
-PolyTorusの新しい難易度調整システムは、マイニングブロックごとに細かい難易度調整が可能な高度な機能を提供します。
+PolyTorus's new difficulty adjustment system provides advanced functionality that allows fine-grained difficulty adjustments for each mining block.
 
-## 機能概要
+## Feature Overview
 
-### 1. 柔軟な難易度設定
+### 1. Flexible Difficulty Settings
 
 ```rust
 use polytorus::blockchain::block::DifficultyAdjustmentConfig;
 
 let config = DifficultyAdjustmentConfig {
-    base_difficulty: 4,        // 基本難易度
-    min_difficulty: 1,         // 最小難易度
-    max_difficulty: 32,        // 最大難易度
-    adjustment_factor: 0.25,   // 調整の強度 (0.0-1.0)
-    tolerance_percentage: 20.0, // 許容誤差 (%)
+    base_difficulty: 4,        // Base difficulty
+    min_difficulty: 1,         // Minimum difficulty
+    max_difficulty: 32,        // Maximum difficulty
+    adjustment_factor: 0.25,   // Adjustment strength (0.0-1.0)
+    tolerance_percentage: 20.0, // Tolerance percentage (%)
 };
 ```
 
-### 2. マイニング統計の追跡
+### 2. Mining Statistics Tracking
 
 ```rust
 use polytorus::blockchain::block::MiningStats;
 
 let mut stats = MiningStats::default();
-stats.record_mining_time(1500); // マイニング時間を記録
-stats.record_attempt();          // 試行回数を記録
+stats.record_mining_time(1500); // Record mining time
+stats.record_attempt();          // Record attempt count
 
-println!("平均マイニング時間: {}ms", stats.avg_mining_time);
-println!("成功率: {:.2}%", stats.success_rate() * 100.0);
+println!("Average mining time: {}ms", stats.avg_mining_time);
+println!("Success rate: {:.2}%", stats.success_rate() * 100.0);
 ```
 
-### 3. ブロック作成と設定
+### 3. Block Creation and Configuration
 
 ```rust
 use polytorus::blockchain::block::{Block, BuildingBlock};
 use polytorus::blockchain::types::network;
 
-// カスタム設定でブロックを作成
+// Create block with custom configuration
 let building_block: BuildingBlock<network::Development> = Block::new_building_with_config(
     transactions,
     prev_hash,
@@ -48,60 +48,60 @@ let building_block: BuildingBlock<network::Development> = Block::new_building_wi
 );
 ```
 
-## マイニング方法
+## Mining Methods
 
-### 1. 標準マイニング
+### 1. Standard Mining
 
 ```rust
 let mined_block = building_block.mine()?;
 ```
 
-### 2. カスタム難易度でマイニング
+### 2. Custom Difficulty Mining
 
 ```rust
 let mined_block = building_block.mine_with_difficulty(6)?;
 ```
 
-### 3. 適応的マイニング
+### 3. Adaptive Mining
 
 ```rust
-// 最近のブロックを基に動的に難易度を計算
+// Dynamically calculate difficulty based on recent blocks
 let mined_block = building_block.mine_adaptive(&recent_blocks)?;
 ```
 
-## 難易度調整アルゴリズム
+## Difficulty Adjustment Algorithm
 
-### 動的難易度計算
+### Dynamic Difficulty Calculation
 
-システムは以下の要素を考慮して難易度を調整します：
+The system adjusts difficulty considering the following factors:
 
-1. **最近のブロック時間の平均**
-2. **目標ブロック時間との比較**
-3. **設定された許容誤差**
-4. **調整強度パラメータ**
+1. **Average of recent block times**
+2. **Comparison with target block time**
+3. **Configured tolerance margin**
+4. **Adjustment strength parameters**
 
 ```rust
 let dynamic_difficulty = block.calculate_dynamic_difficulty(&recent_blocks);
 ```
 
-### 高度な難易度調整
+### Advanced Difficulty Adjustment
 
-複数ブロックの履歴と時間の分散を考慮した調整：
+Adjustment considering multiple block history and time variance:
 
 ```rust
 let advanced_difficulty = finalized_block.adjust_difficulty_advanced(&previous_blocks);
 ```
 
-## パフォーマンス分析
+## Performance Analysis
 
-### マイニング効率の計算
+### Mining Efficiency Calculation
 
 ```rust
 let efficiency = finalized_block.calculate_mining_efficiency();
-println!("マイニング効率: {:.2}%", efficiency * 100.0);
+println!("Mining efficiency: {:.2}%", efficiency * 100.0);
 ```
 
-### ネットワーク難易度推奨
+### Network Difficulty Recommendation
 
 ```rust
 let network_difficulty = finalized_block.recommend_network_difficulty(
@@ -110,9 +110,9 @@ let network_difficulty = finalized_block.recommend_network_difficulty(
 );
 ```
 
-## 実用的な例
+## Practical Examples
 
-### シナリオ1: 開発環境での高速マイニング
+### Scenario 1: Fast Mining in Development Environment
 
 ```rust
 let dev_config = DifficultyAdjustmentConfig {
@@ -124,7 +124,7 @@ let dev_config = DifficultyAdjustmentConfig {
 };
 ```
 
-### シナリオ2: 本番環境での安定したマイニング
+### Scenario 2: Stable Mining in Production Environment
 
 ```rust
 let prod_config = DifficultyAdjustmentConfig {
@@ -136,7 +136,7 @@ let prod_config = DifficultyAdjustmentConfig {
 };
 ```
 
-### シナリオ3: テストネットでの実験的設定
+### Scenario 3: Experimental Settings for Testnet
 
 ```rust
 let test_config = DifficultyAdjustmentConfig {
@@ -148,19 +148,19 @@ let test_config = DifficultyAdjustmentConfig {
 };
 ```
 
-## ベストプラクティス
+## Best Practices
 
-1. **調整強度**: 0.1-0.3の範囲が推奨です
-2. **許容誤差**: 10-30%の範囲で設定してください
-3. **最大・最小難易度**: ネットワークの性能に応じて適切に設定
-4. **統計の追跡**: マイニング統計を定期的に分析して最適化
+1. **Adjustment Strength**: Range of 0.1-0.3 is recommended
+2. **Tolerance Margin**: Set within 10-30% range
+3. **Max/Min Difficulty**: Set appropriately according to network performance
+4. **Statistics Tracking**: Regularly analyze mining statistics for optimization
 
-## サンプル実行
+## Sample Execution
 
-難易度調整のサンプルコードを実行するには：
+To run difficulty adjustment sample code:
 
 ```bash
 cargo run --example difficulty_adjustment
 ```
 
-このサンプルでは、様々な難易度調整機能の使用例を確認できます。
+This sample demonstrates various difficulty adjustment features usage examples.

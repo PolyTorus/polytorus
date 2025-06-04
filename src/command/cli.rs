@@ -345,7 +345,7 @@ fn cmd_send(
     let wallets = Wallets::new()?;
     let wallet = wallets.get_wallet(from).unwrap();
 
-    // ウォレットの暗号化方式を使用
+    // Use wallet's encryption type
     let crypto = crate::crypto::get_crypto_provider(&wallet.encryption_type);
     let tx = Transaction::new_UTXO(wallet, to, amount, &utxo_set, crypto.as_ref())?;
     if mine_now {
@@ -848,23 +848,23 @@ mod tests {
 
     #[test]
     fn test_cli_send_with_mine() -> TestResult {
-        // テスト用のコンテキストを作成
+        // Create test context
         let context = create_test_context();
 
-        // ウォレットを作成
+        // Create wallets
         let mut wallets = Wallets::new_with_context(context.clone())?;
         let addr1 = wallets.create_wallet(EncryptionType::FNDSA);
         let addr2 = wallets.create_wallet(EncryptionType::FNDSA);
         wallets.save_all()?;
 
-        // ジェネシスブロック作成
+        // Create genesis block
         let bc = Blockchain::create_blockchain_with_context(addr1.clone(), context.clone())?;
 
-        // UTXOセットを作成し、インデックスを再構築
+        // Create UTXO set and rebuild index
         let mut utxo_set = UTXOSet { blockchain: bc };
         utxo_set.reindex()?;
 
-        // 残高確認
+        // Check balances
         let (base_addr1, _) = extract_encryption_type(&addr1)?;
         let (base_addr2, _) = extract_encryption_type(&addr2)?;
         let pub_key_hash1 = Address::decode(&base_addr1).unwrap().body;
@@ -878,17 +878,17 @@ mod tests {
         assert_eq!(balance1, 10);
         assert_eq!(balance2, 0);
 
-        // 送金と採掘
+        // Send and mine
         let wallet1 = wallets.get_wallet(&addr1).unwrap();
         let crypto = FnDsaCrypto;
         let tx = Transaction::new_UTXO(wallet1, &addr2, 5, &utxo_set, &crypto)?;
         let cbtx = Transaction::new_coinbase(addr1.clone(), String::from("reward!"))?;
 
-        // ブロックを採掘（テスト用低難易度を使用）
+        // Mine block (using test difficulty for faster execution)
         let new_block = utxo_set.blockchain.mine_block_with_test_difficulty(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
 
-        // 採掘後の残高確認
+        // Check balances after mining
         let utxos1_after = utxo_set.find_UTXO(&pub_key_hash1)?;
         let balance1_after: i32 = utxos1_after.outputs.iter().map(|out| out.value).sum();
         let utxos2_after = utxo_set.find_UTXO(&pub_key_hash2)?;
@@ -897,12 +897,12 @@ mod tests {
         assert_eq!(balance1_after, 15); // 10 (initial) - 5 (sent) + 10 (mining reward)
         assert_eq!(balance2_after, 5);
 
-        // addr2 から addr1 へ、残高以上（15 単位）の送金を試みる
+        // Try to send 15 units from addr2 to addr1 (more than available balance)
         let wallet2 = wallets.get_wallet(&addr2).unwrap();
         let res = Transaction::new_UTXO(wallet2, &addr1, 15, &utxo_set, &crypto);
         assert!(res.is_err());
 
-        // 再度残高確認（変化はないはず）
+        // Check balances again (should be unchanged)
         let utxos1_final = utxo_set.find_UTXO(&pub_key_hash1)?;
         let balance1_final: i32 = utxos1_final.outputs.iter().map(|out| out.value).sum();
         let utxos2_final = utxo_set.find_UTXO(&pub_key_hash2)?;
@@ -940,7 +940,7 @@ mod tests {
         let balance2: i32 = utxos2.outputs.iter().map(|out| out.value).sum();
 
         assert_eq!(balance1, 10);
-        assert_eq!(balance2, 0); // ネットワーク機能のテストは実際のノードが必要なため省略
+        assert_eq!(balance2, 0); // Network functionality tests require actual nodes, so omitted
         cleanup_test_context(&context);
         Ok(())
     }

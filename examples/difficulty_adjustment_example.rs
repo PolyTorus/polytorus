@@ -1,6 +1,6 @@
 #!/usr/bin/env rust
 
-//! 難易度調整機能のサンプル使用例
+//! Sample usage example for difficulty adjustment functionality
 
 use polytorus::blockchain::block::{
     Block, DifficultyAdjustmentConfig, MiningStats, BuildingBlock
@@ -10,9 +10,9 @@ use polytorus::blockchain::types::block_states::Building;
 use polytorus::crypto::transaction::Transaction;
 
 fn main() -> polytorus::Result<()> {
-    println!("=== 難易度調整機能のデモ ===\n");
+    println!("=== Difficulty Adjustment Feature Demo ===\n");
 
-    // カスタム難易度設定
+    // Custom difficulty configuration
     let difficulty_config = DifficultyAdjustmentConfig {
         base_difficulty: 3,
         min_difficulty: 1,
@@ -23,10 +23,10 @@ fn main() -> polytorus::Result<()> {
 
     let mining_stats = MiningStats::default();
 
-    // ダミートランザクション作成
+    // Create dummy transaction
     let dummy_transaction = Transaction::new_coinbase("miner_address".to_string(), "coinbase_data".to_string())?;
 
-    println!("1. 基本的なマイニング例:");
+    println!("1. Basic mining example:");
     let building_block: BuildingBlock<network::Development> = Block::<Building, network::Development>::new_building_with_config(
         vec![dummy_transaction.clone()],
         "previous_hash".to_string(),
@@ -36,20 +36,20 @@ fn main() -> polytorus::Result<()> {
         mining_stats.clone(),
     );
 
-    println!("   - 初期難易度: {}", building_block.get_difficulty());
-    println!("   - 設定された最小難易度: {}", building_block.get_difficulty_config().min_difficulty);
-    println!("   - 設定された最大難易度: {}", building_block.get_difficulty_config().max_difficulty);
+    println!("   - Initial difficulty: {}", building_block.get_difficulty());
+    println!("   - Configured minimum difficulty: {}", building_block.get_difficulty_config().min_difficulty);
+    println!("   - Configured maximum difficulty: {}", building_block.get_difficulty_config().max_difficulty);
 
-    // マイニング実行
+    // Execute mining
     let mined_block = building_block.mine()?;
-    println!("   - マイニング完了! Nonce: {}", mined_block.get_nonce());
-    println!("   - ブロックハッシュ: {}", &mined_block.get_hash()[..16]);
+    println!("   - Mining completed! Nonce: {}", mined_block.get_nonce());
+    println!("   - Block hash: {}", &mined_block.get_hash()[..16]);
 
-    // 検証とファイナライズ
+    // Validate and finalize
     let validated_block = mined_block.validate()?;
     let finalized_block = validated_block.finalize();
 
-    println!("\n2. カスタム難易度でのマイニング例:");
+    println!("\n2. Custom difficulty mining example:");
     let building_block2: BuildingBlock<network::Development> = Block::<Building, network::Development>::new_building_with_config(
         vec![dummy_transaction.clone()],
         finalized_block.get_hash().to_string(),
@@ -59,15 +59,15 @@ fn main() -> polytorus::Result<()> {
         mining_stats,
     );
 
-    // カスタム難易度でマイニング
+    // Mine with custom difficulty
     let mined_block2 = building_block2.mine_with_difficulty(4)?;
-    println!("   - カスタム難易度: {}", mined_block2.get_difficulty());
-    println!("   - マイニング完了! Nonce: {}", mined_block2.get_nonce());
+    println!("   - Custom difficulty: {}", mined_block2.get_difficulty());
+    println!("   - Mining completed! Nonce: {}", mined_block2.get_nonce());
 
     let validated_block2 = mined_block2.validate()?;
     let finalized_block2 = validated_block2.finalize();
 
-    println!("\n3. 適応的難易度調整の例:");
+    println!("\n3. Adaptive difficulty adjustment example:");
     let recent_blocks: Vec<&Block<block_states::Finalized, network::Development>> = vec![
         &finalized_block,
         &finalized_block2,
@@ -82,26 +82,26 @@ fn main() -> polytorus::Result<()> {
         MiningStats::default(),
     );
 
-    // 動的難易度を計算
+    // Calculate dynamic difficulty
     let dynamic_difficulty = building_block3.calculate_dynamic_difficulty(&recent_blocks);
-    println!("   - 計算された動的難易度: {}", dynamic_difficulty);
+    println!("   - Calculated dynamic difficulty: {}", dynamic_difficulty);
 
-    // 適応的マイニング
+    // Adaptive mining
     let mined_block3 = building_block3.mine_adaptive(&recent_blocks)?;
-    println!("   - 適応的マイニング完了! 使用された難易度: {}", mined_block3.get_difficulty());
+    println!("   - Adaptive mining completed! Used difficulty: {}", mined_block3.get_difficulty());
 
-    println!("\n4. マイニング統計の表示:");
+    println!("\n4. Mining statistics display:");
     let stats = mined_block3.get_mining_stats();
-    println!("   - 平均マイニング時間: {}ms", stats.avg_mining_time);
-    println!("   - 総試行回数: {}", stats.total_attempts);
-    println!("   - 成功回数: {}", stats.successful_mines);
+    println!("   - Average mining time: {}ms", stats.avg_mining_time);
+    println!("   - Total attempts: {}", stats.total_attempts);
+    println!("   - Successful mines: {}", stats.successful_mines);
     if stats.total_attempts > 0 {
-        println!("   - 成功率: {:.2}%", stats.success_rate() * 100.0);
+        println!("   - Success rate: {:.2}%", stats.success_rate() * 100.0);
     }
 
     let validated_block3 = mined_block3.validate()?;
     let _finalized_block3 = validated_block3.finalize();
 
-    println!("\n=== デモ完了 ===");
+    println!("\n=== Demo Complete ===");
     Ok(())
 }
