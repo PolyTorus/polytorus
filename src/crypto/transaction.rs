@@ -17,13 +17,15 @@ use std::vec;
 
 const SUBSIDY: i32 = 10;
 
-/// TXInput represents a transaction input
+/// TXInput represents an extended transaction input (eUTXO)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TXInput {
     pub txid: String,
     pub vout: i32,
     pub signature: Vec<u8>,
     pub pub_key: Vec<u8>,
+    /// Redeemer (data used to satisfy spending conditions)
+    pub redeemer: Option<Vec<u8>>,
 }
 
 /// Determine encryption type based on public key size
@@ -37,11 +39,17 @@ fn determine_encryption_type(pub_key: &[u8]) -> EncryptionType {
     }
 }
 
-/// TXOutput represents a transaction output
+/// TXOutput represents an extended transaction output (eUTXO)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TXOutput {
     pub value: i32,
     pub pub_key_hash: Vec<u8>,
+    /// Script/validator logic for spending conditions
+    pub script: Option<Vec<u8>>,
+    /// Datum (additional data attached to the output)
+    pub datum: Option<Vec<u8>>,
+    /// Reference script for advanced validation
+    pub reference_script: Option<String>,
 }
 
 // TXOutputs collects TXOutput
@@ -102,9 +110,7 @@ impl Transaction {
         let mut pub_key_hash = wallet.public_key.clone();
         hash_pub_key(&mut pub_key_hash);
 
-        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
-
-        if acc_v.0 < amount {
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;        if acc_v.0 < amount {
             error!("Not Enough balance");
             return Err(format_err!(
                 "Not Enough balance: current balance {}",
@@ -119,6 +125,7 @@ impl Transaction {
                     vout: out,
                     signature: Vec::new(),
                     pub_key: wallet.public_key.clone(),
+                    redeemer: None,
                 };
                 vin.push(input);
             }
@@ -151,15 +158,14 @@ impl Transaction {
             data = format!("Reward to '{}'", to);
         }
         let mut pub_key = Vec::from(data.as_bytes());
-        pub_key.append(&mut Vec::from(key));
-
-        let mut tx = Transaction {
+        pub_key.append(&mut Vec::from(key));        let mut tx = Transaction {
             id: String::new(),
             vin: vec![TXInput {
                 txid: String::new(),
                 vout: -1,
                 signature: Vec::new(),
                 pub_key,
+                redeemer: None,
             }],
             vout: vec![TXOutput::new(SUBSIDY, to)?],
             contract_data: None,
@@ -204,15 +210,14 @@ impl Transaction {
                 gas_fee,
                 acc_v.0
             ));
-        }
-
-        for tx in acc_v.1 {
+        }        for tx in acc_v.1 {
             for out in tx.1 {
                 let input = TXInput {
                     txid: tx.0.clone(),
                     vout: out,
                     signature: Vec::new(),
                     pub_key: wallet.public_key.clone(),
+                    redeemer: None,
                 };
                 vin.push(input);
             }
@@ -275,15 +280,14 @@ impl Transaction {
                 total_cost,
                 acc_v.0
             ));
-        }
-
-        for tx in acc_v.1 {
+        }        for tx in acc_v.1 {
             for out in tx.1 {
                 let input = TXInput {
                     txid: tx.0.clone(),
                     vout: out,
                     signature: Vec::new(),
                     pub_key: wallet.public_key.clone(),
+                    redeemer: None,
                 };
                 vin.push(input);
             }
@@ -299,6 +303,129 @@ impl Transaction {
             vin,
             vout,
             contract_data: Some(contract_data),
+        };
+        tx.id = tx.hash()?;
+        utxo.blockchain
+            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+        Ok(tx)
+    }
+
+    /// Create a new eUTXO transaction with script and datum
+    pub fn new_eUTXO(
+        wallet: &Wallet,
+        to: &str,
+        amount: i32,
+        script: Option<Vec<u8>>,
+        datum: Option<Vec<u8>>,
+        utxo: &UTXOSet,
+        crypto: &dyn CryptoProvider,
+    ) -> Result<Transaction> {
+        info!(
+            "new eUTXO Transaction from: {} to: {} with script: {}",
+            wallet.get_address(),
+            to,
+            script.is_some()
+        );
+        let mut vin = Vec::new();
+
+        let mut pub_key_hash = wallet.public_key.clone();
+        hash_pub_key(&mut pub_key_hash);
+
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
+        if acc_v.0 < amount {
+            error!("Not Enough balance");
+            return Err(format_err!(
+                "Not Enough balance: current balance {}",
+                acc_v.0
+            ));
+        }
+
+        for tx in acc_v.1 {
+            for out in tx.1 {
+                let input = TXInput {
+                    txid: tx.0.clone(),
+                    vout: out,
+                    signature: Vec::new(),
+                    pub_key: wallet.public_key.clone(),
+                    redeemer: None,
+                };
+                vin.push(input);
+            }
+        }
+
+        // Create eUTXO output with script and datum
+        let mut eUTXO_output = TXOutput::new(amount, to.to_string())?;
+        eUTXO_output.script = script;
+        eUTXO_output.datum = datum;
+
+        let mut vout = vec![eUTXO_output];
+        if acc_v.0 > amount {
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
+        }
+
+        let mut tx = Transaction {
+            id: String::new(),
+            vin,
+            vout,
+            contract_data: None,
+        };
+        tx.id = tx.hash()?;
+        utxo.blockchain
+            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+        Ok(tx)
+    }
+
+    /// Create a new eUTXO transaction with redeemer for spending script-locked outputs
+    pub fn new_eUTXO_with_redeemer(
+        wallet: &Wallet,
+        to: &str,
+        amount: i32,
+        redeemer: Vec<u8>,
+        utxo: &UTXOSet,
+        crypto: &dyn CryptoProvider,
+    ) -> Result<Transaction> {
+        info!(
+            "new eUTXO Transaction with redeemer from: {} to: {}",
+            wallet.get_address(),
+            to
+        );
+        let mut vin = Vec::new();
+
+        let mut pub_key_hash = wallet.public_key.clone();
+        hash_pub_key(&mut pub_key_hash);
+
+        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
+        if acc_v.0 < amount {
+            error!("Not Enough balance");
+            return Err(format_err!(
+                "Not Enough balance: current balance {}",
+                acc_v.0
+            ));
+        }
+
+        for tx in acc_v.1 {
+            for out in tx.1 {
+                let input = TXInput {
+                    txid: tx.0.clone(),
+                    vout: out,
+                    signature: Vec::new(),
+                    pub_key: wallet.public_key.clone(),
+                    redeemer: Some(redeemer.clone()),
+                };
+                vin.push(input);
+            }
+        }
+
+        let mut vout = vec![TXOutput::new(amount, to.to_string())?];
+        if acc_v.0 > amount {
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
+        }
+
+        let mut tx = Transaction {
+            id: String::new(),
+            vin,
+            vout,
+            contract_data: None,
         };
         tx.id = tx.hash()?;
         utxo.blockchain
@@ -429,14 +556,13 @@ impl Transaction {
     /// TrimmedCopy creates a trimmed copy of Transaction to be used in signing
     fn trim_copy(&self) -> Transaction {
         let mut vin = Vec::with_capacity(self.vin.len());
-        let mut vout = Vec::with_capacity(self.vout.len());
-
-        for v in &self.vin {
+        let mut vout = Vec::with_capacity(self.vout.len());        for v in &self.vin {
             vin.push(TXInput {
                 txid: v.txid.clone(),
                 vout: v.vout,
                 signature: Vec::new(),
                 pub_key: Vec::new(),
+                redeemer: None,
             })
         }
 
@@ -444,6 +570,9 @@ impl Transaction {
             vout.push(TXOutput {
                 value: v.value,
                 pub_key_hash: v.pub_key_hash.clone(),
+                script: v.script.clone(),
+                datum: v.datum.clone(),
+                reference_script: v.reference_script.clone(),
             })
         }
 
@@ -506,16 +635,114 @@ impl TXOutput {
 
         debug!("lock: {}", address);
         Ok(())
-    }
-
-    pub fn new(value: i32, address: String) -> Result<Self> {
+    }    pub fn new(value: i32, address: String) -> Result<Self> {
         let mut txo = TXOutput {
             value,
             pub_key_hash: Vec::new(),
+            script: None,
+            datum: None,
+            reference_script: None,
         };
         txo.lock(&address)?;
         Ok(txo)
     }
+
+    /// Validate spending conditions for eUTXO
+    pub fn validate_spending(&self, input: &TXInput) -> Result<bool> {
+        // First check traditional UTXO validation (signature check)
+        if !self.is_locked_with_key(&hash_pub_key_clone(&input.pub_key)) {
+            return Ok(false);
+        }
+
+        // If there's a script, validate it with the redeemer
+        if let Some(ref script) = self.script {
+            if let Some(ref redeemer) = input.redeemer {
+                // Simple script validation (in a real implementation, this would be more complex)
+                return self.validate_script(script, redeemer, &self.datum);
+            } else {
+                // Script exists but no redeemer provided
+                return Ok(false);
+            }
+        }
+
+        // No script validation needed, standard UTXO spending is valid
+        Ok(true)
+    }
+
+    /// Validate script execution with redeemer and datum
+    fn validate_script(&self, script: &[u8], redeemer: &[u8], datum: &Option<Vec<u8>>) -> Result<bool> {
+        // This is a simplified script validation
+        // In a real eUTXO implementation, this would involve:
+        // 1. Parsing and executing the script (e.g., Plutus script)
+        // 2. Providing the redeemer and datum as inputs to the script
+        // 3. Running the script in a secure execution environment
+        
+        // For demonstration purposes, we'll implement simple validation rules:
+        
+        // Rule 1: If script is empty, validation fails
+        if script.is_empty() {
+            return Ok(false);
+        }
+        
+        // Rule 2: Simple hash comparison - script contains expected hash of redeemer
+        if script.len() >= 32 && redeemer.len() > 0 {
+            use crypto::digest::Digest;
+            let mut hasher = Sha256::new();
+            hasher.input(redeemer);
+            let redeemer_hash = hasher.result_str();
+            
+            // Convert first 32 bytes of script to hex string
+            let script_hash = hex::encode(&script[..32]);
+            
+            if redeemer_hash == script_hash {
+                return Ok(true);
+            }
+        }
+        
+        // Rule 3: If datum exists, include it in validation
+        if let Some(ref datum_data) = datum {
+            // Simple validation: redeemer must contain datum reference
+            if redeemer.len() >= datum_data.len() {
+                let datum_in_redeemer = &redeemer[..datum_data.len()];
+                if datum_in_redeemer == datum_data.as_slice() {
+                    return Ok(true);
+                }
+            }
+        }
+        
+        // Default: script validation fails
+        Ok(false)
+    }
+
+    /// Check if this output has eUTXO features (script, datum, or reference script)
+    pub fn is_eUTXO(&self) -> bool {
+        self.script.is_some() || self.datum.is_some() || self.reference_script.is_some()
+    }
+
+    /// Create a new eUTXO output with script and datum
+    pub fn new_eUTXO(
+        value: i32,
+        address: String,
+        script: Option<Vec<u8>>,
+        datum: Option<Vec<u8>>,
+        reference_script: Option<String>,
+    ) -> Result<Self> {
+        let mut txo = TXOutput {
+            value,
+            pub_key_hash: Vec::new(),
+            script,
+            datum,
+            reference_script,        };
+        txo.lock(&address)?;
+        Ok(txo)
+    }
+}
+
+/// Helper function to hash public key without modifying the original
+fn hash_pub_key_clone(pub_key: &[u8]) -> Vec<u8> {
+    let mut cloned_key = pub_key.to_vec();
+    hash_pub_key(&mut cloned_key);
+    cloned_key
 }
 
 #[cfg(test)]
@@ -559,5 +786,130 @@ mod test {
         ));
 
         cleanup_test_context(&context.clone());
+    }
+
+    #[test]
+    fn test_eUTXO_creation() {
+        let context = create_test_context();
+        let mut ws = Wallets::new_with_context(context.clone()).unwrap();
+        let wa1 = ws.create_wallet(EncryptionType::ECDSA);
+        let _w = ws.get_wallet(&wa1).unwrap().clone();
+        ws.save_all().unwrap();
+
+        // Test creating an eUTXO output with script and datum
+        let script = vec![1, 2, 3, 4];
+        let datum = vec![5, 6, 7, 8];
+        let reference_script = Some("test_script".to_string());
+        
+        let eUTXO_output = TXOutput::new_eUTXO(
+            100,
+            wa1.clone(),
+            Some(script.clone()),
+            Some(datum.clone()),
+            reference_script.clone(),
+        ).unwrap();
+
+        assert_eq!(eUTXO_output.value, 100);
+        assert_eq!(eUTXO_output.script, Some(script));
+        assert_eq!(eUTXO_output.datum, Some(datum));
+        assert_eq!(eUTXO_output.reference_script, reference_script);
+        assert!(eUTXO_output.is_eUTXO());
+
+        // Test regular UTXO
+        let regular_output = TXOutput::new(50, wa1).unwrap();
+        assert!(!regular_output.is_eUTXO());
+
+        cleanup_test_context(&context);
+    }
+
+    #[test]
+    fn test_eUTXO_script_validation() {
+        let context = create_test_context();
+        let mut ws = Wallets::new_with_context(context.clone()).unwrap();
+        let wa1 = ws.create_wallet(EncryptionType::ECDSA);
+        let w = ws.get_wallet(&wa1).unwrap().clone();
+        ws.save_all().unwrap();
+
+        // Create a script that expects a specific hash
+        use crypto::digest::Digest;
+        let mut hasher = Sha256::new();
+        let redeemer_data = vec![1, 2, 3, 4];
+        hasher.input(&redeemer_data);
+        let expected_hash = hasher.result_str();
+        
+        // Create script with the expected hash (first 32 bytes)
+        let hash_bytes = hex::decode(&expected_hash[..64]).unwrap();
+        let script = hash_bytes;
+        
+        let eUTXO_output = TXOutput::new_eUTXO(
+            100,
+            wa1.clone(),
+            Some(script),
+            None,
+            None,
+        ).unwrap();
+
+        // Create input with correct redeemer
+        let input_valid = TXInput {
+            txid: "test_tx".to_string(),
+            vout: 0,
+            signature: vec![],
+            pub_key: w.public_key.clone(),
+            redeemer: Some(redeemer_data),
+        };
+
+        // Create input with incorrect redeemer
+        let input_invalid = TXInput {
+            txid: "test_tx".to_string(),
+            vout: 0,
+            signature: vec![],
+            pub_key: w.public_key.clone(),
+            redeemer: Some(vec![5, 6, 7, 8]),
+        };
+
+        // Validation should pass with correct redeemer
+        assert!(eUTXO_output.validate_spending(&input_valid).unwrap());
+        
+        // Validation should fail with incorrect redeemer
+        assert!(!eUTXO_output.validate_spending(&input_invalid).unwrap());
+
+        cleanup_test_context(&context);
+    }
+
+    #[test]
+    fn test_eUTXO_datum_validation() {
+        let context = create_test_context();
+        let mut ws = Wallets::new_with_context(context.clone()).unwrap();
+        let wa1 = ws.create_wallet(EncryptionType::ECDSA);
+        let w = ws.get_wallet(&wa1).unwrap().clone();
+        ws.save_all().unwrap();
+
+        let datum = vec![10, 20, 30, 40];
+        let script = vec![1]; // Simple non-empty script
+
+        let eUTXO_output = TXOutput::new_eUTXO(
+            100,
+            wa1.clone(),
+            Some(script),
+            Some(datum.clone()),
+            None,
+        ).unwrap();
+
+        // Create input with redeemer that contains datum
+        let mut redeemer = datum.clone();
+        redeemer.extend_from_slice(&[50, 60]); // Additional data
+
+        let input = TXInput {
+            txid: "test_tx".to_string(),
+            vout: 0,
+            signature: vec![],
+            pub_key: w.public_key.clone(),
+            redeemer: Some(redeemer),
+        };
+
+        // Validation should pass when redeemer contains datum
+        assert!(eUTXO_output.validate_spending(&input).unwrap());
+
+        cleanup_test_context(&context);
     }
 }
