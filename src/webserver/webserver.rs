@@ -1,4 +1,5 @@
 use crate::webserver::createwallet;
+use crate::webserver::getbalance;
 use crate::webserver::listaddresses;
 use crate::webserver::printchain;
 use crate::webserver::reindex;
@@ -18,6 +19,7 @@ impl WebServer {
                 .service(reindex::reindex)
                 .service(startnode::start_node)
                 .service(startminer::start_miner)
+                .service(getbalance::get_balance)
         })
         .bind(("127.0.0.1", 7000))?
         .run()
