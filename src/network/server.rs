@@ -908,7 +908,8 @@ impl Server {
             "Received block from {}: {}",
             msg.addr_from,
             msg.block.get_hash()
-        ); // Add block to our chain
+        );
+        // Add block to our chain
         self.add_block(msg.block)?;
 
         // Process any blocks in transit
