@@ -1,6 +1,7 @@
-//! Blockchain
+//! Type-safe blockchain implementation
 
 use crate::blockchain::block::*;
+use crate::blockchain::types::{block_states, network, NetworkConfig};
 use crate::config::DataContext;
 use crate::crypto::traits::CryptoProvider;
 use crate::crypto::transaction::*;
@@ -11,32 +12,39 @@ use bincode::{deserialize, serialize};
 use failure::format_err;
 use sled;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::time::SystemTime;
 
 const GENESIS_COINBASE_DATA: &str =
     "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
 
-/// Blockchain implements interactions with a DB
+/// Type-safe blockchain implementation
 #[derive(Debug, Clone)]
-pub struct Blockchain {
+pub struct Blockchain<N: NetworkConfig = network::Mainnet> {
     pub tip: String,
     pub db: sled::Db,
     pub context: DataContext,
+    _network: PhantomData<N>,
 }
 
-/// BlockchainIterator is used to iterate over blockchain blocks
-pub struct BlockchainIterator<'a> {
+/// Type aliases for different network configurations
+pub type MainnetBlockchain = Blockchain<network::Mainnet>;
+pub type TestnetBlockchain = Blockchain<network::Testnet>;
+pub type DevelopmentBlockchain = Blockchain<network::Development>;
+
+/// Type-safe blockchain iterator
+pub struct BlockchainIterator<'a, N: NetworkConfig> {
     current_hash: String,
-    bc: &'a Blockchain,
+    bc: &'a Blockchain<N>,
 }
 
-impl Blockchain {
-    pub fn new() -> Result<Blockchain> {
+impl<N: NetworkConfig> Blockchain<N> {
+    pub fn new() -> Result<Blockchain<N>> {
         Self::new_with_context(DataContext::default())
     }
 
     /// NewBlockchain creates a new Blockchain db
-    pub fn new_with_context(context: DataContext) -> Result<Blockchain> {
+    pub fn new_with_context(context: DataContext) -> Result<Blockchain<N>> {
         info!("open blockchain");
 
         let db = sled::open(context.blocks_dir())?;
@@ -54,10 +62,11 @@ impl Blockchain {
             tip: lasthash,
             db,
             context,
+            _network: PhantomData,
         })
     }
 
-    pub fn create_blockchain(address: String) -> Result<Blockchain> {
+    pub fn create_blockchain(address: String) -> Result<Blockchain<N>> {
         Self::create_blockchain_with_context(address, DataContext::default())
     }
 
@@ -65,7 +74,7 @@ impl Blockchain {
     pub fn create_blockchain_with_context(
         address: String,
         context: DataContext,
-    ) -> Result<Blockchain> {
+    ) -> Result<Blockchain<N>> {
         info!("Creating new blockchain");
 
         let db_path = context.blocks_dir();
@@ -73,19 +82,20 @@ impl Blockchain {
         let db = sled::open(db_path)?;
         debug!("Creating new block database");
         let cbtx = Transaction::new_coinbase(address, String::from(GENESIS_COINBASE_DATA))?;
-        let genesis: Block = Block::new_genesis_block(cbtx);
+        let genesis = Block::<_, N>::new_genesis(cbtx);
         db.insert(genesis.get_hash(), serialize(&genesis)?)?;
         db.insert("LAST", genesis.get_hash().as_bytes())?;
         let bc = Blockchain {
-            tip: genesis.get_hash(),
+            tip: genesis.get_hash().to_string(),
             db,
             context,
+            _network: PhantomData,
         };
         bc.db.flush()?;
         Ok(bc)
     }
     /// MineBlock mines a new block with the provided transactions
-    pub fn mine_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
+    pub fn mine_block(&mut self, transactions: Vec<Transaction>) -> Result<FinalizedBlock<N>> {
         info!("mine a new block");
 
         for tx in &transactions {
@@ -108,28 +118,69 @@ impl Blockchain {
 
         let lasthash = self.db.get("LAST")?.unwrap();
         let prev_hash = String::from_utf8(lasthash.to_vec())?;
-        let prev_block = self.get_block(&prev_hash)?;
+        let prev_block: FinalizedBlock<N> = self.get_block(&prev_hash)?;
         let current_timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)?
             .as_millis();
-        let new_difficulty = Block::adjust_difficulty(&prev_block, current_timestamp);
-
-        let newblock = Block::new_block(
+        let new_difficulty = prev_block.adjust_difficulty(current_timestamp);
+        let building_block = Block::<block_states::Building, N>::new_building(
             processed_transactions,
             prev_hash,
             self.get_best_height()? + 1,
             new_difficulty,
-        )?;
+        );
+
+        let newblock = building_block.mine()?.validate()?.finalize();
         self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
         self.db.insert("LAST", newblock.get_hash().as_bytes())?;
         self.db.flush()?;
 
-        self.tip = newblock.get_hash();
+        self.tip = newblock.get_hash().to_string();
         Ok(newblock)
     }
 
-    /// Iterator returns a BlockchainIterat
-    pub fn iter(&self) -> BlockchainIterator {
+    /// Mine a block with custom difficulty for testing purposes
+    #[cfg(test)]
+    pub fn mine_block_with_test_difficulty(&mut self, transactions: Vec<Transaction>) -> Result<FinalizedBlock<N>> {
+        use crate::blockchain::block::TEST_DIFFICULTY;
+        
+        info!("mine a new block with test difficulty");
+
+        for tx in &transactions {
+            if !self.verify_transacton(tx)? {
+                return Err(format_err!("ERROR: Invalid transaction"));
+            }
+        }
+
+        let mut processed_transactions = transactions;
+        for tx in &mut processed_transactions {
+            if tx.is_contract_transaction() {
+                if let Err(e) = self.execute_contract_transaction(tx) {
+                    warn!("Contract execution failed for tx {}: {}", tx.id, e);
+                }
+            }
+        }
+
+        let lasthash = self.db.get("LAST")?.unwrap();
+        let prev_hash = String::from_utf8(lasthash.to_vec())?;
+        let building_block = Block::<block_states::Building, N>::new_building(
+            processed_transactions,
+            prev_hash,
+            self.get_best_height()? + 1,
+            TEST_DIFFICULTY, // Use test difficulty instead of calculated difficulty
+        );
+
+        let newblock = building_block.mine()?.validate()?.finalize();
+        self.db.insert(newblock.get_hash(), serialize(&newblock)?)?;
+        self.db.insert("LAST", newblock.get_hash().as_bytes())?;
+        self.db.flush()?;
+
+        self.tip = newblock.get_hash().to_string();
+        Ok(newblock)
+    }
+
+    /// Iterator returns a BlockchainIterator
+    pub fn iter(&self) -> BlockchainIterator<N> {
         BlockchainIterator {
             current_hash: self.tip.clone(),
             bc: self,
@@ -142,7 +193,7 @@ impl Blockchain {
         let mut spend_txos: HashMap<String, Vec<i32>> = HashMap::new();
 
         for block in self.iter() {
-            for tx in block.get_transaction() {
+            for tx in block.get_transactions() {
                 for index in 0..tx.vout.len() {
                     if let Some(ids) = spend_txos.get(&tx.id) {
                         if ids.contains(&(index as i32)) {
@@ -186,7 +237,7 @@ impl Blockchain {
     /// FindTransaction finds a transaction by its ID
     pub fn find_transacton(&self, id: &str) -> Result<Transaction> {
         for b in self.iter() {
-            for tx in b.get_transaction() {
+            for tx in b.get_transactions() {
                 if tx.id == id {
                     return Ok(tx.clone());
                 }
@@ -224,9 +275,8 @@ impl Blockchain {
         let prev_TXs = self.get_prev_TXs(tx)?;
         tx.verify(prev_TXs)
     }
-
     /// AddBlock saves the block into the blockchain
-    pub fn add_block(&mut self, block: Block) -> Result<()> {
+    pub fn add_block(&mut self, block: FinalizedBlock<N>) -> Result<()> {
         let data = serialize(&block)?;
         if let Some(_) = self.db.get(block.get_hash())? {
             return Ok(());
@@ -236,19 +286,16 @@ impl Blockchain {
         let lastheight = self.get_best_height()?;
         if block.get_height() > lastheight {
             self.db.insert("LAST", block.get_hash().as_bytes())?;
-            self.tip = block.get_hash();
+            self.tip = block.get_hash().to_string();
             self.db.flush()?;
         }
         Ok(())
-    }
-
-    // GetBlock finds a block by its hash and returns it
-    pub fn get_block(&self, block_hash: &str) -> Result<Block> {
+    } // GetBlock finds a block by its hash and returns it
+    pub fn get_block(&self, block_hash: &str) -> Result<FinalizedBlock<N>> {
         let data = self.db.get(block_hash)?.unwrap();
         let block = deserialize(&data)?;
         Ok(block)
     }
-
     /// GetBestHeight returns the height of the latest block
     pub fn get_best_height(&self) -> Result<i32> {
         let lasthash = if let Some(h) = self.db.get("LAST")? {
@@ -257,15 +304,14 @@ impl Blockchain {
             return Ok(-1);
         };
         let last_data = self.db.get(lasthash)?.unwrap();
-        let last_block: Block = deserialize(&last_data)?;
+        let last_block: FinalizedBlock<N> = deserialize(&last_data)?;
         Ok(last_block.get_height())
     }
-
     /// GetBlockHashes returns a list of hashes of all the blocks in the chain
     pub fn get_block_hashs(&self) -> Vec<String> {
         let mut list = Vec::new();
         for b in self.iter() {
-            list.push(b.get_hash());
+            list.push(b.get_hash().to_string());
         }
         list
     }
@@ -386,15 +432,15 @@ impl Blockchain {
     }
 }
 
-impl Iterator for BlockchainIterator<'_> {
-    type Item = Block;
+impl<N: NetworkConfig> Iterator for BlockchainIterator<'_, N> {
+    type Item = FinalizedBlock<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Ok(encoded_block) = self.bc.db.get(&self.current_hash) {
             return match encoded_block {
                 Some(b) => {
-                    if let Ok(block) = deserialize::<Block>(&b) {
-                        self.current_hash = block.get_prev_hash();
+                    if let Ok(block) = deserialize::<FinalizedBlock<N>>(&b) {
+                        self.current_hash = block.get_prev_hash().to_string();
                         Some(block)
                     } else {
                         None

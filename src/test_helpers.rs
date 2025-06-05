@@ -12,7 +12,7 @@ pub fn cleanup_test_context(context: &DataContext) {
     std::fs::remove_dir_all(&context.base_dir).ok();
 }
 
-// 自動クリーンアップ用のRAIIガード
+// RAII guard for automatic cleanup
 pub struct TestContextGuard {
     context: DataContext,
 }

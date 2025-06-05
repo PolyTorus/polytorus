@@ -4,7 +4,7 @@
 /// Test blockchain synchronization with a remote node
 #[cfg(test)]
 mod tests {
-    use crate::blockchain::{blockchain::Blockchain, utxoset::UTXOSet};
+    use crate::blockchain::{blockchain::Blockchain, types::network, utxoset::UTXOSet};
     use crate::crypto::{types::EncryptionType, wallets::Wallets};
     use crate::network::server::Server;
     use crate::Result;
@@ -240,9 +240,8 @@ mod tests {
 
         // Stop server
         let _ = server.stop_server();
-
         // Check if blockchain was synchronized
-        let bc_after = Blockchain::new().unwrap();
+        let bc_after: Blockchain<network::Mainnet> = Blockchain::new().unwrap();
         let final_height = bc_after.get_best_height().unwrap();
 
         println!("Blockchain height after sync: {}", final_height);

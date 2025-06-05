@@ -1,71 +1,71 @@
-# モジューラーブロックチェーン CLI コマンド
+# Modular Blockchain CLI Commands
 
-## 概要
-PolyTorusのモジューラーアーキテクチャを操作するためのCLIコマンドを提供します。
+## Overview
+Provides CLI commands for operating the modular architecture of PolyTorus.
 
-## 新規コマンド
+## New Commands
 
 ### `modular`
-モジューラーブロックチェーンの管理コマンド
+Modular blockchain management commands
 
 ```bash
-# モジューラーノードの開始
+# Start modular node
 polytorus modular start --config config/modular.toml
 
-# レイヤー状態の確認
+# Check layer status
 polytorus modular status
 
-# 実行レイヤーの状態表示
+# Display execution layer status
 polytorus modular execution status
 
-# セトルメントレイヤーの状態表示
+# Display settlement layer status
 polytorus modular settlement status
 
-# コンセンサスレイヤーの状態表示
+# Display consensus layer status
 polytorus modular consensus status
 
-# データ可用性レイヤーの状態表示
+# Display data availability layer status
 polytorus modular data-availability status
 ```
 
 ### `layers`
-レイヤー固有の操作コマンド
+Layer-specific operation commands
 
 ```bash
-# 実行レイヤーでトランザクション実行
+# Execute transaction on execution layer
 polytorus layers execution execute-tx --tx-file transaction.json
 
-# セトルメントのバッチ送信
+# Submit settlement batch
 polytorus layers settlement submit-batch --batch-file batch.json
 
-# 不正証明の送信
+# Submit fraud proof
 polytorus layers settlement submit-challenge --challenge-file challenge.json
 
-# データの保存
+# Store data
 polytorus layers data-availability store --data-file data.bin
 
-# データの取得
+# Retrieve data
 polytorus layers data-availability retrieve --hash <HASH>
 ```
 
 ### `config`
-設定管理コマンド
+Configuration management commands
 
 ```bash
-# モジューラー設定の生成
+# Generate modular configuration
 polytorus config generate-modular --output config/modular.toml
 
-# 設定の検証
+# Validate configuration
 polytorus config validate --config config/modular.toml
 
-# レイヤー固有設定の表示
+# Display layer-specific configuration
 polytorus config show-layer --layer execution
 polytorus config show-layer --layer consensus
 polytorus config show-layer --layer settlement
 polytorus config show-layer --layer data-availability
 ```
 
-## 設定ファイル例
+## Configuration File Example
 
 ### `config/modular.toml`
 ```toml
@@ -98,20 +98,20 @@ bootstrap_peers = []
 max_peers = 50
 ```
 
-## 使用例
+## Usage Examples
 
-### 1. モジューラーノードの起動
+### 1. Starting a Modular Node
 ```bash
-# 設定ファイルの生成
+# Generate configuration file
 polytorus config generate-modular --output config/modular.toml
 
-# ノードの起動
+# Start node
 polytorus modular start --config config/modular.toml
 ```
 
-### 2. トランザクションの実行
+### 2. Transaction Execution
 ```bash
-# トランザクションファイルの作成
+# Create transaction file
 cat > transaction.json << EOF
 {
   "to": "recipient_address",
@@ -120,79 +120,79 @@ cat > transaction.json << EOF
 }
 EOF
 
-# トランザクションの実行
+# Execute transaction
 polytorus layers execution execute-tx --tx-file transaction.json
 ```
 
-### 3. レイヤー状態の監視
+### 3. Layer Status Monitoring
 ```bash
-# 全体状態の確認
+# Check overall status
 polytorus modular status
 
-# 実行レイヤーの詳細確認
+# Check execution layer details
 polytorus layers execution status
 
-# セトルメントの履歴確認
+# Check settlement history
 polytorus layers settlement history --limit 10
 ```
 
-### 4. データの保存と取得
+### 4. Data Storage and Retrieval
 ```bash
-# データの保存
+# Store data
 echo "Hello, Modular Blockchain!" > data.txt
 polytorus layers data-availability store --data-file data.txt
 
-# データの取得（上記コマンドで返されたハッシュを使用）
+# Retrieve data (using hash returned from above command)
 polytorus layers data-availability retrieve --hash abc123...
 ```
 
-## エラーハンドリング
+## Error Handling
 
-### 一般的なエラー
-- `Layer not responding`: レイヤーが応答していない
-- `Invalid configuration`: 設定ファイルが無効
-- `Gas limit exceeded`: ガス制限を超過
-- `Challenge period expired`: チャレンジ期間が終了
+### Common Errors
+- `Layer not responding`: Layer is not responding
+- `Invalid configuration`: Configuration file is invalid
+- `Gas limit exceeded`: Gas limit exceeded
+- `Challenge period expired`: Challenge period has expired
 
-### デバッグオプション
+### Debug Options
 ```bash
-# 詳細ログ出力
+# Verbose logging
 RUST_LOG=debug polytorus modular start --config config/modular.toml
 
-# 特定レイヤーのログ
+# Layer-specific logging
 RUST_LOG=polytorus::modular::execution=trace polytorus modular start
 ```
 
-## パフォーマンス監視
+## Performance Monitoring
 
-### メトリクス確認
+### Metrics Check
 ```bash
-# レイヤー別パフォーマンス
+# Per-layer performance
 polytorus modular metrics --layer execution
 polytorus modular metrics --layer consensus
 polytorus modular metrics --layer settlement
 polytorus modular metrics --layer data-availability
 
-# 全体的な統計
+# Overall statistics
 polytorus modular statistics
 ```
 
-## 開発者向け機能
+## Developer Features
 
-### テスト環境の設定
+### Test Environment Setup
 ```bash
-# テスト用設定の生成
+# Generate test configuration
 polytorus config generate-modular --test --output config/test-modular.toml
 
-# テスト用データの初期化
+# Initialize test data
 polytorus modular init-test --config config/test-modular.toml
 ```
 
-### プロファイリング
+### Profiling
 ```bash
-# パフォーマンスプロファイリングの有効化
+# Enable performance profiling
 polytorus modular start --config config/modular.toml --profile
 
-# メモリ使用量の監視
+# Monitor memory usage
 polytorus modular memory-usage --interval 5s
 ```

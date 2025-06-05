@@ -5,6 +5,13 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[example]]
+name = "difficulty_adjustment"
+path = "examples/difficulty_adjustment_example.rs"
+
+[[example]]
+name = "simple_difficulty_test"
+path = "examples/simple_difficulty_test.rs"
 
 [dependencies]
 sha2 = "0.9"
@@ -37,3 +44,8 @@ toml = "0.8"
 
 [dev-dependencies]
 tempfile = "3.0"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "blockchain_bench"
+harness = false

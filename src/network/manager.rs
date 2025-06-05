@@ -3,7 +3,7 @@
 //! This module provides a simplified interface for blockchain applications
 //! to interact with the libp2p network layer.
 
-use crate::blockchain::block::Block;
+use crate::blockchain::block::FinalizedBlock;
 use crate::blockchain::blockchain::Blockchain;
 use crate::crypto::transaction::Transaction;
 use crate::network::network_config::NetworkConfig;
@@ -37,7 +37,7 @@ pub struct NetworkManager {
     /// Blockchain reference for validation
     blockchain: Option<Arc<Mutex<Blockchain>>>,
     /// Event handlers
-    block_handler: Option<Box<dyn Fn(Block) + Send + Sync>>,
+    block_handler: Option<Box<dyn Fn(FinalizedBlock) + Send + Sync>>,
     transaction_handler: Option<Box<dyn Fn(Transaction) + Send + Sync>>,
 }
 
@@ -99,11 +99,10 @@ impl NetworkManager {
     pub fn set_blockchain(&mut self, blockchain: Arc<Mutex<Blockchain>>) {
         self.blockchain = Some(blockchain);
     }
-
     /// Set block handler
     pub fn set_block_handler<F>(&mut self, handler: F)
     where
-        F: Fn(Block) + Send + Sync + 'static,
+        F: Fn(FinalizedBlock) + Send + Sync + 'static,
     {
         self.block_handler = Some(Box::new(handler));
     }
@@ -256,9 +255,8 @@ impl NetworkManager {
 
         Ok(())
     }
-
     /// Broadcast a block to all connected peers
-    pub async fn broadcast_block(&self, block: Block) -> Result<()> {
+    pub async fn broadcast_block(&self, block: FinalizedBlock) -> Result<()> {
         log::debug!("Broadcasting block: {}", block.get_hash());
         self.command_tx
             .send(NetworkCommand::BroadcastBlock(block))
