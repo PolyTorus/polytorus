@@ -1,0 +1,86 @@
+name: polytorus-network
+
+topology:
+  nodes:
+    # Genesis node - creates the blockchain
+    genesis:
+      kind: linux
+      image: polytorus:latest
+      env:
+        RUST_LOG: info
+      ports:
+        - "17000:7000"  # P2P port
+        - "18080:8080"  # Web API port
+      cmd: |
+        sleep 5 &&
+        polytorus createwallet FNDSA > /tmp/genesis_wallet.txt &&
+        export GENESIS_ADDR=$(cat /tmp/genesis_wallet.txt | grep "address:" | cut -d' ' -f2) &&
+        echo "Genesis wallet address: $GENESIS_ADDR" &&
+        polytorus createblockchain $GENESIS_ADDR &&
+        polytorus startnode --host 0.0.0.0 --port 7000
+      
+    # Miner node 1
+    miner1:
+      kind: linux
+      image: polytorus:latest
+      env:
+        RUST_LOG: info
+      ports:
+        - "17001:7000"
+        - "18081:8080"
+      cmd: |
+        sleep 10 &&
+        polytorus createwallet FNDSA > /tmp/miner1_wallet.txt &&
+        export MINER_ADDR=$(cat /tmp/miner1_wallet.txt | grep "address:" | cut -d' ' -f2) &&
+        echo "Miner1 wallet address: $MINER_ADDR" &&
+        polytorus startminer --host 0.0.0.0 --port 7000 --address $MINER_ADDR --bootstrap genesis:7000
+
+    # Miner node 2  
+    miner2:
+      kind: linux
+      image: polytorus:latest
+      env:
+        RUST_LOG: info
+      ports:
+        - "17002:7000"
+        - "18082:8080"
+      cmd: |
+        sleep 15 &&
+        polytorus createwallet FNDSA > /tmp/miner2_wallet.txt &&
+        export MINER_ADDR=$(cat /tmp/miner2_wallet.txt | grep "address:" | cut -d' ' -f2) &&
+        echo "Miner2 wallet address: $MINER_ADDR" &&
+        polytorus startminer --host 0.0.0.0 --port 7000 --address $MINER_ADDR --bootstrap genesis:7000
+
+    # Transaction node - for sending transactions
+    txnode:
+      kind: linux
+      image: polytorus:latest
+      env:
+        RUST_LOG: info
+      ports:
+        - "17003:7000"
+        - "18083:8080"
+      cmd: |
+        sleep 20 &&
+        polytorus createwallet FNDSA > /tmp/txnode_wallet.txt &&
+        export TX_ADDR=$(cat /tmp/txnode_wallet.txt | grep "address:" | cut -d' ' -f2) &&
+        echo "Transaction node wallet address: $TX_ADDR" &&
+        polytorus startnode --host 0.0.0.0 --port 7000 --bootstrap genesis:7000
+
+    # Test client - for running transaction tests
+    testclient:
+      kind: linux
+      image: polytorus:latest
+      env:
+        RUST_LOG: debug
+      cmd: |
+        echo "Test client ready. Use docker exec to run transactions."
+        tail -f /dev/null
+
+  links:
+    - endpoints: ["genesis:eth0", "miner1:eth0"]
+    - endpoints: ["genesis:eth0", "miner2:eth0"]
+    - endpoints: ["genesis:eth0", "txnode:eth0"]
+    - endpoints: ["miner1:eth0", "miner2:eth0"]
+    - endpoints: ["miner1:eth0", "txnode:eth0"]
+    - endpoints: ["miner2:eth0", "txnode:eth0"]
