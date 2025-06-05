@@ -885,7 +885,9 @@ mod tests {
         let cbtx = Transaction::new_coinbase(addr1.clone(), String::from("reward!"))?;
 
         // Mine block (using test difficulty for faster execution)
-        let new_block = utxo_set.blockchain.mine_block_with_test_difficulty(vec![cbtx, tx])?;
+        let new_block = utxo_set
+            .blockchain
+            .mine_block_with_test_difficulty(vec![cbtx, tx])?;
         utxo_set.update(&new_block)?;
 
         // Check balances after mining

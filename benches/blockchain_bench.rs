@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use polytorus::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
 use polytorus::blockchain::types::{block_states, network};
 use polytorus::crypto::transaction::Transaction;
@@ -6,8 +6,11 @@ use std::time::Duration;
 
 /// Create a test transaction for benchmarking
 fn create_test_transaction() -> Transaction {
-    Transaction::new_coinbase("benchmark_address".to_string(), "benchmark_reward".to_string())
-        .expect("Failed to create test transaction")
+    Transaction::new_coinbase(
+        "benchmark_address".to_string(),
+        "benchmark_reward".to_string(),
+    )
+    .expect("Failed to create test transaction")
 }
 
 /// Create a test block for benchmarking
@@ -33,18 +36,14 @@ fn create_test_block(difficulty: usize) -> Block<block_states::Building, network
 /// Benchmark transaction creation
 fn benchmark_transaction_creation(c: &mut Criterion) {
     c.bench_function("create_transaction", |b| {
-        b.iter(|| {
-            black_box(create_test_transaction())
-        });
+        b.iter(|| black_box(create_test_transaction()));
     });
 }
 
 /// Benchmark block creation
 fn benchmark_block_creation(c: &mut Criterion) {
     c.bench_function("create_block", |b| {
-        b.iter(|| {
-            black_box(create_test_block(2))
-        });
+        b.iter(|| black_box(create_test_block(2)));
     });
 }
 
@@ -67,7 +66,7 @@ fn benchmark_mining_difficulties(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
@@ -87,36 +86,38 @@ fn benchmark_block_validation(c: &mut Criterion) {
 /// Benchmark difficulty calculations
 fn benchmark_difficulty_calculations(c: &mut Criterion) {
     let mut group = c.benchmark_group("difficulty_calculations");
-    
+
     // Create mock finalized blocks by mining them properly
     let finalized_blocks: Vec<Block<block_states::Finalized, network::Development>> = (0..5)
         .map(|i| {
-            let building_block = Block::<block_states::Building, network::Development>::new_building_with_config(
-                vec![create_test_transaction()],
-                format!("prev_hash_{}", i),
-                i + 1,
-                1, // Low difficulty for fast mining
-                DifficultyAdjustmentConfig::default(),
-                MiningStats::default(),
-            );
-            building_block.mine().unwrap().validate().unwrap().finalize()
+            let building_block =
+                Block::<block_states::Building, network::Development>::new_building_with_config(
+                    vec![create_test_transaction()],
+                    format!("prev_hash_{}", i),
+                    i + 1,
+                    1, // Low difficulty for fast mining
+                    DifficultyAdjustmentConfig::default(),
+                    MiningStats::default(),
+                );
+            building_block
+                .mine()
+                .unwrap()
+                .validate()
+                .unwrap()
+                .finalize()
         })
         .collect();
 
-    let block_refs: Vec<&Block<block_states::Finalized, network::Development>> = 
+    let block_refs: Vec<&Block<block_states::Finalized, network::Development>> =
         finalized_blocks.iter().collect();
 
     group.bench_function("dynamic_difficulty", |b| {
         let building_block = create_test_block(3);
-        b.iter(|| {
-            black_box(building_block.calculate_dynamic_difficulty(&block_refs[..]))
-        });
+        b.iter(|| black_box(building_block.calculate_dynamic_difficulty(&block_refs[..])));
     });
 
     group.bench_function("advanced_difficulty_adjustment", |b| {
-        b.iter(|| {
-            black_box(finalized_blocks[0].adjust_difficulty_advanced(&block_refs[..]))
-        });
+        b.iter(|| black_box(finalized_blocks[0].adjust_difficulty_advanced(&block_refs[..])));
     });
 
     group.finish();
@@ -125,7 +126,7 @@ fn benchmark_difficulty_calculations(c: &mut Criterion) {
 /// Benchmark mining statistics operations
 fn benchmark_mining_stats(c: &mut Criterion) {
     let mut group = c.benchmark_group("mining_stats");
-    
+
     let mut stats = MiningStats::default();
     for i in 0..50 {
         stats.record_mining_time(1000 + i * 10);
@@ -135,14 +136,13 @@ fn benchmark_mining_stats(c: &mut Criterion) {
     group.bench_function("record_mining_time", |b| {
         b.iter(|| {
             let mut test_stats = stats.clone();
-            black_box(test_stats.record_mining_time(1500));
+            test_stats.record_mining_time(1500);
+            black_box(());
         });
     });
 
     group.bench_function("calculate_success_rate", |b| {
-        b.iter(|| {
-            black_box(stats.success_rate())
-        });
+        b.iter(|| black_box(stats.success_rate()));
     });
 
     group.finish();
@@ -192,7 +192,7 @@ fn benchmark_multiple_transactions(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 

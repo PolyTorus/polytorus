@@ -141,9 +141,12 @@ impl<N: NetworkConfig> Blockchain<N> {
 
     /// Mine a block with custom difficulty for testing purposes
     #[cfg(test)]
-    pub fn mine_block_with_test_difficulty(&mut self, transactions: Vec<Transaction>) -> Result<FinalizedBlock<N>> {
+    pub fn mine_block_with_test_difficulty(
+        &mut self,
+        transactions: Vec<Transaction>,
+    ) -> Result<FinalizedBlock<N>> {
         use crate::blockchain::block::TEST_DIFFICULTY;
-        
+
         info!("mine a new block with test difficulty");
 
         for tx in &transactions {

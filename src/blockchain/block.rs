@@ -86,7 +86,8 @@ impl MiningStats {
     /// Update average time
     fn update_average(&mut self) {
         if !self.recent_block_times.is_empty() {
-            self.avg_mining_time = self.recent_block_times.iter().sum::<u128>() / self.recent_block_times.len() as u128;
+            self.avg_mining_time = self.recent_block_times.iter().sum::<u128>()
+                / self.recent_block_times.len() as u128;
         }
     }
 
@@ -252,7 +253,10 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
     }
 
     /// Calculate dynamic difficulty based on current difficulty
-    pub fn calculate_dynamic_difficulty(&self, recent_blocks: &[&Block<block_states::Finalized, N>]) -> usize {
+    pub fn calculate_dynamic_difficulty(
+        &self,
+        recent_blocks: &[&Block<block_states::Finalized, N>],
+    ) -> usize {
         if recent_blocks.is_empty() {
             return self.difficulty_config.base_difficulty;
         }
@@ -260,7 +264,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
         // Collect recent block times
         let mut block_times = Vec::new();
         for i in 1..recent_blocks.len() {
-            let time_diff = recent_blocks[i].timestamp - recent_blocks[i-1].timestamp;
+            let time_diff = recent_blocks[i].timestamp - recent_blocks[i - 1].timestamp;
             block_times.push(time_diff);
         }
 
@@ -271,13 +275,13 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
         // Calculate average block time
         let avg_time = block_times.iter().sum::<u128>() / block_times.len() as u128;
         let target_time = N::DESIRED_BLOCK_TIME;
-        
+
         // Compare with target time
         let time_ratio = avg_time as f64 / target_time as f64;
         let tolerance = self.difficulty_config.tolerance_percentage / 100.0;
-        
+
         let mut new_difficulty = self.difficulty as f64;
-        
+
         if time_ratio < (1.0 - tolerance) {
             // If block time is too short, increase difficulty
             new_difficulty *= 1.0 + (self.difficulty_config.adjustment_factor * (1.0 - time_ratio));
@@ -297,30 +301,43 @@ impl<N: NetworkConfig> BuildingBlock<N> {
     /// Mine the block using Proof-of-Work
     pub fn mine(mut self) -> Result<MinedBlock<N>> {
         info!("Mining the block with difficulty {}", self.difficulty);
-        let start_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-        
+        let start_time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
         // Update mining statistics
         self.mining_stats.record_attempt();
-        
+
         while !self.validate_pow()? {
             self.nonce += 1;
             if self.nonce % 10000 == 0 {
                 self.mining_stats.record_attempt();
-                info!("Mining attempt: {}, nonce: {}", self.mining_stats.total_attempts, self.nonce);
+                info!(
+                    "Mining attempt: {}, nonce: {}",
+                    self.mining_stats.total_attempts, self.nonce
+                );
             }
         }
-        
-        let end_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+
+        let end_time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
         let mining_time = end_time - start_time;
         self.mining_stats.record_mining_time(mining_time);
-        
+
         let data = self.prepare_hash_data()?;
         let mut hasher = Sha256::new();
         hasher.input(&data[..]);
         self.hash = hasher.result_str();
 
-        info!("Block mined successfully! Mining time: {}ms, Nonce: {}, Hash: {}", 
-              mining_time, self.nonce, &self.hash[..8]);
+        info!(
+            "Block mined successfully! Mining time: {}ms, Nonce: {}, Hash: {}",
+            mining_time,
+            self.nonce,
+            &self.hash[..8]
+        );
 
         Ok(Block {
             timestamp: self.timestamp,
@@ -346,7 +363,10 @@ impl<N: NetworkConfig> BuildingBlock<N> {
     }
 
     /// Mine with adaptive difficulty based on recent blocks
-    pub fn mine_adaptive(mut self, recent_blocks: &[&Block<block_states::Finalized, N>]) -> Result<MinedBlock<N>> {
+    pub fn mine_adaptive(
+        mut self,
+        recent_blocks: &[&Block<block_states::Finalized, N>],
+    ) -> Result<MinedBlock<N>> {
         let adaptive_difficulty = self.calculate_dynamic_difficulty(recent_blocks);
         self.difficulty = adaptive_difficulty;
         info!("Using adaptive difficulty: {}", self.difficulty);
@@ -494,7 +514,10 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
     }
 
     /// Advanced difficulty adjustment (considering multiple block history)
-    pub fn adjust_difficulty_advanced(&self, recent_blocks: &[&Block<block_states::Finalized, N>]) -> usize {
+    pub fn adjust_difficulty_advanced(
+        &self,
+        recent_blocks: &[&Block<block_states::Finalized, N>],
+    ) -> usize {
         if recent_blocks.len() < 2 {
             return self.difficulty_config.base_difficulty;
         }
@@ -502,7 +525,7 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
         // Calculate time variance
         let mut block_times = Vec::new();
         for i in 1..recent_blocks.len() {
-            let time_diff = recent_blocks[i].timestamp - recent_blocks[i-1].timestamp;
+            let time_diff = recent_blocks[i].timestamp - recent_blocks[i - 1].timestamp;
             block_times.push(time_diff);
         }
 
@@ -512,22 +535,24 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
 
         // Calculate average time and variance
         let avg_time = block_times.iter().sum::<u128>() / block_times.len() as u128;
-        let variance = block_times.iter()
+        let variance = block_times
+            .iter()
             .map(|&time| {
                 let diff = time as f64 - avg_time as f64;
                 diff * diff
             })
-            .sum::<f64>() / block_times.len() as f64;
+            .sum::<f64>()
+            / block_times.len() as f64;
 
         let target_time = N::DESIRED_BLOCK_TIME as f64;
         let time_ratio = avg_time as f64 / target_time;
-        
+
         // Adjustment considering variance
         let stability_factor = 1.0 + (variance.sqrt() / target_time).min(0.5);
         let adjustment = self.difficulty_config.adjustment_factor * stability_factor;
-        
+
         let mut new_difficulty = self.difficulty as f64;
-        
+
         if time_ratio < 0.8 {
             // If very fast, increase significantly
             new_difficulty *= 1.0 + adjustment;
@@ -557,25 +582,29 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
         let success_rate = self.mining_stats.success_rate();
         let avg_time = self.mining_stats.avg_mining_time as f64;
         let target_time = N::DESIRED_BLOCK_TIME as f64;
-        
+
         // Efficiency = success rate * (target time / actual time)
         let time_efficiency = if avg_time > 0.0 {
             target_time / avg_time
         } else {
             0.0
         };
-        
+
         let efficiency = success_rate * time_efficiency;
         efficiency.min(2.0) // Limit maximum efficiency to 200%
     }
 
     /// Calculate recommended difficulty value for the entire network
-    pub fn recommend_network_difficulty(&self, network_hash_rate: f64, target_hash_rate: f64) -> usize {
+    pub fn recommend_network_difficulty(
+        &self,
+        network_hash_rate: f64,
+        target_hash_rate: f64,
+    ) -> usize {
         let hash_rate_ratio = network_hash_rate / target_hash_rate;
         let current_difficulty = self.difficulty as f64;
-        
+
         let recommended = current_difficulty * hash_rate_ratio;
-        
+
         (recommended.round() as usize)
             .max(self.difficulty_config.min_difficulty)
             .min(self.difficulty_config.max_difficulty)

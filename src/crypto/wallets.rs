@@ -57,7 +57,8 @@ impl Wallet {
         let address = Address {
             body: pub_hash,
             scheme: Scheme::Base58,
-            hash_type: HashType::Script,        ..Default::default()
+            hash_type: HashType::Script,
+            ..Default::default()
         };
         let base_address = address.encode().unwrap();
 
@@ -92,7 +93,8 @@ pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
 pub fn extract_encryption_type(address: &str) -> Result<(String, EncryptionType)> {
     if address.ends_with("-ECDSA") {
         let base_address = address.strip_suffix("-ECDSA").unwrap().to_string();
-        Ok((base_address, EncryptionType::ECDSA))    } else if address.ends_with("-FNDSA") {
+        Ok((base_address, EncryptionType::ECDSA))
+    } else if address.ends_with("-FNDSA") {
         let base_address = address.strip_suffix("-FNDSA").unwrap().to_string();
         Ok((base_address, EncryptionType::FNDSA))
     } else {

@@ -9,24 +9,25 @@ fn main() -> polytorus::Result<()> {
 
     // Create transaction
     let tx = Transaction::new_coinbase("test_address".to_string(), "reward".to_string())?;
-    
+
     // Difficulty configuration
     let config = DifficultyAdjustmentConfig {
-        base_difficulty: 1,  // Very low difficulty
+        base_difficulty: 1, // Very low difficulty
         min_difficulty: 1,
         max_difficulty: 3,
         adjustment_factor: 0.25,
         tolerance_percentage: 20.0,
-    };    
+    };
     // Create block
-    let building_block = Block::<block_states::Building, network::Development>::new_building_with_config(
-        vec![tx],
-        "genesis".to_string(),
-        1,
-        1,
-        config,
-        MiningStats::default(),
-    );
+    let building_block =
+        Block::<block_states::Building, network::Development>::new_building_with_config(
+            vec![tx],
+            "genesis".to_string(),
+            1,
+            1,
+            config,
+            MiningStats::default(),
+        );
 
     println!("1. Block creation completed");
     println!("   - Height: {}", building_block.get_height());

@@ -22,7 +22,8 @@ struct CryptoPath {
 }
 
 #[post("/create_wallet/{encryption}")]
-pub async fn create_wallet(path: web::Path<CryptoPath>) -> impl Responder {    match path.encryption.parse::<EncryptionType>() {
+pub async fn create_wallet(path: web::Path<CryptoPath>) -> impl Responder {
+    match path.encryption.parse::<EncryptionType>() {
         Ok(encryption) => match cmd_create_wallet(encryption) {
             Ok(msg) => HttpResponse::Ok().body(msg),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
