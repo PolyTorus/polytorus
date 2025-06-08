@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use polytorus::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
 use polytorus::blockchain::types::{block_states, network};
-use polytorus::crypto::transaction::Transaction;
+use polytorus::crypto::transaction::{Transaction, TXInput, TXOutput};
 use std::time::Duration;
 
 /// Create a test transaction for benchmarking
@@ -158,16 +158,18 @@ fn benchmark_multiple_transactions(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("transactions", tx_count),
             tx_count,
-            |b, &tx_count| {
-                b.iter(|| {
-                    let transactions: Vec<Transaction> = (0..tx_count)
-                        .map(|i| {
-                            Transaction::new_coinbase(
-                                format!("address_{}", i),
-                                format!("reward_{}", i)
-                            ).expect("Failed to create transaction")
-                        })
-                        .collect();
+            |b, &tx_count| {                b.iter(|| {
+                    // Create first transaction as coinbase
+                    let mut transactions = vec![create_test_transaction()];                    // Add regular transactions if needed
+                    for i in 1..tx_count {
+                        let tx = create_simple_transaction(
+                            format!("multi_addr_{}", i),
+                            format!("multi_dest_{}", i),
+                            10 + i as i32,
+                            i as i32,
+                        );
+                        transactions.push(tx);
+                    }
 
                     let config = DifficultyAdjustmentConfig {
                         base_difficulty: 1,
@@ -196,6 +198,199 @@ fn benchmark_multiple_transactions(c: &mut Criterion) {
     group.finish();
 }
 
+/// Create a simple test transaction (non-coinbase)
+fn create_simple_transaction(from: String, to: String, amount: i32, nonce: i32) -> Transaction {
+    // Create a fake input referencing a previous transaction
+    let prev_tx_id = format!("prev_tx_{}", nonce);
+    let input = TXInput {
+        txid: prev_tx_id,
+        vout: 0,
+        signature: Vec::new(),
+        pub_key: format!("pubkey_{}", from).into_bytes(),
+        redeemer: None,
+    };
+
+    // Create output
+    let output = TXOutput::new(amount, to).expect("Failed to create output");
+
+    let mut tx = Transaction {
+        id: String::new(),
+        vin: vec![input],
+        vout: vec![output],
+        contract_data: None,
+    };
+
+    // Generate transaction ID
+    tx.id = tx.hash().expect("Failed to hash transaction");
+    tx
+}
+
+/// TPS (Transactions Per Second) benchmark
+fn benchmark_tps(c: &mut Criterion) {
+    let mut group = c.benchmark_group("tps_throughput");
+    group.measurement_time(Duration::from_secs(20));
+    group.sample_size(10);    // Test different transaction volumes to measure TPS
+    for tx_count in [10, 25, 50].iter() {
+        group.bench_with_input(
+            BenchmarkId::new("tps", tx_count),
+            tx_count,
+            |b, &tx_count| {
+                b.iter_custom(|iters| {
+                    let start = std::time::Instant::now();
+                    let mut total_transactions = 0i32;
+
+                    for _ in 0..iters {
+                        // Create first transaction as coinbase (block reward)
+                        let mut transactions = vec![Transaction::new_coinbase(
+                            "block_reward_address".to_string(),
+                            "Block reward".to_string(),
+                        ).expect("Failed to create coinbase transaction")];                        // Add regular transactions
+                        for i in 1..tx_count {
+                            let tx = create_simple_transaction(
+                                format!("addr_{}", i),
+                                format!("dest_{}", i),
+                                10 + i as i32,
+                                total_transactions + i as i32,
+                            );
+                            transactions.push(tx);
+                        }
+
+                        total_transactions += transactions.len() as i32;
+
+                        // Process transactions in batches (simulating real blockchain behavior)
+                        let config = DifficultyAdjustmentConfig {
+                            base_difficulty: 1, // Low difficulty for speed
+                            min_difficulty: 1,
+                            max_difficulty: 2,
+                            adjustment_factor: 0.1,
+                            tolerance_percentage: 30.0,
+                        };
+
+                        let block = Block::<block_states::Building, network::Development>::new_building_with_config(
+                            transactions,
+                            format!("tps_prev_{}", total_transactions),
+                            1,
+                            1, // Minimal difficulty for maximum TPS
+                            config,
+                            MiningStats::default(),
+                        );
+
+                        // Mine and validate the block
+                        let mined = black_box(block.mine()).expect("Mining failed");
+                        let _validated = black_box(mined.validate()).expect("Validation failed");
+                    }
+
+                    start.elapsed()
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark transaction processing without mining (pure TPS)
+fn benchmark_pure_transaction_processing(c: &mut Criterion) {
+    let mut group = c.benchmark_group("pure_transaction_tps");
+    group.measurement_time(Duration::from_secs(15));
+    group.sample_size(10);
+
+    for tx_count in [50, 100, 500].iter() {
+        group.bench_with_input(
+            BenchmarkId::new("pure_tps", tx_count),
+            tx_count,
+            |b, &tx_count| {
+                b.iter_custom(|iters| {
+                    let start = std::time::Instant::now();                    for _ in 0..iters {
+                        // Create first transaction as coinbase
+                        let mut transactions = vec![create_test_transaction()];                        // Create regular transactions
+                        for i in 1..tx_count {
+                            let tx = create_simple_transaction(
+                                format!("pure_addr_{}", i),
+                                format!("pure_dest_{}", i),
+                                10 + i as i32,
+                                i as i32,
+                            );
+                            transactions.push(tx);
+                        }
+
+                        // Just measure transaction creation and basic validation
+                        for tx in transactions {
+                            black_box(tx.is_coinbase());
+                            black_box(&tx.id);
+                        }
+                    }
+
+                    start.elapsed()
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark concurrent transaction processing
+fn benchmark_concurrent_tps(c: &mut Criterion) {
+    use std::thread;
+
+    let mut group = c.benchmark_group("concurrent_tps");
+    group.measurement_time(Duration::from_secs(20));
+    group.sample_size(10);
+
+    for thread_count in [2, 4].iter() {
+        group.bench_with_input(
+            BenchmarkId::new("concurrent", thread_count),
+            thread_count,
+            |b, &thread_count| {
+                b.iter_custom(|iters| {
+                    let start = std::time::Instant::now();
+
+                    for _ in 0..iters {                        let handles: Vec<thread::JoinHandle<()>> = (0..thread_count)
+                            .map(|thread_id| {
+                                thread::spawn(move || {
+                                    // Each thread processes transactions
+                                    // First create a coinbase transaction
+                                    let mut transactions = vec![
+                                        Transaction::new_coinbase(
+                                            format!("concurrent_address_{}", thread_id),
+                                            format!("concurrent_reward_{}", thread_id)
+                                        ).expect("Failed to create coinbase transaction")
+                                    ];
+                                      // Add regular transactions
+                                    for i in 1..50 {
+                                        let tx = create_simple_transaction(
+                                            format!("concurrent_addr_{}_{}", thread_id, i),
+                                            format!("concurrent_dest_{}_{}", thread_id, i),
+                                            10 + i as i32,
+                                            (thread_id * 1000 + i) as i32,
+                                        );
+                                        transactions.push(tx);
+                                    }
+
+                                    // Simulate processing
+                                    for tx in transactions {
+                                        black_box(tx.hash().unwrap());
+                                    }
+                                })
+                            })
+                            .collect();
+
+                        // Wait for all threads to complete
+                        for handle in handles {
+                            handle.join().unwrap();
+                        }
+                    }
+
+                    start.elapsed()
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     benchmark_transaction_creation,
@@ -204,7 +399,10 @@ criterion_group!(
     benchmark_block_validation,
     benchmark_difficulty_calculations,
     benchmark_mining_stats,
-    benchmark_multiple_transactions
+    benchmark_multiple_transactions,
+    benchmark_tps,
+    benchmark_pure_transaction_processing,
+    benchmark_concurrent_tps
 );
 
 criterion_main!(benches);
