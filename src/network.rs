@@ -8,8 +8,7 @@ pub mod manager; // High-level network manager
 pub mod network_config; // Generic network configuration
 pub mod p2p; // libp2p-based networking
 pub mod p2p_tests;
-pub mod server; // Legacy TCP-based server
-pub mod tests; // Tests for P2P networking
+// Legacy modules removed in Phase 4
 
 // Re-export commonly used types
 pub use manager::{NetworkManager, NetworkStats, PeerStatus};

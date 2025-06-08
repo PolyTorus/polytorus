@@ -4,7 +4,8 @@
 //! to interact with the libp2p network layer.
 
 use crate::blockchain::block::FinalizedBlock;
-use crate::blockchain::blockchain::Blockchain;
+// Legacy blockchain import removed in Phase 4 - using modular architecture
+// use crate::blockchain::blockchain::Blockchain;
 use crate::crypto::transaction::Transaction;
 use crate::network::network_config::NetworkConfig;
 use crate::network::p2p::{NetworkCommand, NetworkEvent, P2PNode, PeerId};
@@ -34,8 +35,8 @@ pub struct NetworkManager {
     pending_block_requests: Arc<Mutex<HashMap<String, Instant>>>,
     /// Pending transaction requests
     pending_tx_requests: Arc<Mutex<HashMap<String, Instant>>>,
-    /// Blockchain reference for validation
-    blockchain: Option<Arc<Mutex<Blockchain>>>,
+    /// Legacy blockchain reference removed in Phase 4 - using modular architecture
+    // blockchain: Option<Arc<Mutex<Blockchain>>>,
     /// Event handlers
     block_handler: Option<Box<dyn Fn(FinalizedBlock) + Send + Sync>>,
     transaction_handler: Option<Box<dyn Fn(Transaction) + Send + Sync>>,
@@ -80,25 +81,22 @@ impl NetworkManager {
             if let Err(e) = p2p_node.run().await {
                 log::error!("P2P node error: {}", e);
             }
-        });
-
-        Ok(Self {
+        });        Ok(Self {
             command_tx,
             event_rx,
             _config: config,
             peers: Arc::new(Mutex::new(HashMap::new())),
             pending_block_requests: Arc::new(Mutex::new(HashMap::new())),
             pending_tx_requests: Arc::new(Mutex::new(HashMap::new())),
-            blockchain: None,
+            // Legacy blockchain field removed in Phase 4
+            // blockchain: None,
             block_handler: None,
             transaction_handler: None,
         })
-    }
-
-    /// Set blockchain reference for validation
-    pub fn set_blockchain(&mut self, blockchain: Arc<Mutex<Blockchain>>) {
-        self.blockchain = Some(blockchain);
-    }
+    }    /// Legacy blockchain setter removed in Phase 4 - using modular architecture
+    // pub fn set_blockchain(&mut self, blockchain: Arc<Mutex<Blockchain>>) {
+    //     self.blockchain = Some(blockchain);
+    // }
     /// Set block handler
     pub fn set_block_handler<F>(&mut self, handler: F)
     where
@@ -204,18 +202,18 @@ impl NetworkManager {
             NetworkEvent::PeerDisconnected(peer_id) => {
                 log::info!("Peer disconnected: {}", peer_id);
                 self.peers.lock().unwrap().remove(&peer_id);
-            }
-            NetworkEvent::BlockReceived(block) => {
+            }            NetworkEvent::BlockReceived(block) => {
                 log::debug!("Received block: {}", block.get_hash());
 
+                // Legacy blockchain validation removed in Phase 4 - using modular architecture
                 // Try to add block to blockchain if available
-                if let Some(blockchain) = &self.blockchain {
-                    let mut blockchain = blockchain.lock().unwrap();
-                    if let Err(e) = blockchain.add_block(block.clone()) {
-                        log::warn!("Failed to add block {}: {}", block.get_hash(), e);
-                        return Ok(());
-                    }
-                }
+                // if let Some(blockchain) = &self.blockchain {
+                //     let mut blockchain = blockchain.lock().unwrap();
+                //     if let Err(e) = blockchain.add_block(block.clone()) {
+                //         log::warn!("Failed to add block {}: {}", block.get_hash(), e);
+                //         return Ok(());
+                //     }
+                // }
 
                 // Call block handler if set
                 if let Some(handler) = &self.block_handler {
@@ -347,13 +345,8 @@ impl NetworkManager {
                 .unwrap()
                 .get(&peer_id)
                 .map(|p| p.best_height)
-                .unwrap_or(-1);
-
-            let current_height = if let Some(blockchain) = &self.blockchain {
-                blockchain.lock().unwrap().get_best_height().unwrap_or(-1)
-            } else {
-                -1
-            };
+                .unwrap_or(-1);            // Legacy blockchain sync removed in Phase 4 - using modular architecture
+            let current_height = -1;  // Default to -1 for now
 
             if peer_height > current_height {
                 log::info!(

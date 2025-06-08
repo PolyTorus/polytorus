@@ -1,4 +1,6 @@
-use crate::command::cil_listaddresses::cmd_list_address;
+// Legacy CLI command import removed in Phase 4 - using modular architecture
+// use crate::command::cil_listaddresses::cmd_list_address;
+use crate::command::cli::cmd_list_address;
 use actix_web::{post, HttpResponse, Responder};
 
 #[post("/list-addresses")]
