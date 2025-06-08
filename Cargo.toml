@@ -2,6 +2,12 @@
 name = "polytorus"
 version = "0.1.0"
 edition = "2021"
+description = "Post Quantum Modular Blockchain Platform"
+authors = ["quantumshiro"]
+license = "MIT"
+repository = "https://github.com/quantumshiro/polytorus"
+keywords = ["blockchain", "quantum-resistant", "modular", "wasm", "post-quantum"]
+categories = ["cryptography", "network-programming", "wasm"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

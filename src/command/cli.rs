@@ -31,15 +31,38 @@ impl Default for Cli {
 impl Cli {
     pub fn new() -> Cli {
         Cli {}
-    }
-
-    pub async fn run(&mut self) -> Result<()> {
+    }    pub async fn run(&mut self) -> Result<()> {
         info!("run app");
         let matches = App::new("polytorus")
             .version(env!("CARGO_PKG_VERSION"))
             .author("quantumshiro")
-            .about("post quantum blockchain")
-            .subcommand(App::new("printchain").about("print all the chain blocks"))
+            .about("Post Quantum Modular Blockchain")
+            .subcommand(
+                App::new("modular")
+                    .about("Modular blockchain operations [RECOMMENDED]")
+                    .subcommand(
+                        App::new("start")
+                            .about("Start modular blockchain")
+                            .arg(Arg::from_usage("[config] 'Path to configuration file'")),
+                    )
+                    .subcommand(
+                        App::new("mine")
+                            .about("Mine block with modular architecture")
+                            .arg(Arg::from_usage("<address> 'Mining reward address'"))
+                            .arg(Arg::from_usage(
+                                "[tx-count] 'Number of transactions to include (default: 10)'",
+                            )),
+                    )
+                    .subcommand(App::new("state").about("Get modular blockchain state information"))
+                    .subcommand(App::new("layers").about("Show information about all layers"))
+                    .subcommand(
+                        App::new("challenge")
+                            .about("Submit a settlement challenge")
+                            .arg(Arg::from_usage("<batch-id> 'Batch ID to challenge'"))
+                            .arg(Arg::from_usage("<reason> 'Challenge reason'")),
+                    ),
+            )
+            .subcommand(App::new("printchain").about("[LEGACY] print all the chain blocks"))
             .subcommand(
                 App::new("createwallet").about("create a wallet").arg(
                     Arg::from_usage("<encryption> 'encryption type'")
@@ -48,12 +71,11 @@ impl Cli {
                         .help("encryption type"),
                 ),
             )
-            .subcommand(App::new("listaddresses").about("list all addresses"))
-            .subcommand(App::new("reindex").about("reindex UTXO"))
-            .subcommand(App::new("server").about("run server"))
+            .subcommand(App::new("listaddresses").about("list all addresses"))            .subcommand(App::new("reindex").about("[LEGACY] reindex UTXO"))
+            .subcommand(App::new("server").about("[LEGACY] run server"))
             .subcommand(
                 App::new("startnode")
-                    .about("start the node server")
+                    .about("[LEGACY] start the node server")
                     .arg(Arg::from_usage("<port> 'the port server bind to locally'"))
                     .arg(
                         Arg::with_name("host")
@@ -71,7 +93,7 @@ impl Cli {
             )
             .subcommand(
                 App::new("startminer")
-                    .about("start the minner server")
+                    .about("[LEGACY] start the minner server")
                     .arg(Arg::from_usage("<port> 'the port server bind to locally'"))
                     .arg(Arg::from_usage("<address> 'wallet address'")),
             )
@@ -82,12 +104,12 @@ impl Cli {
                         "<address> 'The address to get balance for'",
                     )),
             )
-            .subcommand(App::new("createblockchain").about("create blockchain").arg(
+            .subcommand(App::new("createblockchain").about("[LEGACY] create blockchain").arg(
                 Arg::from_usage("<address> 'The address to send genesis block reward to'"),
             ))
             .subcommand(
                 App::new("send")
-                    .about("send in the blockchain")
+                    .about("[LEGACY] send in the blockchain")
                     .arg(Arg::from_usage("<from> 'Source wallet address'"))
                     .arg(Arg::from_usage("<to> 'Destination wallet address'"))
                     .arg(Arg::from_usage("<amount> 'Amount to send'"))
@@ -172,6 +194,20 @@ impl Cli {
                     ),
             )
             .get_matches();
+
+        // Show helpful message for no arguments
+        if std::env::args().len() == 1 {
+            println!("🔗 PolyTorus - Post Quantum Modular Blockchain");
+            println!();
+            println!("🚀 Quick start:");
+            println!("  polytorus modular start          # Start modular blockchain");
+            println!("  polytorus createwallet FNDSA     # Create quantum-resistant wallet");
+            println!("  polytorus modular mine <address> # Mine blocks");
+            println!();
+            println!("💡 Use 'polytorus --help' for all commands");
+            println!("📖 Use 'polytorus modular --help' for modular commands");
+            return Ok(());
+        }
 
         match matches.subcommand() {
             ("getbalance", Some(sub_m)) => {
