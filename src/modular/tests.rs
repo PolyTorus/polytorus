@@ -5,6 +5,7 @@ use crate::config::DataContext;
 use crate::crypto::transaction::Transaction;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// Test context with automatic cleanup
@@ -124,8 +125,7 @@ fn test_settlement_layer() {
 }
 
 #[test]
-fn test_data_availability_layer() {
-    let config = DataAvailabilityConfig {
+fn test_data_availability_layer() {    let config = DataAvailabilityConfig {
         network_config: NetworkConfig {
             listen_addr: "127.0.0.1:0".to_string(),
             bootstrap_peers: Vec::new(),
@@ -135,7 +135,10 @@ fn test_data_availability_layer() {
         max_data_size: 1024,    // 1KB for testing
     };
 
-    let da_layer = PolyTorusDataAvailabilityLayer::new(config);
+    let network_config = super::network::ModularNetworkConfig::default();
+    let network = Arc::new(super::network::ModularNetwork::new(network_config).unwrap());
+
+    let da_layer = PolyTorusDataAvailabilityLayer::new(config, network);
 
     assert!(da_layer.is_ok());
 
