@@ -12,7 +12,7 @@ if [ -d "target/criterion" ]; then
     
     # List available benchmarks
     echo "Available benchmark results:"
-    find target/criterion -maxdepth 1 -type d -name "*tps*" -o -name "*transaction*" -o -name "*block*" | sort
+    find target/criterion -maxdepth 1 -type d \( -name "*tps*" -o -name "*transaction*" -o -name "*block*" \) | sort
     echo
     
     # Quick stats if available
