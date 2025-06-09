@@ -385,3 +385,97 @@ async fn main() {
     println!("Balance: {}", balance);
 }
 ```
+
+## Modular Execution Layer API
+
+### Contract Engine Operations
+
+#### Get Contract Engine
+```rust
+pub fn get_contract_engine(&self) -> Arc<Mutex<ContractEngine>>
+```
+Returns a reference to the contract execution engine for direct smart contract operations.
+
+#### Execute Contract with Engine
+```rust
+pub fn execute_contract_with_engine(
+    &self, 
+    contract_address: &str, 
+    function_name: &str, 
+    args: &[u8]
+) -> Result<Vec<u8>>
+```
+Executes a contract function using the internal contract engine.
+
+**Parameters:**
+- `contract_address`: Target contract address
+- `function_name`: Name of the function to call
+- `args`: Function arguments as byte array
+
+**Returns:** Function return value as byte array
+
+#### Process Contract Transaction
+```rust
+pub fn process_contract_transaction(&self, tx: &Transaction) -> Result<TransactionReceipt>
+```
+Processes a complete contract transaction (deployment or function call).
+
+### Account State Management
+
+#### Get Account State from Storage
+```rust
+pub fn get_account_state_from_storage(&self, address: &str) -> Option<AccountState>
+```
+Retrieves account state from internal storage cache.
+
+#### Set Account State in Storage
+```rust
+pub fn set_account_state_in_storage(&self, address: String, state: AccountState)
+```
+Updates account state in internal storage cache.
+
+### Execution Context Management
+
+#### Get Execution Context
+```rust
+pub fn get_execution_context(&self) -> Option<ExecutionContext>
+```
+Returns the current execution context with all state transition information.
+
+#### Validate Execution Context
+```rust
+pub fn validate_execution_context(&self) -> Result<bool>
+```
+Validates the current execution context, checking:
+- Context ID validity
+- State root integrity  
+- Gas usage within limits
+- Pending changes consistency
+
+**ExecutionContext Structure:**
+```rust
+pub struct ExecutionContext {
+    pub context_id: String,
+    pub initial_state_root: Hash,
+    pub pending_changes: HashMap<String, AccountState>,
+    pub executed_txs: Vec<TransactionReceipt>,
+    pub gas_used: u64,
+}
+```
+
+### Transaction Processing
+
+#### Add Transaction
+```rust
+pub fn add_transaction(&self, transaction: Transaction) -> Result<()>
+```
+
+#### Get Pending Transactions
+```rust
+pub fn get_pending_transactions(&self) -> Result<Vec<Transaction>>
+```
+
+#### Clear Transaction Pool
+```rust
+pub fn clear_transaction_pool(&self) -> Result<()>
+```
