@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod difficulty_adjustment_tests {
-    use crate::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
+    use crate::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats, TestFinalizedParams};
     use crate::blockchain::types::{block_states, network};
     use crate::crypto::transaction::Transaction;
 
@@ -117,18 +117,18 @@ mod difficulty_adjustment_tests {
         let mut stats = MiningStats::default();
         stats.record_mining_time(500); // Fast mining
         stats.record_attempt();
-        stats.record_attempt();
-
-        let config = DifficultyAdjustmentConfig::default();
+        stats.record_attempt();        let config = DifficultyAdjustmentConfig::default();
         let block = Block::<block_states::Finalized, network::Development>::new_test_finalized(
             vec![create_test_transaction()],
-            "test".to_string(),
-            "test_hash".to_string(),
-            123,
-            1,
-            3,
-            config,
-            stats,
+            TestFinalizedParams {
+                prev_block_hash: "test".to_string(),
+                hash: "test_hash".to_string(),
+                nonce: 123,
+                height: 1,
+                difficulty: 3,
+                difficulty_config: config,
+                mining_stats: stats,
+            },
         );
 
         let efficiency = block.calculate_mining_efficiency();
@@ -137,19 +137,20 @@ mod difficulty_adjustment_tests {
     }
 
     #[test]
-    fn test_network_difficulty_recommendation() {
-        let config = DifficultyAdjustmentConfig::default();
+    fn test_network_difficulty_recommendation() {        let config = DifficultyAdjustmentConfig::default();
         let stats = MiningStats::default();
 
         let block = Block::<block_states::Finalized, network::Development>::new_test_finalized(
             vec![create_test_transaction()],
-            "test".to_string(),
-            "test_hash".to_string(),
-            123,
-            1,
-            4,
-            config,
-            stats,
+            TestFinalizedParams {
+                prev_block_hash: "test".to_string(),
+                hash: "test_hash".to_string(),
+                nonce: 123,
+                height: 1,
+                difficulty: 4,
+                difficulty_config: config,
+                mining_stats: stats,
+            },
         );
 
         // Test with equal hash rates (should maintain current difficulty)

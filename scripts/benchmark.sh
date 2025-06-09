@@ -11,7 +11,15 @@ echo "   This will generate detailed HTML reports in target/criterion/"
 echo
 
 # Run criterion benchmarks
+echo "Running full benchmark suite including TPS tests..."
 cargo bench --bench blockchain_bench
+
+echo
+echo "=== TPS-Specific Benchmark Results ==="
+echo "TPS (Transactions Per Second) results:"
+echo "- Check target/criterion/tps_throughput/ for TPS results"
+echo "- Check target/criterion/pure_transaction_tps/ for pure transaction processing results"
+echo "- Check target/criterion/concurrent_tps/ for concurrent processing results"
 
 echo
 echo "=== Benchmark Results ==="

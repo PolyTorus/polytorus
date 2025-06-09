@@ -11,17 +11,28 @@ use std::path::Path;
 pub mod consensus;
 pub mod data_availability;
 pub mod execution;
+pub mod network;
 pub mod orchestrator;
 pub mod settlement;
+pub mod storage;
 pub mod traits;
+pub mod transaction_processor;
 
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
 pub use execution::PolyTorusExecutionLayer;
+pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
 pub use orchestrator::{ModularBlockchain, ModularBlockchainBuilder, ModularEvent, StateInfo};
 pub use settlement::PolyTorusSettlementLayer;
+pub use storage::{
+    BlockMetadata, ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats,
+};
 pub use traits::*;
+pub use transaction_processor::{
+    ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
+    TransactionResult,
+};
 
 #[cfg(test)]
 mod tests;

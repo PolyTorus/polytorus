@@ -3,8 +3,8 @@
 //! This module implements the data availability layer for the modular blockchain,
 //! handling data storage, retrieval, and network distribution.
 
+use super::network::ModularNetwork;
 use super::traits::*;
-use crate::network::NetworkManager;
 use crate::Result;
 
 use std::collections::HashMap;
@@ -13,8 +13,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Data availability layer implementation
 pub struct PolyTorusDataAvailabilityLayer {
-    /// Network manager for P2P communication
-    network_manager: Option<Arc<Mutex<NetworkManager>>>,
+    /// Network layer for P2P communication
+    network: Arc<ModularNetwork>,
     /// Local data storage
     data_storage: Arc<Mutex<HashMap<Hash, Vec<u8>>>>,
     /// Availability proofs
@@ -27,19 +27,14 @@ pub struct PolyTorusDataAvailabilityLayer {
 
 impl PolyTorusDataAvailabilityLayer {
     /// Create a new data availability layer
-    pub fn new(config: DataAvailabilityConfig) -> Result<Self> {
+    pub fn new(config: DataAvailabilityConfig, network: Arc<ModularNetwork>) -> Result<Self> {
         Ok(Self {
-            network_manager: None,
+            network,
             data_storage: Arc::new(Mutex::new(HashMap::new())),
             availability_proofs: Arc::new(Mutex::new(HashMap::new())),
             pending_requests: Arc::new(Mutex::new(HashMap::new())),
             config,
         })
-    }
-
-    /// Set network manager for P2P operations
-    pub fn set_network_manager(&mut self, network_manager: Arc<Mutex<NetworkManager>>) {
-        self.network_manager = Some(network_manager);
     }
 
     /// Calculate hash of data
@@ -60,7 +55,6 @@ impl PolyTorusDataAvailabilityLayer {
     }
 
     /// Verify merkle proof
-    #[allow(dead_code)]
     fn verify_merkle_proof(&self, proof: &[Hash], root: &Hash, data_hash: &Hash) -> bool {
         // Simplified verification
         // In a real implementation, this would verify the merkle path
@@ -91,20 +85,43 @@ impl PolyTorusDataAvailabilityLayer {
 
         Ok(())
     }
-
     /// Request data from network peers
-    #[allow(dead_code)]
     async fn request_from_network(&self, hash: &Hash) -> Result<Vec<u8>> {
-        if let Some(_network_manager) = &self.network_manager {
-            // In a real implementation, this would use the network manager
-            // to request data from peers
-            log::info!("Requesting data {} from network", hash);
+        log::info!("Requesting data {} from network", hash);
 
-            // For now, return empty data
-            Ok(Vec::new())
+        // Use the modular network to request data
+        self.network.retrieve_data(hash).await
+    }
+
+    /// Validate availability proof for given data hash
+    pub fn validate_proof(&self, hash: &Hash) -> Result<bool> {
+        if let Ok(proof) = self.get_availability_proof(hash) {
+            let is_valid = self.verify_merkle_proof(
+                &proof.merkle_proof,
+                &proof.root_hash,
+                &proof.data_hash,
+            );
+            Ok(is_valid)
         } else {
-            Err(failure::format_err!("Network manager not available"))
+            Ok(false)
         }
+    }
+
+    /// Request and retrieve data from network
+    pub async fn fetch_from_network(&self, hash: &Hash) -> Result<Vec<u8>> {
+        self.request_from_network(hash).await
+    }
+
+    /// Get network instance for external operations
+    pub fn get_network(&self) -> &Arc<ModularNetwork> {
+        &self.network
+    }
+
+    /// Get local data storage statistics
+    pub fn get_storage_stats(&self) -> (usize, usize) {
+        let storage = self.data_storage.lock().unwrap();
+        let proofs = self.availability_proofs.lock().unwrap();
+        (storage.len(), proofs.len())
     }
 }
 
@@ -233,7 +250,6 @@ impl DataAvailabilityLayerBuilder {
         self.config = Some(da_config);
         self
     }
-
     pub fn build(self) -> Result<PolyTorusDataAvailabilityLayer> {
         let config = self.config.unwrap_or_else(|| DataAvailabilityConfig {
             network_config: NetworkConfig {
@@ -245,7 +261,10 @@ impl DataAvailabilityLayerBuilder {
             max_data_size: 1024 * 1024,  // 1MB
         });
 
-        PolyTorusDataAvailabilityLayer::new(config)
+        let network_config = super::network::ModularNetworkConfig::default();
+        let network = Arc::new(super::network::ModularNetwork::new(network_config)?);
+
+        PolyTorusDataAvailabilityLayer::new(config, network)
     }
 }
 

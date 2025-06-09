@@ -66,11 +66,14 @@ impl ModularBlockchain {
             config.consensus.clone(),
             false, // Not a validator by default
         )?;
-
         let settlement_layer = PolyTorusSettlementLayer::new(config.settlement.clone())?;
 
+        // Create modular network for data availability
+        let network_config = super::network::ModularNetworkConfig::default();
+        let network = Arc::new(super::network::ModularNetwork::new(network_config)?);
+
         let data_availability_layer =
-            PolyTorusDataAvailabilityLayer::new(config.data_availability.clone())?;
+            PolyTorusDataAvailabilityLayer::new(config.data_availability.clone(), network)?;
 
         // Create event channels
         let (event_tx, event_rx) = mpsc::unbounded_channel();

@@ -1,0 +1,30 @@
+# PolyTorus Modular Blockchain Configuration
+# This is the primary configuration for the modular architecture
+
+[execution]
+gas_limit = 8000000
+gas_price = 1
+
+[execution.wasm_config]
+max_memory_pages = 256
+max_stack_size = 65536
+gas_metering = true
+
+[settlement]
+challenge_period = 100     # blocks
+batch_size = 100
+min_validator_stake = 1000
+
+[consensus]
+block_time = 10000         # milliseconds (10 seconds)
+difficulty = 4
+max_block_size = 1048576   # 1MB
+
+[data_availability]
+retention_period = 604800  # seconds (7 days)
+max_data_size = 1048576    # 1MB
+
+[data_availability.network_config]
+listen_addr = "0.0.0.0:7000"
+bootstrap_peers = []
+max_peers = 50

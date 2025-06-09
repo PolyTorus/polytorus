@@ -4,4 +4,4 @@ pub mod printchain;
 pub mod reindex;
 pub mod startminer;
 pub mod startnode;
-pub mod webserver;
+pub mod server;

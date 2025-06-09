@@ -1,12 +1,24 @@
 use env_logger::Env;
 use polytorus::command::cli::Cli;
 
+/// PolyTorus - Post Quantum Modular Blockchain
+///
+/// This is the main entry point for the PolyTorus blockchain platform.
+/// The platform is built on a modular architecture with separate layers
+/// for execution, settlement, consensus, and data availability.
 #[actix_web::main]
 async fn main() {
-    env_logger::from_env(Env::default().default_filter_or("warning")).init();
+    // Initialize logging
+    env_logger::from_env(Env::default().default_filter_or("info")).init();
+
+    println!("🔗 PolyTorus - Post Quantum Modular Blockchain");
+    println!("📝 For help: polytorus --help");
+    println!("🚀 Quick start: polytorus modular start");
+    println!();
 
     let mut cli = Cli::new();
     if let Err(e) = cli.run().await {
-        println!("Error: {}", e);
+        eprintln!("❌ Error: {}", e);
+        std::process::exit(1);
     }
 }
