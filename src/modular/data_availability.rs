@@ -96,11 +96,8 @@ impl PolyTorusDataAvailabilityLayer {
     /// Validate availability proof for given data hash
     pub fn validate_proof(&self, hash: &Hash) -> Result<bool> {
         if let Ok(proof) = self.get_availability_proof(hash) {
-            let is_valid = self.verify_merkle_proof(
-                &proof.merkle_proof,
-                &proof.root_hash,
-                &proof.data_hash,
-            );
+            let is_valid =
+                self.verify_merkle_proof(&proof.merkle_proof, &proof.root_hash, &proof.data_hash);
             Ok(is_valid)
         } else {
             Ok(false)

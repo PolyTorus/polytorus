@@ -97,7 +97,8 @@ impl MiningStats {
             0.0
         } else {
             self.successful_mines as f64 / self.total_attempts as f64
-        }    }
+        }
+    }
 }
 
 /// Test parameters for creating finalized blocks
@@ -487,7 +488,8 @@ impl<N: NetworkConfig> Block<block_states::Building, N> {
         transactions: Vec<Transaction>,
         prev_block_hash: String,
         height: i32,
-    ) -> Self {        let difficulty = if height == 0 {
+    ) -> Self {
+        let difficulty = if height == 0 {
             N::INITIAL_DIFFICULTY
         } else {
             // For now, keep initial difficulty but this should be calculated based on previous blocks
@@ -620,12 +622,11 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
 
         (recommended.round() as usize)
             .max(self.difficulty_config.min_difficulty)
-            .min(self.difficulty_config.max_difficulty)    }    /// Test helper to create a finalized block (should only be used in tests)
+            .min(self.difficulty_config.max_difficulty)
+    }
+    /// Test helper to create a finalized block (should only be used in tests)
     #[cfg(test)]
-    pub fn new_test_finalized(
-        transactions: Vec<Transaction>,
-        params: TestFinalizedParams,
-    ) -> Self {
+    pub fn new_test_finalized(transactions: Vec<Transaction>, params: TestFinalizedParams) -> Self {
         Block {
             timestamp: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)

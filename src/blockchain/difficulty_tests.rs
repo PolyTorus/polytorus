@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod difficulty_adjustment_tests {
-    use crate::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats, TestFinalizedParams};
+    use crate::blockchain::block::{
+        Block, DifficultyAdjustmentConfig, MiningStats, TestFinalizedParams,
+    };
     use crate::blockchain::types::{block_states, network};
     use crate::crypto::transaction::Transaction;
 
@@ -117,7 +119,8 @@ mod difficulty_adjustment_tests {
         let mut stats = MiningStats::default();
         stats.record_mining_time(500); // Fast mining
         stats.record_attempt();
-        stats.record_attempt();        let config = DifficultyAdjustmentConfig::default();
+        stats.record_attempt();
+        let config = DifficultyAdjustmentConfig::default();
         let block = Block::<block_states::Finalized, network::Development>::new_test_finalized(
             vec![create_test_transaction()],
             TestFinalizedParams {
@@ -137,7 +140,8 @@ mod difficulty_adjustment_tests {
     }
 
     #[test]
-    fn test_network_difficulty_recommendation() {        let config = DifficultyAdjustmentConfig::default();
+    fn test_network_difficulty_recommendation() {
+        let config = DifficultyAdjustmentConfig::default();
         let stats = MiningStats::default();
 
         let block = Block::<block_states::Finalized, network::Development>::new_test_finalized(

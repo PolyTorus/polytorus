@@ -258,7 +258,9 @@ impl ModularNetwork {
     /// Get peer information using address and connected_at fields
     pub fn get_peer_info(&self, peer_id: &str) -> Option<(String, SystemTime)> {
         let peers = self.peers.lock().unwrap();
-        peers.get(peer_id).map(|peer| (peer.address.clone(), peer.connected_at))
+        peers
+            .get(peer_id)
+            .map(|peer| (peer.address.clone(), peer.connected_at))
     }
 
     /// Add peer with address and connection time

@@ -48,7 +48,7 @@ mod tests {
     fn test_network_events() {
         use uuid::Uuid;
         let peer_id = PeerId(Uuid::new_v4());
-        
+
         let event = NetworkEvent::PeerConnected(peer_id);
         match event {
             NetworkEvent::PeerConnected(_) => {
@@ -56,7 +56,8 @@ mod tests {
             }
             _ => panic!("Wrong event type"),
         }
-    }    /// Test network command enumeration  
+    }
+    /// Test network command enumeration  
     #[test]
     fn test_network_commands() {
         // Test with a valid NetworkCommand variant
@@ -87,7 +88,9 @@ mod tests {
         };
 
         assert_eq!(config.bootstrap_nodes.len(), 2);
-        assert!(config.bootstrap_nodes.contains(&"127.0.0.1:8080".to_string()));
+        assert!(config
+            .bootstrap_nodes
+            .contains(&"127.0.0.1:8080".to_string()));
     }
 
     /// Test network discovery configuration
