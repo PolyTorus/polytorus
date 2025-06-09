@@ -1,13 +1,16 @@
-//! Modular blockchain architecture for PolyTorus
+//! Enhanced Modular Blockchain Architecture for PolyTorus
 //!
-//! This module implements a modular blockchain design where different layers
+//! This module implements a truly modular blockchain design where different layers
 //! (execution, settlement, consensus, data availability) are separated and
-//! can be independently developed, tested, and deployed.
+//! can be independently developed, tested, and deployed. The architecture supports
+//! pluggable implementations, sophisticated configuration management, and
+//! event-driven communication between layers.
 
 use crate::Result;
 use std::fs;
 use std::path::Path;
 
+// Core modular components
 pub mod consensus;
 pub mod data_availability;
 pub mod eutxo_processor;
@@ -18,6 +21,12 @@ pub mod settlement;
 pub mod storage;
 pub mod traits;
 pub mod transaction_processor;
+
+// Enhanced modular architecture
+pub mod modular_orchestrator;
+pub mod message_bus;
+pub mod layer_factory;
+pub mod config_manager;
 
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
@@ -40,6 +49,25 @@ pub use transaction_processor::{
 pub use traits::{
     ModularConfig, ExecutionConfig, SettlementConfig, ConsensusConfig, 
     DataAvailabilityConfig, NetworkConfig, WasmConfig
+};
+
+// Enhanced modular exports
+pub use modular_orchestrator::{
+    PluggableModularBlockchain, PluggableModularBlockchainBuilder,
+    EnhancedStateInfo, LayerHealthSummary, LayerMetrics as OrchestratorLayerMetrics,
+    LayerType as OrchestratorLayerType,
+};
+pub use message_bus::{
+    ModularMessageBus, ModularMessage, MessageType, MessagePayload, MessagePriority,
+    LayerType, LayerInfo, HealthStatus, MessageBuilder,
+};
+pub use layer_factory::{
+    ModularLayerFactory, LayerConfig, LayerImplementation, EnhancedModularConfig,
+    create_default_enhanced_config, GlobalConfig, PerformanceMode,
+};
+pub use config_manager::{
+    ModularConfigManager, ValidationResult, ConfigTemplate, UseCase,
+    create_config_templates,
 };
 
 #[cfg(test)]
