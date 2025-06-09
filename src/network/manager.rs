@@ -81,7 +81,8 @@ impl NetworkManager {
             if let Err(e) = p2p_node.run().await {
                 log::error!("P2P node error: {}", e);
             }
-        });        Ok(Self {
+        });
+        Ok(Self {
             command_tx,
             event_rx,
             _config: config,
@@ -93,7 +94,8 @@ impl NetworkManager {
             block_handler: None,
             transaction_handler: None,
         })
-    }    /// Legacy blockchain setter removed in Phase 4 - using modular architecture
+    }
+    /// Legacy blockchain setter removed in Phase 4 - using modular architecture
     // pub fn set_blockchain(&mut self, blockchain: Arc<Mutex<Blockchain>>) {
     //     self.blockchain = Some(blockchain);
     // }
@@ -202,7 +204,8 @@ impl NetworkManager {
             NetworkEvent::PeerDisconnected(peer_id) => {
                 log::info!("Peer disconnected: {}", peer_id);
                 self.peers.lock().unwrap().remove(&peer_id);
-            }            NetworkEvent::BlockReceived(block) => {
+            }
+            NetworkEvent::BlockReceived(block) => {
                 log::debug!("Received block: {}", block.get_hash());
 
                 // Legacy blockchain validation removed in Phase 4 - using modular architecture
@@ -345,8 +348,8 @@ impl NetworkManager {
                 .unwrap()
                 .get(&peer_id)
                 .map(|p| p.best_height)
-                .unwrap_or(-1);            // Legacy blockchain sync removed in Phase 4 - using modular architecture
-            let current_height = -1;  // Default to -1 for now
+                .unwrap_or(-1); // Legacy blockchain sync removed in Phase 4 - using modular architecture
+            let current_height = -1; // Default to -1 for now
 
             if peer_height > current_height {
                 log::info!(

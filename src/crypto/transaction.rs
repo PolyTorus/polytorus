@@ -92,7 +92,8 @@ pub enum ContractTransactionType {
     },
 }
 
-impl Transaction {    // Legacy UTXO transaction creation - disabled in Phase 4
+impl Transaction {
+    // Legacy UTXO transaction creation - disabled in Phase 4
     /*
     /// NewUTXOTransaction creates a new transaction
     pub fn new_UTXO(
@@ -176,74 +177,74 @@ impl Transaction {    // Legacy UTXO transaction creation - disabled in Phase 4
         };
         tx.id = tx.hash()?;
         Ok(tx)
-    }    // Legacy contract deployment transaction - disabled in Phase 4
-    /*
-    /// Create a new contract deployment transaction
-    pub fn new_contract_deployment(
-        wallet: &Wallet,
-        bytecode: Vec<u8>,
-        constructor_args: Vec<u8>,
-        gas_limit: u64,
-        utxo: &UTXOSet,
-        crypto: &dyn CryptoProvider,
-    ) -> Result<Transaction> {
-        info!(
-            "Creating contract deployment transaction from: {}",
-            wallet.get_address()
-        );
+    } // Legacy contract deployment transaction - disabled in Phase 4
+      /*
+      /// Create a new contract deployment transaction
+      pub fn new_contract_deployment(
+          wallet: &Wallet,
+          bytecode: Vec<u8>,
+          constructor_args: Vec<u8>,
+          gas_limit: u64,
+          utxo: &UTXOSet,
+          crypto: &dyn CryptoProvider,
+      ) -> Result<Transaction> {
+          info!(
+              "Creating contract deployment transaction from: {}",
+              wallet.get_address()
+          );
 
-        let contract_data = ContractTransactionData {
-            tx_type: ContractTransactionType::Deploy {
-                bytecode,
-                constructor_args,
-                gas_limit,
-            },
-            data: Vec::new(),
-        };
+          let contract_data = ContractTransactionData {
+              tx_type: ContractTransactionType::Deploy {
+                  bytecode,
+                  constructor_args,
+                  gas_limit,
+              },
+              data: Vec::new(),
+          };
 
-        // Create a transaction with minimal value (gas fee)
-        let gas_fee = (gas_limit / 1000) as i32; // Simple gas fee calculation
-        let mut vin = Vec::new();
-        let mut pub_key_hash = wallet.public_key.clone();
-        hash_pub_key(&mut pub_key_hash);
+          // Create a transaction with minimal value (gas fee)
+          let gas_fee = (gas_limit / 1000) as i32; // Simple gas fee calculation
+          let mut vin = Vec::new();
+          let mut pub_key_hash = wallet.public_key.clone();
+          hash_pub_key(&mut pub_key_hash);
 
-        let acc_v = utxo.find_spendable_outputs(&pub_key_hash, gas_fee)?;
-        if acc_v.0 < gas_fee {
-            return Err(format_err!(
-                "Not enough balance for gas fees: need {}, have {}",
-                gas_fee,
-                acc_v.0
-            ));
-        }
-        for tx in acc_v.1 {
-            for out in tx.1 {
-                let input = TXInput {
-                    txid: tx.0.clone(),
-                    vout: out,
-                    signature: Vec::new(),
-                    pub_key: wallet.public_key.clone(),
-                    redeemer: None,
-                };
-                vin.push(input);
-            }
-        }
+          let acc_v = utxo.find_spendable_outputs(&pub_key_hash, gas_fee)?;
+          if acc_v.0 < gas_fee {
+              return Err(format_err!(
+                  "Not enough balance for gas fees: need {}, have {}",
+                  gas_fee,
+                  acc_v.0
+              ));
+          }
+          for tx in acc_v.1 {
+              for out in tx.1 {
+                  let input = TXInput {
+                      txid: tx.0.clone(),
+                      vout: out,
+                      signature: Vec::new(),
+                      pub_key: wallet.public_key.clone(),
+                      redeemer: None,
+                  };
+                  vin.push(input);
+              }
+          }
 
-        let mut vout = Vec::new();
-        if acc_v.0 > gas_fee {
-            vout.push(TXOutput::new(acc_v.0 - gas_fee, wallet.get_address())?);
-        }
+          let mut vout = Vec::new();
+          if acc_v.0 > gas_fee {
+              vout.push(TXOutput::new(acc_v.0 - gas_fee, wallet.get_address())?);
+          }
 
-        let mut tx = Transaction {
-            id: String::new(),
-            vin,
-            vout,
-            contract_data: Some(contract_data),
-        };        tx.id = tx.hash()?;
-        utxo.blockchain
-            .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
-        Ok(tx)
-    }
-    */
+          let mut tx = Transaction {
+              id: String::new(),
+              vin,
+              vout,
+              contract_data: Some(contract_data),
+          };        tx.id = tx.hash()?;
+          utxo.blockchain
+              .sign_transacton(&mut tx, &wallet.secret_key, crypto)?;
+          Ok(tx)
+      }
+      */
 
     // Legacy contract call transaction - disabled in Phase 4
     /*

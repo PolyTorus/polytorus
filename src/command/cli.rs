@@ -1,9 +1,9 @@
 //! cli process - Modular Architecture CLI
 
 // Legacy imports removed in Phase 4 - using modular architecture only
+use crate::crypto::transaction::Transaction;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
-use crate::crypto::transaction::Transaction;
 use crate::modular::{
     default_modular_config, load_modular_config_from_file, ModularBlockchainBuilder,
 };
@@ -23,7 +23,8 @@ impl Default for Cli {
 impl Cli {
     pub fn new() -> Cli {
         Cli {}
-    }    pub async fn run(&mut self) -> Result<()> {
+    }
+    pub async fn run(&mut self) -> Result<()> {
         info!("run app");
         let matches = App::new("polytorus")
             .version(env!("CARGO_PKG_VERSION"))
@@ -63,7 +64,8 @@ impl Cli {
                         .help("encryption type"),
                 ),
             )
-            .subcommand(App::new("listaddresses").about("list all addresses"))            .subcommand(App::new("reindex").about("[LEGACY] reindex UTXO"))
+            .subcommand(App::new("listaddresses").about("list all addresses"))
+            .subcommand(App::new("reindex").about("[LEGACY] reindex UTXO"))
             .subcommand(App::new("server").about("[LEGACY] run server"))
             .subcommand(
                 App::new("startnode")
@@ -96,9 +98,13 @@ impl Cli {
                         "<address> 'The address to get balance for'",
                     )),
             )
-            .subcommand(App::new("createblockchain").about("[LEGACY] create blockchain").arg(
-                Arg::from_usage("<address> 'The address to send genesis block reward to'"),
-            ))
+            .subcommand(
+                App::new("createblockchain")
+                    .about("[LEGACY] create blockchain")
+                    .arg(Arg::from_usage(
+                        "<address> 'The address to send genesis block reward to'",
+                    )),
+            )
             .subcommand(
                 App::new("send")
                     .about("[LEGACY] send in the blockchain")
@@ -245,13 +251,22 @@ impl Cli {
                 };
                 let target_node = sub_m.value_of("node");
                 cmd_send(from, to, amount, sub_m.is_present("mine"), target_node)?;
-            }            ("startnode", Some(_sub_m)) => {
-                println!("Legacy startnode command removed. Use 'polytorus modular start' instead.");
-                return Err(failure::err_msg("Legacy startnode command removed. Use modular architecture."));
+            }
+            ("startnode", Some(_sub_m)) => {
+                println!(
+                    "Legacy startnode command removed. Use 'polytorus modular start' instead."
+                );
+                return Err(failure::err_msg(
+                    "Legacy startnode command removed. Use modular architecture.",
+                ));
             }
             ("startminer", Some(_sub_m)) => {
-                println!("Legacy startminer command removed. Use 'polytorus modular mine' instead.");
-                return Err(failure::err_msg("Legacy startminer command removed. Use modular architecture."));
+                println!(
+                    "Legacy startminer command removed. Use 'polytorus modular mine' instead."
+                );
+                return Err(failure::err_msg(
+                    "Legacy startminer command removed. Use modular architecture.",
+                ));
             }
             ("remotesend", Some(sub_m)) => {
                 let from = sub_m.value_of("from").unwrap();
@@ -345,7 +360,9 @@ fn cmd_send(
     _mine_now: bool,
     _target_node: Option<&str>,
 ) -> Result<()> {
-    Err(failure::err_msg("Legacy send command removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy send command removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 fn get_value<'a>(name: &str, matches: &'a ArgMatches<'_>) -> Result<&'a str> {
@@ -370,19 +387,27 @@ pub fn cmd_create_wallet(encryption: EncryptionType) -> Result<String> {
 }
 
 pub fn cmd_reindex() -> Result<i32> {
-    Err(failure::err_msg("Legacy reindex command removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy reindex command removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 fn cmd_create_blockchain(_address: &str) -> Result<()> {
-    Err(failure::err_msg("Legacy blockchain creation removed. Use 'polytorus modular start' instead."))
+    Err(failure::err_msg(
+        "Legacy blockchain creation removed. Use 'polytorus modular start' instead.",
+    ))
 }
 
 fn cmd_get_balance(_address: &str) -> Result<i32> {
-    Err(failure::err_msg("Legacy balance command removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy balance command removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 pub fn cmd_print_chain() -> Result<()> {
-    Err(failure::err_msg("Legacy print chain command removed. Use 'polytorus modular state' instead."))
+    Err(failure::err_msg(
+        "Legacy print chain command removed. Use 'polytorus modular state' instead.",
+    ))
 }
 
 pub fn cmd_list_address() -> Result<()> {
@@ -395,8 +420,16 @@ pub fn cmd_list_address() -> Result<()> {
     Ok(())
 }
 
-fn cmd_remote_send(_from: &str, _to: &str, _amount: i32, _node: &str, _mine_now: bool) -> Result<()> {
-    Err(failure::err_msg("Legacy remote send command removed. Use 'polytorus modular' commands instead."))
+fn cmd_remote_send(
+    _from: &str,
+    _to: &str,
+    _amount: i32,
+    _node: &str,
+    _mine_now: bool,
+) -> Result<()> {
+    Err(failure::err_msg(
+        "Legacy remote send command removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 // Smart contract command functions
@@ -406,7 +439,9 @@ fn cmd_deploy_contract(
     _gas_limit: u64,
     _mine_now: bool,
 ) -> Result<()> {
-    Err(failure::err_msg("Legacy contract deployment removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy contract deployment removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 fn cmd_call_contract(
@@ -417,15 +452,21 @@ fn cmd_call_contract(
     _gas_limit: u64,
     _mine_now: bool,
 ) -> Result<()> {
-    Err(failure::err_msg("Legacy contract calls removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy contract calls removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 fn cmd_list_contracts() -> Result<()> {
-    Err(failure::err_msg("Legacy contract listing removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy contract listing removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 fn cmd_contract_state(_contract: &str) -> Result<()> {
-    Err(failure::err_msg("Legacy contract state access removed. Use 'polytorus modular' commands instead."))
+    Err(failure::err_msg(
+        "Legacy contract state access removed. Use 'polytorus modular' commands instead.",
+    ))
 }
 
 // Modular blockchain command implementations

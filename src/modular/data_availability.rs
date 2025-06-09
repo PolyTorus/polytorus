@@ -3,8 +3,8 @@
 //! This module implements the data availability layer for the modular blockchain,
 //! handling data storage, retrieval, and network distribution.
 
-use super::traits::*;
 use super::network::ModularNetwork;
+use super::traits::*;
 use crate::Result;
 
 use std::collections::HashMap;
@@ -85,11 +85,12 @@ impl PolyTorusDataAvailabilityLayer {
         }
 
         Ok(())
-    }    /// Request data from network peers
+    }
+    /// Request data from network peers
     #[allow(dead_code)]
     async fn request_from_network(&self, hash: &Hash) -> Result<Vec<u8>> {
         log::info!("Requesting data {} from network", hash);
-        
+
         // Use the modular network to request data
         self.network.retrieve_data(hash).await
     }
@@ -219,7 +220,8 @@ impl DataAvailabilityLayerBuilder {
         };
         self.config = Some(da_config);
         self
-    }    pub fn build(self) -> Result<PolyTorusDataAvailabilityLayer> {
+    }
+    pub fn build(self) -> Result<PolyTorusDataAvailabilityLayer> {
         let config = self.config.unwrap_or_else(|| DataAvailabilityConfig {
             network_config: NetworkConfig {
                 listen_addr: "0.0.0.0:0".to_string(),

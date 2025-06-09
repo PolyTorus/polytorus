@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use polytorus::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
 use polytorus::blockchain::types::{block_states, network};
-use polytorus::crypto::transaction::{Transaction, TXInput, TXOutput};
+use polytorus::crypto::transaction::{TXInput, TXOutput, Transaction};
 use std::time::Duration;
 
 /// Create a test transaction for benchmarking (coinbase)
@@ -45,7 +45,7 @@ fn quick_tps_test(c: &mut Criterion) {
     let mut group = c.benchmark_group("quick_tps");
     group.measurement_time(Duration::from_secs(5));
     group.sample_size(10);
-    
+
     for tx_count in [5, 10, 20].iter() {
         group.bench_with_input(
             BenchmarkId::new("transactions", tx_count),
@@ -54,7 +54,7 @@ fn quick_tps_test(c: &mut Criterion) {
                 b.iter(|| {
                     // Create first transaction as coinbase (block reward)
                     let mut transactions = vec![create_test_transaction()];
-                    
+
                     // Add regular transactions
                     for i in 1..tx_count {
                         let tx = create_simple_transaction(
@@ -65,7 +65,7 @@ fn quick_tps_test(c: &mut Criterion) {
                         );
                         transactions.push(tx);
                     }
-                    
+
                     // Basic transaction processing
                     let mut processed = 0;
                     for tx in transactions {
@@ -80,23 +80,24 @@ fn quick_tps_test(c: &mut Criterion) {
         );
     }
     group.finish();
-}/// Transaction creation speed test
+}
+/// Transaction creation speed test
 fn transaction_creation_speed(c: &mut Criterion) {
     let mut group = c.benchmark_group("tx_creation_speed");
     group.measurement_time(Duration::from_secs(3));
     group.sample_size(10);
-    
+
     group.bench_function("single_tx", |b| {
         b.iter(|| {
             black_box(create_test_transaction());
         });
     });
-    
+
     group.bench_function("batch_10_tx", |b| {
         b.iter(|| {
             // Create first transaction as coinbase
             let mut transactions = vec![create_test_transaction()];
-            
+
             // Add regular transactions
             for i in 1..10 {
                 let tx = create_simple_transaction(
@@ -110,14 +111,15 @@ fn transaction_creation_speed(c: &mut Criterion) {
             black_box(transactions);
         });
     });
-    
+
     group.finish();
-}/// Block processing without mining
+}
+/// Block processing without mining
 fn block_processing_no_mining(c: &mut Criterion) {
     let mut group = c.benchmark_group("block_processing");
     group.measurement_time(Duration::from_secs(5));
     group.sample_size(10);
-    
+
     group.bench_function("create_building_block", |b| {
         b.iter(|| {
             let transactions = vec![create_test_transaction()];
@@ -128,19 +130,27 @@ fn block_processing_no_mining(c: &mut Criterion) {
                 adjustment_factor: 0.1,
                 tolerance_percentage: 30.0,
             };
-            
-            let block = Block::<block_states::Building, network::Development>::new_building_with_config(
-                transactions,
-                "test_prev_hash".to_string(),
-                1,
-                1,
-                config,
-                MiningStats::default(),
-            );
-            
+
+            let block =
+                Block::<block_states::Building, network::Development>::new_building_with_config(
+                    transactions,
+                    "test_prev_hash".to_string(),
+                    1,
+                    1,
+                    config,
+                    MiningStats::default(),
+                );
+
             black_box(block);
         });
     });
-    
+
     group.finish();
-}criterion_group!(    quick_benches,    quick_tps_test,    transaction_creation_speed,    block_processing_no_mining);criterion_main!(quick_benches);
+}
+criterion_group!(
+    quick_benches,
+    quick_tps_test,
+    transaction_creation_speed,
+    block_processing_no_mining
+);
+criterion_main!(quick_benches);

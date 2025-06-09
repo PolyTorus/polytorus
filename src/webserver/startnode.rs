@@ -16,10 +16,11 @@ pub async fn start_node(req: web::Json<StartNodeRequest>) -> impl Responder {
     println!(
         "@start-Node called: host={}, port={}",
         req_data.host, req_data.port
-    );    // Extract request data (not used in Phase 4 - legacy functions disabled)
+    ); // Extract request data (not used in Phase 4 - legacy functions disabled)
     let _host = req_data.host.clone();
     let _port = req_data.port.clone();
-    let _bootstrap = req_data.bootstrap.clone();tokio::task::spawn_blocking(move || {
+    let _bootstrap = req_data.bootstrap.clone();
+    tokio::task::spawn_blocking(move || {
         // Legacy start node function removed in Phase 4 - using modular architecture
         // if let Err(e) = cmd_start_node_from_api(&host, &port, bootstrap.as_deref()) {
         //     eprintln!("Node failed to start: {}", e);

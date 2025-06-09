@@ -25,9 +25,14 @@ pub use execution::PolyTorusExecutionLayer;
 pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
 pub use orchestrator::{ModularBlockchain, ModularBlockchainBuilder, ModularEvent, StateInfo};
 pub use settlement::PolyTorusSettlementLayer;
-pub use storage::{ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats, BlockMetadata};
-pub use transaction_processor::{ModularTransactionProcessor, TransactionProcessorConfig, ProcessorAccountState, TransactionResult};
+pub use storage::{
+    BlockMetadata, ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats,
+};
 pub use traits::*;
+pub use transaction_processor::{
+    ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
+    TransactionResult,
+};
 
 #[cfg(test)]
 mod tests;

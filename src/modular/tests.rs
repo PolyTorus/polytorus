@@ -125,7 +125,8 @@ fn test_settlement_layer() {
 }
 
 #[test]
-fn test_data_availability_layer() {    let config = DataAvailabilityConfig {
+fn test_data_availability_layer() {
+    let config = DataAvailabilityConfig {
         network_config: NetworkConfig {
             listen_addr: "127.0.0.1:0".to_string(),
             bootstrap_peers: Vec::new(),

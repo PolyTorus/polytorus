@@ -1,4 +1,4 @@
-// Legacy CLI command import removed in Phase 4 - using modular architecture  
+// Legacy CLI command import removed in Phase 4 - using modular architecture
 // use crate::command::cil_reindex::cmd_reindex;
 use crate::command::cli::cmd_reindex;
 use actix_web::{post, HttpResponse, Responder};

@@ -3,8 +3,8 @@
 //! This module implements the consensus layer for the modular blockchain,
 //! handling block validation and chain management.
 
-use super::traits::*;
 use super::storage::{ModularStorage, StorageLayer};
+use super::traits::*;
 use crate::blockchain::block::Block;
 use crate::config::DataContext;
 use crate::Result;
@@ -29,7 +29,8 @@ impl PolyTorusConsensusLayer {
         data_context: DataContext,
         config: ConsensusConfig,
         is_validator: bool,
-    ) -> Result<Self> {        // Create modular storage with data context path
+    ) -> Result<Self> {
+        // Create modular storage with data context path
         let storage_path = data_context.data_dir().join("modular_storage");
         let storage = Arc::new(ModularStorage::new_with_path(&storage_path)?);
 
@@ -73,7 +74,8 @@ impl PolyTorusConsensusLayer {
         let difficulty_target = "0".repeat(self.config.difficulty);
 
         hash.starts_with(&difficulty_target)
-    }    /// Check if block height is valid
+    }
+    /// Check if block height is valid
     fn validate_block_height(&self, block: &Block) -> Result<bool> {
         let current_height = self.storage.get_height()?;
 
@@ -85,7 +87,7 @@ impl PolyTorusConsensusLayer {
     fn validate_block_parent(&self, block: &Block) -> Result<bool> {
         // Get the current tip (last block)
         let current_tip = self.storage.get_tip()?;
-        
+
         if current_tip.is_empty() {
             // Genesis block case
             return Ok(block.get_prev_hash().is_empty());
@@ -112,7 +114,7 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
     fn propose_block(&self, block: Block) -> Result<()> {
         if !self.is_validator {
             return Err(failure::format_err!("Node is not a validator"));
-        }        // Validate the proposed block
+        } // Validate the proposed block
         if !self.validate_block(&block) {
             return Err(failure::format_err!("Invalid block proposed"));
         }
@@ -151,7 +153,8 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
         // For now, we assume all transactions are valid
 
         true
-    }    fn get_canonical_chain(&self) -> Vec<Hash> {
+    }
+    fn get_canonical_chain(&self) -> Vec<Hash> {
         self.storage.get_block_hashes().unwrap_or_default()
     }
 
@@ -161,7 +164,8 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
 
     fn get_block_by_hash(&self, hash: &Hash) -> Result<Block> {
         self.storage.get_block(hash)
-    }    fn add_block(&mut self, block: Block) -> Result<()> {
+    }
+    fn add_block(&mut self, block: Block) -> Result<()> {
         // Validate before adding
         if !self.validate_block(&block) {
             return Err(failure::format_err!("Block validation failed"));

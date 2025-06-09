@@ -3,12 +3,12 @@
 //! This module provides transaction processing capabilities for the modular blockchain
 //! architecture, independent of legacy UTXO systems.
 
-use crate::crypto::transaction::{Transaction, ContractTransactionData, ContractTransactionType};
+use crate::crypto::transaction::{ContractTransactionData, ContractTransactionType, Transaction};
 use crate::Result;
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use serde::{Deserialize, Serialize};
 
 /// Account-based state for modular transaction processing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,10 +88,11 @@ impl ModularTransactionProcessor {
 
     /// Add a transaction to the pool
     pub fn add_transaction(&self, transaction: Transaction) -> Result<()> {
-        let mut pool = self.tx_pool.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire transaction pool lock")
-        })?;
-        
+        let mut pool = self
+            .tx_pool
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
+
         // Basic validation
         if !self.validate_transaction(&transaction)? {
             return Err(failure::format_err!("Transaction validation failed"));
@@ -103,9 +104,10 @@ impl ModularTransactionProcessor {
 
     /// Get pending transactions from the pool
     pub fn get_pending_transactions(&self) -> Result<Vec<Transaction>> {
-        let pool = self.tx_pool.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire transaction pool lock")
-        })?;
+        let pool = self
+            .tx_pool
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
         Ok(pool.clone())
     }
 
@@ -135,7 +137,10 @@ impl ModularTransactionProcessor {
     }
 
     /// Process a batch of transactions
-    pub fn process_transactions(&self, transactions: &[Transaction]) -> Result<Vec<TransactionResult>> {
+    pub fn process_transactions(
+        &self,
+        transactions: &[Transaction],
+    ) -> Result<Vec<TransactionResult>> {
         let mut results = Vec::new();
         let mut total_gas_used = 0;
 
@@ -161,38 +166,42 @@ impl ModularTransactionProcessor {
 
     /// Get account state
     pub fn get_account_state(&self, address: &str) -> Result<ProcessorAccountState> {
-        let states = self.states.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire states lock")
-        })?;
-        
+        let states = self
+            .states
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire states lock"))?;
+
         Ok(states.get(address).cloned().unwrap_or_default())
     }
 
     /// Set account state
     pub fn set_account_state(&self, address: &str, state: ProcessorAccountState) -> Result<()> {
-        let mut states = self.states.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire states lock")
-        })?;
-        
+        let mut states = self
+            .states
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire states lock"))?;
+
         states.insert(address.to_string(), state);
         Ok(())
     }
 
     /// Clear the transaction pool
     pub fn clear_transaction_pool(&self) -> Result<()> {
-        let mut pool = self.tx_pool.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire transaction pool lock")
-        })?;
+        let mut pool = self
+            .tx_pool
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
         pool.clear();
         Ok(())
     }
 
     /// Remove specific transactions from pool
     pub fn remove_transactions(&self, tx_ids: &[String]) -> Result<()> {
-        let mut pool = self.tx_pool.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire transaction pool lock")
-        })?;
-        
+        let mut pool = self
+            .tx_pool
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
+
         pool.retain(|tx| !tx_ids.contains(&tx.id));
         Ok(())
     }
@@ -209,18 +218,24 @@ impl ModularTransactionProcessor {
     }
 
     /// Process a regular (non-contract) transaction
-    fn process_regular_transaction(&self, tx: &Transaction, result: &mut TransactionResult) -> Result<()> {
+    fn process_regular_transaction(
+        &self,
+        tx: &Transaction,
+        result: &mut TransactionResult,
+    ) -> Result<()> {
         // Check if this is a coinbase transaction (mining reward)
         if tx.vin.len() == 1 && tx.vin[0].txid.is_empty() && tx.vin[0].vout == -1 {
             // This is a coinbase transaction - just add rewards to outputs
             for output in &tx.vout {
-                let receiver_address = std::str::from_utf8(&output.pub_key_hash)
-                    .unwrap_or("unknown_address");
+                let receiver_address =
+                    std::str::from_utf8(&output.pub_key_hash).unwrap_or("unknown_address");
                 let mut receiver_state = self.get_account_state(receiver_address)?;
                 receiver_state.balance += output.value as u64;
-                
-                result.state_changes.insert(receiver_address.to_string(), receiver_state);
-                
+
+                result
+                    .state_changes
+                    .insert(receiver_address.to_string(), receiver_state);
+
                 result.events.push(TransactionEvent {
                     address: receiver_address.to_string(),
                     topics: vec!["coinbase_reward".to_string()],
@@ -252,8 +267,12 @@ impl ModularTransactionProcessor {
         receiver_state.balance += amount;
 
         // Record state changes
-        result.state_changes.insert(sender.to_string(), sender_state);
-        result.state_changes.insert(receiver.to_string(), receiver_state);
+        result
+            .state_changes
+            .insert(sender.to_string(), sender_state);
+        result
+            .state_changes
+            .insert(receiver.to_string(), receiver_state);
 
         // Create transfer event
         result.events.push(TransactionEvent {
@@ -266,7 +285,11 @@ impl ModularTransactionProcessor {
     }
 
     /// Process a contract transaction
-    fn process_contract_transaction(&self, tx: &Transaction, contract_data: &ContractTransactionData) -> Result<TransactionResult> {
+    fn process_contract_transaction(
+        &self,
+        tx: &Transaction,
+        contract_data: &ContractTransactionData,
+    ) -> Result<TransactionResult> {
         let mut result = TransactionResult {
             success: false,
             gas_used: self.config.base_gas_cost,
@@ -281,40 +304,60 @@ impl ModularTransactionProcessor {
         }
 
         match &contract_data.tx_type {
-            ContractTransactionType::Deploy { bytecode, constructor_args, gas_limit } => {
+            ContractTransactionType::Deploy {
+                bytecode,
+                constructor_args,
+                gas_limit,
+            } => {
                 result.gas_used += gas_limit / 10; // Simple gas calculation
-                
+
                 // Create contract account
                 let contract_address = format!("contract_{}", tx.id);
                 let mut contract_state = ProcessorAccountState::default();
                 contract_state.code = Some(bytecode.clone());
-                
-                result.state_changes.insert(contract_address.clone(), contract_state);
-                
+
+                // Store constructor arguments in contract state for initialization
+                if !constructor_args.is_empty() {
+                    contract_state
+                        .storage
+                        .insert("constructor_args".to_string(), constructor_args.clone());
+                    result.gas_used += constructor_args.len() as u64 / 100; // Gas for constructor args
+                }
+
+                result
+                    .state_changes
+                    .insert(contract_address.clone(), contract_state);
+
                 result.events.push(TransactionEvent {
                     address: contract_address,
                     topics: vec!["contract_deployed".to_string()],
                     data: format!("Contract deployed with {} bytes", bytecode.len()).into_bytes(),
                 });
-                
+
                 result.success = true;
-            },
-            ContractTransactionType::Call { contract_address, function_name, arguments: _, gas_limit, value: _ } => {
+            }
+            ContractTransactionType::Call {
+                contract_address,
+                function_name,
+                arguments: _,
+                gas_limit,
+                value: _,
+            } => {
                 result.gas_used += gas_limit / 10; // Simple gas calculation
-                
+
                 // Verify contract exists
                 let contract_state = self.get_account_state(contract_address)?;
                 if contract_state.code.is_none() {
                     result.error = Some("Contract not found".to_string());
                     return Ok(result);
                 }
-                
+
                 result.events.push(TransactionEvent {
                     address: contract_address.clone(),
                     topics: vec!["contract_called".to_string(), function_name.clone()],
                     data: format!("Function {} called", function_name).into_bytes(),
                 });
-                
+
                 result.success = true;
             }
         }
@@ -324,14 +367,15 @@ impl ModularTransactionProcessor {
 
     /// Apply state changes to the global state
     fn apply_state_changes(&self, changes: &HashMap<String, ProcessorAccountState>) -> Result<()> {
-        let mut states = self.states.lock().map_err(|_| {
-            failure::format_err!("Failed to acquire states lock")
-        })?;
-        
+        let mut states = self
+            .states
+            .lock()
+            .map_err(|_| failure::format_err!("Failed to acquire states lock"))?;
+
         for (address, state) in changes {
             states.insert(address.clone(), state.clone());
         }
-        
+
         Ok(())
     }
 }
@@ -345,7 +389,7 @@ mod tests {
     fn test_new_transaction_processor() {
         let config = TransactionProcessorConfig::default();
         let processor = ModularTransactionProcessor::new(config);
-        
+
         // Test initial state
         let account_state = processor.get_account_state("test_address").unwrap();
         assert_eq!(account_state.balance, 0);
@@ -356,14 +400,16 @@ mod tests {
     fn test_account_state_management() {
         let config = TransactionProcessorConfig::default();
         let processor = ModularTransactionProcessor::new(config);
-        
+
         let test_address = "test_address";
         let mut state = ProcessorAccountState::default();
         state.balance = 1000;
         state.nonce = 1;
-        
-        processor.set_account_state(test_address, state.clone()).unwrap();
-        
+
+        processor
+            .set_account_state(test_address, state.clone())
+            .unwrap();
+
         let retrieved_state = processor.get_account_state(test_address).unwrap();
         assert_eq!(retrieved_state.balance, 1000);
         assert_eq!(retrieved_state.nonce, 1);
@@ -373,20 +419,20 @@ mod tests {
     fn test_transaction_pool() {
         let config = TransactionProcessorConfig::default();
         let processor = ModularTransactionProcessor::new(config);
-        
+
         let tx = Transaction {
             id: "test_tx".to_string(),
             vin: vec![],
             vout: vec![],
             contract_data: None,
         };
-        
+
         processor.add_transaction(tx.clone()).unwrap();
-        
+
         let pending = processor.get_pending_transactions().unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(pending[0].id, "test_tx");
-        
+
         processor.clear_transaction_pool().unwrap();
         let pending = processor.get_pending_transactions().unwrap();
         assert_eq!(pending.len(), 0);

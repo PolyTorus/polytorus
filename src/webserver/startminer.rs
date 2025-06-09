@@ -17,11 +17,12 @@ pub async fn start_miner(req: web::Json<StartMinerRequest>) -> impl Responder {
     println!(
         "@start-Miner called: host={}, port={}",
         req_data.host, req_data.port
-    );    // Extract request data (not used in Phase 4 - legacy functions disabled)
+    ); // Extract request data (not used in Phase 4 - legacy functions disabled)
     let _host = req_data.host.clone();
     let _port = req_data.port.clone();
     let _bootstrap = req_data.bootstrap.clone();
-    let _mining_address = req_data.mining_address.clone();tokio::task::spawn_blocking(move || {
+    let _mining_address = req_data.mining_address.clone();
+    tokio::task::spawn_blocking(move || {
         // Legacy start miner function removed in Phase 4 - using modular architecture
         // if let Err(e) =
         //     cmd_start_miner_from_api(&host, &port, bootstrap.as_deref(), &mining_address)

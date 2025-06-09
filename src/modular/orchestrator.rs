@@ -65,7 +65,8 @@ impl ModularBlockchain {
             data_context.clone(),
             config.consensus.clone(),
             false, // Not a validator by default
-        )?;        let settlement_layer = PolyTorusSettlementLayer::new(config.settlement.clone())?;
+        )?;
+        let settlement_layer = PolyTorusSettlementLayer::new(config.settlement.clone())?;
 
         // Create modular network for data availability
         let network_config = super::network::ModularNetworkConfig::default();

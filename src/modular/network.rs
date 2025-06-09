@@ -18,10 +18,7 @@ pub enum ModularNetworkEvent {
         peer_id: String,
     },
     /// Data request from peer
-    DataRequest {
-        hash: String,
-        peer_id: String,
-    },
+    DataRequest { hash: String, peer_id: String },
     /// Peer connected
     PeerConnected(String),
     /// Peer disconnected
@@ -32,14 +29,9 @@ pub enum ModularNetworkEvent {
 #[derive(Debug, Clone)]
 pub enum ModularNetworkCommand {
     /// Broadcast data to network
-    BroadcastData {
-        hash: String,
-        data: Vec<u8>,
-    },
+    BroadcastData { hash: String, data: Vec<u8> },
     /// Request data from network
-    RequestData {
-        hash: String,
-    },
+    RequestData { hash: String },
     /// Send data to specific peer
     SendDataToPeer {
         peer_id: String,
@@ -104,15 +96,15 @@ impl ModularNetwork {
     /// Start the network layer
     pub async fn start(&self) -> Result<()> {
         log::info!("Starting modular network on {}", self.config.listen_address);
-        
+
         // TODO: Implement actual P2P networking
         // For now, this is a stub implementation
-        
+
         // Connect to bootstrap peers
         for peer in &self.config.bootstrap_peers {
             self.connect_to_peer(peer).await?;
         }
-        
+
         log::info!("Modular network started successfully");
         Ok(())
     }
@@ -134,10 +126,10 @@ impl ModularNetwork {
     /// Broadcast data to network
     pub async fn broadcast_data(&self, hash: &str, data: &[u8]) -> Result<()> {
         log::debug!("Broadcasting data: {}", hash);
-        
+
         // Store locally first
         self.store_data(hash, data.to_vec())?;
-        
+
         // Send to all connected peers
         let peers = self.peers.lock().unwrap();
         for peer_id in peers.keys() {
@@ -145,25 +137,25 @@ impl ModularNetwork {
                 log::warn!("Failed to send data to peer {}: {}", peer_id, e);
             }
         }
-        
+
         Ok(())
     }
 
     /// Request data from network
     pub async fn request_data(&self, hash: &str) -> Result<Option<Vec<u8>>> {
         log::debug!("Requesting data: {}", hash);
-        
+
         // Check if we have it locally first
         if let Some(data) = self.get_local_data(hash) {
             return Ok(Some(data));
         }
-        
+
         // Track the request
         {
             let mut pending = self.pending_requests.lock().unwrap();
             pending.insert(hash.to_string(), SystemTime::now());
         }
-        
+
         // Request from peers
         let peers = self.peers.lock().unwrap();
         for peer_id in peers.keys() {
@@ -171,7 +163,7 @@ impl ModularNetwork {
                 log::warn!("Failed to request data from peer {}: {}", peer_id, e);
             }
         }
-        
+
         // TODO: Implement actual request/response mechanism
         // For now, return None to indicate data not available
         Ok(None)
@@ -196,7 +188,7 @@ impl ModularNetwork {
         let peers = self.peers.lock().unwrap();
         let local_data = self.local_data.lock().unwrap();
         let pending = self.pending_requests.lock().unwrap();
-        
+
         ModularNetworkStats {
             connected_peers: peers.len(),
             stored_data_items: local_data.len(),
@@ -209,7 +201,7 @@ impl ModularNetwork {
     /// Connect to a peer
     async fn connect_to_peer(&self, peer_address: &str) -> Result<()> {
         log::debug!("Connecting to peer: {}", peer_address);
-        
+
         // TODO: Implement actual peer connection
         // For now, just add to our peer list
         let peer_info = PeerInfo {
@@ -219,10 +211,10 @@ impl ModularNetwork {
             data_served: 0,
             data_requested: 0,
         };
-        
+
         let mut peers = self.peers.lock().unwrap();
         peers.insert(peer_address.to_string(), peer_info);
-        
+
         log::info!("Connected to peer: {}", peer_address);
         Ok(())
     }
@@ -230,13 +222,13 @@ impl ModularNetwork {
     /// Send data to a specific peer
     async fn send_data_to_peer(&self, peer_id: &str, hash: &str, _data: &[u8]) -> Result<()> {
         log::debug!("Sending data {} to peer {}", hash, peer_id);
-        
+
         // Update peer stats
         if let Some(peer) = self.peers.lock().unwrap().get_mut(peer_id) {
             peer.data_served += 1;
             peer.last_seen = SystemTime::now();
         }
-        
+
         // TODO: Implement actual data transmission
         log::debug!("Data sent successfully to peer {}", peer_id);
         Ok(())
@@ -245,16 +237,59 @@ impl ModularNetwork {
     /// Request data from a specific peer
     async fn request_data_from_peer(&self, peer_id: &str, hash: &str) -> Result<()> {
         log::debug!("Requesting data {} from peer {}", hash, peer_id);
-        
+
         // Update peer stats
         if let Some(peer) = self.peers.lock().unwrap().get_mut(peer_id) {
             peer.data_requested += 1;
             peer.last_seen = SystemTime::now();
         }
-        
+
         // TODO: Implement actual data request
         log::debug!("Data request sent to peer {}", peer_id);
         Ok(())
+    }
+
+    /// Get peer information using address and connected_at fields
+    pub fn get_peer_info(&self, peer_id: &str) -> Option<(String, SystemTime)> {
+        let peers = self.peers.lock().unwrap();
+        peers.get(peer_id).map(|peer| (peer.address.clone(), peer.connected_at))
+    }
+
+    /// Add peer with address and connection time
+    pub fn add_peer_with_info(&self, peer_id: String, address: String) -> Result<()> {
+        let mut peers = self.peers.lock().unwrap();
+        let peer_info = PeerInfo {
+            address: address.clone(),
+            connected_at: SystemTime::now(),
+            last_seen: SystemTime::now(),
+            data_served: 0,
+            data_requested: 0,
+        };
+        peers.insert(peer_id, peer_info);
+        Ok(())
+    }
+
+    /// Get peer address
+    pub fn get_peer_address(&self, peer_id: &str) -> Option<String> {
+        let peers = self.peers.lock().unwrap();
+        peers.get(peer_id).map(|peer| peer.address.clone())
+    }
+
+    /// Get peer connection time
+    pub fn get_peer_connection_time(&self, peer_id: &str) -> Option<SystemTime> {
+        let peers = self.peers.lock().unwrap();
+        peers.get(peer_id).map(|peer| peer.connected_at)
+    }
+
+    /// Update peer last seen time
+    pub fn update_peer_last_seen(&self, peer_id: &str) -> Result<()> {
+        let mut peers = self.peers.lock().unwrap();
+        if let Some(peer) = peers.get_mut(peer_id) {
+            peer.last_seen = SystemTime::now();
+            Ok(())
+        } else {
+            Err(failure::format_err!("Peer not found: {}", peer_id))
+        }
     }
 }
 
@@ -297,17 +332,17 @@ mod tests {
     async fn test_data_storage_and_retrieval() {
         let config = ModularNetworkConfig::default();
         let network = ModularNetwork::new(config).unwrap();
-        
+
         let hash = "test_hash";
         let data = vec![1, 2, 3, 4, 5];
-        
+
         // Store data
         network.store_data(hash, data.clone()).unwrap();
-        
+
         // Retrieve data
         let retrieved = network.get_local_data(hash);
         assert_eq!(retrieved, Some(data));
-        
+
         // Check availability
         assert!(network.is_data_available(hash));
     }
@@ -316,7 +351,7 @@ mod tests {
     async fn test_network_stats() {
         let config = ModularNetworkConfig::default();
         let network = ModularNetwork::new(config).unwrap();
-        
+
         let stats = network.get_stats();
         assert_eq!(stats.connected_peers, 0);
         assert_eq!(stats.stored_data_items, 0);

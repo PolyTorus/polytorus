@@ -2,7 +2,7 @@ use env_logger::Env;
 use polytorus::command::cli::Cli;
 
 /// PolyTorus - Post Quantum Modular Blockchain
-/// 
+///
 /// This is the main entry point for the PolyTorus blockchain platform.
 /// The platform is built on a modular architecture with separate layers
 /// for execution, settlement, consensus, and data availability.

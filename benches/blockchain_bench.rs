@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use polytorus::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
 use polytorus::blockchain::types::{block_states, network};
-use polytorus::crypto::transaction::{Transaction, TXInput, TXOutput};
+use polytorus::crypto::transaction::{TXInput, TXOutput, Transaction};
 use std::time::Duration;
 
 /// Create a test transaction for benchmarking
@@ -229,7 +229,7 @@ fn create_simple_transaction(from: String, to: String, amount: i32, nonce: i32) 
 fn benchmark_tps(c: &mut Criterion) {
     let mut group = c.benchmark_group("tps_throughput");
     group.measurement_time(Duration::from_secs(20));
-    group.sample_size(10);    // Test different transaction volumes to measure TPS
+    group.sample_size(10); // Test different transaction volumes to measure TPS
     for tx_count in [10, 25, 50].iter() {
         group.bench_with_input(
             BenchmarkId::new("tps", tx_count),
@@ -301,9 +301,10 @@ fn benchmark_pure_transaction_processing(c: &mut Criterion) {
             tx_count,
             |b, &tx_count| {
                 b.iter_custom(|iters| {
-                    let start = std::time::Instant::now();                    for _ in 0..iters {
+                    let start = std::time::Instant::now();
+                    for _ in 0..iters {
                         // Create first transaction as coinbase
-                        let mut transactions = vec![create_test_transaction()];                        // Create regular transactions
+                        let mut transactions = vec![create_test_transaction()]; // Create regular transactions
                         for i in 1..tx_count {
                             let tx = create_simple_transaction(
                                 format!("pure_addr_{}", i),
@@ -346,18 +347,18 @@ fn benchmark_concurrent_tps(c: &mut Criterion) {
                 b.iter_custom(|iters| {
                     let start = std::time::Instant::now();
 
-                    for _ in 0..iters {                        let handles: Vec<thread::JoinHandle<()>> = (0..thread_count)
+                    for _ in 0..iters {
+                        let handles: Vec<thread::JoinHandle<()>> = (0..thread_count)
                             .map(|thread_id| {
                                 thread::spawn(move || {
                                     // Each thread processes transactions
                                     // First create a coinbase transaction
-                                    let mut transactions = vec![
-                                        Transaction::new_coinbase(
-                                            format!("concurrent_address_{}", thread_id),
-                                            format!("concurrent_reward_{}", thread_id)
-                                        ).expect("Failed to create coinbase transaction")
-                                    ];
-                                      // Add regular transactions
+                                    let mut transactions = vec![Transaction::new_coinbase(
+                                        format!("concurrent_address_{}", thread_id),
+                                        format!("concurrent_reward_{}", thread_id),
+                                    )
+                                    .expect("Failed to create coinbase transaction")];
+                                    // Add regular transactions
                                     for i in 1..50 {
                                         let tx = create_simple_transaction(
                                             format!("concurrent_addr_{}_{}", thread_id, i),
