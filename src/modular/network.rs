@@ -131,9 +131,12 @@ impl ModularNetwork {
         self.store_data(hash, data.to_vec())?;
 
         // Send to all connected peers
-        let peers = self.peers.lock().unwrap();
-        for peer_id in peers.keys() {
-            if let Err(e) = self.send_data_to_peer(peer_id, hash, data).await {
+        let peer_ids: Vec<String> = {
+            let peers = self.peers.lock().unwrap();
+            peers.keys().cloned().collect()
+        };
+        for peer_id in peer_ids {
+            if let Err(e) = self.send_data_to_peer(&peer_id, hash, data).await {
                 log::warn!("Failed to send data to peer {}: {}", peer_id, e);
             }
         }
@@ -157,9 +160,12 @@ impl ModularNetwork {
         }
 
         // Request from peers
-        let peers = self.peers.lock().unwrap();
-        for peer_id in peers.keys() {
-            if let Err(e) = self.request_data_from_peer(peer_id, hash).await {
+        let peer_ids: Vec<String> = {
+            let peers = self.peers.lock().unwrap();
+            peers.keys().cloned().collect()
+        };
+        for peer_id in peer_ids {
+            if let Err(e) = self.request_data_from_peer(&peer_id, hash).await {
                 log::warn!("Failed to request data from peer {}: {}", peer_id, e);
             }
         }

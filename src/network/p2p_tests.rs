@@ -82,11 +82,13 @@ mod tests {
         // Node is created successfully
     }
 
-    /// Test network manager creation
-    #[tokio::test]
+    /// Test network manager creation    #[tokio::test]
+    #[allow(dead_code)]
     async fn test_network_manager_creation() {
-        let mut config = NetworkConfig::default();
-        config.listen_address = "127.0.0.1:0".to_string(); // Use random port for testing
+        let config = NetworkConfig {
+            listen_address: "127.0.0.1:0".to_string(), // Use random port for testing
+            ..Default::default()
+        };
 
         let result = NetworkManager::new(config).await;
         assert!(result.is_ok());
@@ -96,14 +98,17 @@ mod tests {
     }
 
     /// Integration test for peer discovery (simplified)
-    #[tokio::test]
-    async fn test_peer_discovery_simulation() {
+    #[tokio::test]    async fn test_peer_discovery_simulation() {
         // Create two network managers
-        let mut config1 = NetworkConfig::default();
-        config1.listen_address = "127.0.0.1:0".to_string(); // Random port
+        let config1 = NetworkConfig {
+            listen_address: "127.0.0.1:0".to_string(), // Random port
+            ..Default::default()
+        };
 
-        let mut config2 = NetworkConfig::default();
-        config2.listen_address = "127.0.0.1:0".to_string(); // Random port
+        let config2 = NetworkConfig {
+            listen_address: "127.0.0.1:0".to_string(), // Random port
+            ..Default::default()
+        };
 
         let manager1_result = NetworkManager::new(config1).await;
         let manager2_result = NetworkManager::new(config2).await;

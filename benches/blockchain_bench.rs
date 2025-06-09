@@ -165,8 +165,8 @@ fn benchmark_multiple_transactions(c: &mut Criterion) {
                         let tx = create_simple_transaction(
                             format!("multi_addr_{}", i),
                             format!("multi_dest_{}", i),
-                            10 + i as i32,
-                            i as i32,
+                            10 + i,
+                            i,
                         );
                         transactions.push(tx);
                     }
@@ -249,8 +249,8 @@ fn benchmark_tps(c: &mut Criterion) {
                             let tx = create_simple_transaction(
                                 format!("addr_{}", i),
                                 format!("dest_{}", i),
-                                10 + i as i32,
-                                total_transactions + i as i32,
+                                10 + i,
+                                total_transactions + i,
                             );
                             transactions.push(tx);
                         }
@@ -309,8 +309,8 @@ fn benchmark_pure_transaction_processing(c: &mut Criterion) {
                             let tx = create_simple_transaction(
                                 format!("pure_addr_{}", i),
                                 format!("pure_dest_{}", i),
-                                10 + i as i32,
-                                i as i32,
+                                10 + i,
+                                i,
                             );
                             transactions.push(tx);
                         }
@@ -363,8 +363,8 @@ fn benchmark_concurrent_tps(c: &mut Criterion) {
                                         let tx = create_simple_transaction(
                                             format!("concurrent_addr_{}_{}", thread_id, i),
                                             format!("concurrent_dest_{}_{}", thread_id, i),
-                                            10 + i as i32,
-                                            (thread_id * 1000 + i) as i32,
+                                            10 + i,
+                                            thread_id * 1000 + i,
                                         );
                                         transactions.push(tx);
                                     }

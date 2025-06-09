@@ -11,23 +11,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 /// Account-based state for modular transaction processing
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProcessorAccountState {
     pub balance: u64,
     pub nonce: u64,
     pub code: Option<Vec<u8>>,
     pub storage: HashMap<String, Vec<u8>>,
-}
-
-impl Default for ProcessorAccountState {
-    fn default() -> Self {
-        Self {
-            balance: 0,
-            nonce: 0,
-            code: None,
-            storage: HashMap::new(),
-        }
-    }
 }
 
 /// Transaction processing result
@@ -313,8 +302,10 @@ impl ModularTransactionProcessor {
 
                 // Create contract account
                 let contract_address = format!("contract_{}", tx.id);
-                let mut contract_state = ProcessorAccountState::default();
-                contract_state.code = Some(bytecode.clone());
+                let mut contract_state = ProcessorAccountState {
+                    code: Some(bytecode.clone()),
+                    ..Default::default()
+                };
 
                 // Store constructor arguments in contract state for initialization
                 if !constructor_args.is_empty() {
@@ -402,9 +393,11 @@ mod tests {
         let processor = ModularTransactionProcessor::new(config);
 
         let test_address = "test_address";
-        let mut state = ProcessorAccountState::default();
-        state.balance = 1000;
-        state.nonce = 1;
+        let state = ProcessorAccountState {
+            balance: 1000,
+            nonce: 1,
+            ..Default::default()
+        };
 
         processor
             .set_account_state(test_address, state.clone())

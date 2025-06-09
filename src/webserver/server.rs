@@ -9,7 +9,7 @@ use actix_web::{App, HttpServer};
 pub struct WebServer {}
 
 impl WebServer {
-    pub async fn new() -> std::io::Result<()> {
+    pub async fn run() -> std::io::Result<()> {
         HttpServer::new(|| {
             App::new()
                 .service(createwallet::create_wallet)

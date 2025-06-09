@@ -55,7 +55,6 @@ impl PolyTorusDataAvailabilityLayer {
     }
 
     /// Verify merkle proof
-    #[allow(dead_code)]
     fn verify_merkle_proof(&self, proof: &[Hash], root: &Hash, data_hash: &Hash) -> bool {
         // Simplified verification
         // In a real implementation, this would verify the merkle path
@@ -87,12 +86,42 @@ impl PolyTorusDataAvailabilityLayer {
         Ok(())
     }
     /// Request data from network peers
-    #[allow(dead_code)]
     async fn request_from_network(&self, hash: &Hash) -> Result<Vec<u8>> {
         log::info!("Requesting data {} from network", hash);
 
         // Use the modular network to request data
         self.network.retrieve_data(hash).await
+    }
+
+    /// Validate availability proof for given data hash
+    pub fn validate_proof(&self, hash: &Hash) -> Result<bool> {
+        if let Ok(proof) = self.get_availability_proof(hash) {
+            let is_valid = self.verify_merkle_proof(
+                &proof.merkle_proof,
+                &proof.root_hash,
+                &proof.data_hash,
+            );
+            Ok(is_valid)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Request and retrieve data from network
+    pub async fn fetch_from_network(&self, hash: &Hash) -> Result<Vec<u8>> {
+        self.request_from_network(hash).await
+    }
+
+    /// Get network instance for external operations
+    pub fn get_network(&self) -> &Arc<ModularNetwork> {
+        &self.network
+    }
+
+    /// Get local data storage statistics
+    pub fn get_storage_stats(&self) -> (usize, usize) {
+        let storage = self.data_storage.lock().unwrap();
+        let proofs = self.availability_proofs.lock().unwrap();
+        (storage.len(), proofs.len())
     }
 }
 

@@ -7,6 +7,9 @@ use super::traits::Hash;
 use crate::blockchain::block::Block;
 use crate::Result;
 
+#[cfg(test)]
+use crate::blockchain::block::TestFinalizedParams;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -133,7 +136,7 @@ impl ModularStorage {
 
         // Configure sled database
         let db_config = sled::Config::default()
-            .path(&config.db_path.join("blocks"))
+            .path(config.db_path.join("blocks"))
             .cache_capacity((config.cache_size_mb * 1024 * 1024) as u64)
             .flush_every_ms(if config.sync_writes { Some(100) } else { None })
             .compression_factor(if config.enable_compression { 22 } else { 1 });
@@ -142,14 +145,14 @@ impl ModularStorage {
 
         // Separate databases for different data types
         let state_db = sled::Config::default()
-            .path(&config.db_path.join("state"))
+            .path(config.db_path.join("state"))
             .cache_capacity((config.cache_size_mb * 1024 * 1024 / 4) as u64)
             .flush_every_ms(if config.sync_writes { Some(100) } else { None })
             .compression_factor(if config.enable_compression { 22 } else { 1 })
             .open()?;
 
         let index_db = sled::Config::default()
-            .path(&config.db_path.join("index"))
+            .path(config.db_path.join("index"))
             .cache_capacity((config.cache_size_mb * 1024 * 1024 / 4) as u64)
             .flush_every_ms(if config.sync_writes { Some(100) } else { None })
             .compression_factor(if config.enable_compression { 22 } else { 1 })
@@ -538,17 +541,19 @@ mod tests {
 
         Block::new_test_finalized(
             transactions,
-            if height == 0 {
-                String::new()
-            } else {
-                format!("prev_hash_{}", height - 1)
+            TestFinalizedParams {
+                prev_block_hash: if height == 0 {
+                    String::new()
+                } else {
+                    format!("prev_hash_{}", height - 1)
+                },
+                hash: format!("test_hash_{}", height),
+                nonce: 0,
+                height,
+                difficulty: 1,
+                difficulty_config: Default::default(),
+                mining_stats: Default::default(),
             },
-            format!("test_hash_{}", height),
-            0,
-            height,
-            1,
-            Default::default(),
-            Default::default(),
         )
     }
 

@@ -479,3 +479,217 @@ pub fn get_pending_transactions(&self) -> Result<Vec<Transaction>>
 ```rust
 pub fn clear_transaction_pool(&self) -> Result<()>
 ```
+
+## CLI API Reference
+
+### Overview
+PolyTorus provides a comprehensive command-line interface with modular architecture support, cryptographic wallet management, and blockchain operations.
+
+### Command Structure
+```bash
+polytorus [GLOBAL_OPTIONS] <COMMAND> [COMMAND_OPTIONS]
+```
+
+### Global Options
+- `--config, -c <FILE>`: Configuration file path
+- `--verbose, -v`: Enable verbose output
+- `--help, -h`: Show help information
+- `--version, -V`: Show version information
+
+### Commands
+
+#### Modular Architecture Commands
+
+**Start Modular Blockchain**
+```bash
+polytorus modular start [CONFIG_FILE]
+```
+- `CONFIG_FILE` (optional): Path to TOML configuration file
+- Default: Uses built-in configuration
+
+**Mine Blocks (Modular)**
+```bash
+polytorus modular mine <ADDRESS>
+```
+- `ADDRESS`: Mining reward address
+
+**Check Modular State**
+```bash
+polytorus modular state
+```
+
+**View Layer Information**
+```bash
+polytorus modular layers
+```
+
+#### Wallet Management
+
+**Create Wallet**
+```bash
+polytorus createwallet <TYPE> [OPTIONS]
+```
+- `TYPE`: Cryptographic type (`ECDSA` | `FNDSA`)
+- `--name <NAME>`: Wallet name (optional)
+
+**List Addresses**
+```bash
+polytorus listaddresses
+```
+
+**Get Balance**
+```bash
+polytorus getbalance <ADDRESS>
+```
+
+#### Traditional Blockchain Commands
+
+**Start Node**
+```bash
+polytorus start-node [OPTIONS]
+```
+- `--port <PORT>`: Network port (default: 8333)
+
+**Start Mining**
+```bash
+polytorus start-miner [OPTIONS]
+```
+- `--threads <COUNT>`: Mining threads (default: 4)
+- `--address <ADDRESS>`: Mining reward address
+
+**Print Chain**
+```bash
+polytorus print-chain
+```
+
+**Reindex Blockchain**
+```bash
+polytorus reindex
+```
+
+#### Web Server
+
+**Start Web Server**
+```bash
+polytorus start-webserver [OPTIONS]
+```
+- `--port <PORT>`: Server port (default: 8080)
+- `--bind <ADDRESS>`: Bind address (default: 127.0.0.1)
+
+### Configuration Files
+
+#### TOML Configuration Structure
+```toml
+[blockchain]
+difficulty = 4
+max_transactions_per_block = 1000
+
+[network]
+port = 8333
+max_peers = 50
+
+[modular]
+enable_consensus_layer = true
+enable_execution_layer = true
+enable_settlement_layer = true
+enable_data_availability_layer = true
+
+[mining]
+threads = 4
+reward_address = "your_address_here"
+
+[web]
+port = 8080
+bind_address = "127.0.0.1"
+cors_enabled = true
+```
+
+#### Environment Configuration
+```bash
+# Environment variables
+export POLYTORUS_CONFIG="/path/to/config.toml"
+export POLYTORUS_DATA_DIR="/path/to/data"
+export POLYTORUS_LOG_LEVEL="info"
+```
+
+### CLI Testing Commands
+
+**Run All Tests**
+```bash
+cargo test
+```
+
+**Run CLI-Specific Tests**
+```bash
+cargo test cli_tests
+```
+
+**Run Configuration Tests**
+```bash
+cargo test test_configuration
+```
+
+**Run Wallet Tests**
+```bash
+cargo test test_wallet
+```
+
+**Run Modular Tests**
+```bash
+cargo test test_modular
+```
+
+### Error Handling
+
+#### Common Error Codes
+- `CONFIG_NOT_FOUND`: Configuration file not found
+- `INVALID_ADDRESS`: Invalid wallet address format
+- `INSUFFICIENT_FUNDS`: Insufficient balance for transaction
+- `NETWORK_ERROR`: Network connectivity issues
+- `VALIDATION_ERROR`: Transaction or block validation failed
+
+#### Error Response Format
+```json
+{
+  "error": {
+    "code": "CONFIG_NOT_FOUND",
+    "message": "Configuration file not found at specified path",
+    "details": {
+      "path": "/path/to/config.toml",
+      "suggestion": "Create configuration file or use default settings"
+    }
+  }
+}
+```
+
+### Examples
+
+#### Complete Workflow Example
+```bash
+# 1. Create quantum-resistant wallet
+polytorus createwallet FNDSA --name quantum-wallet
+
+# 2. Start modular blockchain
+polytorus modular start
+
+# 3. Start mining to wallet address
+polytorus modular mine 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+
+# 4. Check blockchain state
+polytorus modular state
+
+# 5. Start web interface
+polytorus start-webserver --port 8080
+```
+
+#### Configuration Testing Example
+```bash
+# Test configuration validation
+echo '[blockchain]
+difficulty = 4
+[network]
+port = 8333' > test-config.toml
+
+# Start with custom configuration
+polytorus modular start test-config.toml
+```

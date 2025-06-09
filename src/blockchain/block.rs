@@ -97,8 +97,20 @@ impl MiningStats {
             0.0
         } else {
             self.successful_mines as f64 / self.total_attempts as f64
-        }
-    }
+        }    }
+}
+
+/// Test parameters for creating finalized blocks
+#[cfg(test)]
+#[derive(Clone)]
+pub struct TestFinalizedParams {
+    pub prev_block_hash: String,
+    pub hash: String,
+    pub nonce: i32,
+    pub height: i32,
+    pub difficulty: usize,
+    pub difficulty_config: DifficultyAdjustmentConfig,
+    pub mining_stats: MiningStats,
 }
 
 /// Type-safe block with state tracking
@@ -475,11 +487,12 @@ impl<N: NetworkConfig> Block<block_states::Building, N> {
         transactions: Vec<Transaction>,
         prev_block_hash: String,
         height: i32,
-    ) -> Self {
-        let difficulty = if height == 0 {
+    ) -> Self {        let difficulty = if height == 0 {
             N::INITIAL_DIFFICULTY
         } else {
-            N::INITIAL_DIFFICULTY // This would be calculated based on previous blocks
+            // For now, keep initial difficulty but this should be calculated based on previous blocks
+            // TODO: Implement dynamic difficulty adjustment based on block timing
+            N::INITIAL_DIFFICULTY
         };
 
         Self::new_building(transactions, prev_block_hash, height, difficulty)
@@ -607,20 +620,11 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
 
         (recommended.round() as usize)
             .max(self.difficulty_config.min_difficulty)
-            .min(self.difficulty_config.max_difficulty)
-    }
-
-    /// Test helper to create a finalized block (should only be used in tests)
+            .min(self.difficulty_config.max_difficulty)    }    /// Test helper to create a finalized block (should only be used in tests)
     #[cfg(test)]
     pub fn new_test_finalized(
         transactions: Vec<Transaction>,
-        prev_block_hash: String,
-        hash: String,
-        nonce: i32,
-        height: i32,
-        difficulty: usize,
-        difficulty_config: DifficultyAdjustmentConfig,
-        mining_stats: MiningStats,
+        params: TestFinalizedParams,
     ) -> Self {
         Block {
             timestamp: SystemTime::now()
@@ -628,13 +632,13 @@ impl<N: NetworkConfig> Block<block_states::Finalized, N> {
                 .unwrap()
                 .as_millis(),
             transactions,
-            prev_block_hash,
-            hash,
-            nonce,
-            height,
-            difficulty,
-            difficulty_config,
-            mining_stats,
+            prev_block_hash: params.prev_block_hash,
+            hash: params.hash,
+            nonce: params.nonce,
+            height: params.height,
+            difficulty: params.difficulty,
+            difficulty_config: params.difficulty_config,
+            mining_stats: params.mining_stats,
             _state: PhantomData,
             _network: PhantomData,
         }

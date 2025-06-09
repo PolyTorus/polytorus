@@ -7,7 +7,7 @@ use crate::crypto::wallets::*;
 use crate::modular::{
     default_modular_config, load_modular_config_from_file, ModularBlockchainBuilder,
 };
-use crate::webserver::webserver::WebServer;
+use crate::webserver::server::WebServer;
 use crate::Result;
 use clap::{App, Arg, ArgMatches};
 use std::process::exit;
@@ -348,7 +348,7 @@ impl Cli {
 }
 
 async fn cmd_server() -> Result<()> {
-    WebServer::new().await?;
+    WebServer::run().await?;
     Ok(())
 }
 
