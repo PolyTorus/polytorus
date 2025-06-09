@@ -10,6 +10,7 @@ use std::path::Path;
 
 pub mod consensus;
 pub mod data_availability;
+pub mod eutxo_processor;
 pub mod execution;
 pub mod network;
 pub mod orchestrator;
@@ -21,6 +22,7 @@ pub mod transaction_processor;
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
+pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
 pub use execution::PolyTorusExecutionLayer;
 pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
 pub use orchestrator::{ModularBlockchain, ModularBlockchainBuilder, ModularEvent, StateInfo};
@@ -32,6 +34,12 @@ pub use traits::*;
 pub use transaction_processor::{
     ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
     TransactionResult,
+};
+
+// Re-export configuration types for external use
+pub use traits::{
+    ModularConfig, ExecutionConfig, SettlementConfig, ConsensusConfig, 
+    DataAvailabilityConfig, NetworkConfig, WasmConfig
 };
 
 #[cfg(test)]

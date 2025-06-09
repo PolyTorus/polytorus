@@ -224,19 +224,32 @@ impl ModularBlockchain {
             .send(ModularEvent::ChallengeSubmitted(challenge));
 
         Ok(result)
-    }
-
-    /// Get blockchain state information
+    }    /// Get blockchain state information
     pub fn get_state_info(&self) -> Result<StateInfo> {
         let execution_layer = self.execution_layer.lock().unwrap();
         let consensus_layer = self.consensus_layer.lock().unwrap();
+
+        // Get eUTXO statistics from the execution layer
+        let eutxo_stats = execution_layer.get_eutxo_stats()?;
 
         Ok(StateInfo {
             execution_state_root: execution_layer.get_state_root(),
             settlement_root: self.settlement_layer.get_settlement_root(),
             block_height: consensus_layer.get_block_height()?,
             canonical_chain_length: consensus_layer.get_canonical_chain().len(),
-        })
+            eutxo_stats,        })
+    }
+
+    /// Get eUTXO balance for an address
+    pub fn get_eutxo_balance(&self, address: &str) -> Result<u64> {
+        let execution_layer = self.execution_layer.lock().unwrap();
+        execution_layer.get_eutxo_balance(address)
+    }
+
+    /// Find spendable UTXOs for an address
+    pub fn find_spendable_eutxos(&self, address: &str, amount: u64) -> Result<Vec<super::eutxo_processor::UtxoState>> {
+        let execution_layer = self.execution_layer.lock().unwrap();
+        execution_layer.find_spendable_eutxos(address, amount)
     }
 
     /// Start the event processing loop
@@ -310,6 +323,8 @@ pub struct StateInfo {
     pub block_height: u64,
     /// Length of canonical chain
     pub canonical_chain_length: usize,
+    /// Extended UTXO statistics
+    pub eutxo_stats: super::eutxo_processor::UtxoStats,
 }
 
 /// Builder for modular blockchain

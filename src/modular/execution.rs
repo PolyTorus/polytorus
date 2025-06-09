@@ -7,6 +7,7 @@ use super::traits::*;
 use super::transaction_processor::{
     ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
 };
+use super::eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig};
 use crate::blockchain::block::Block;
 use crate::config::DataContext;
 use crate::crypto::transaction::Transaction;
@@ -21,8 +22,10 @@ use std::sync::{Arc, Mutex};
 pub struct PolyTorusExecutionLayer {
     /// Contract execution engine
     contract_engine: Arc<Mutex<ContractEngine>>,
-    /// Modular transaction processor
+    /// Modular transaction processor (account-based)
     transaction_processor: Arc<ModularTransactionProcessor>,
+    /// Extended UTXO processor (eUTXO-based)
+    eutxo_processor: Arc<EUtxoProcessor>,
     /// Current state root
     state_root: Arc<Mutex<Hash>>,
     /// Account states
@@ -48,8 +51,7 @@ pub struct ExecutionContext {
     gas_used: u64,
 }
 
-impl PolyTorusExecutionLayer {
-    /// Create a new execution layer
+impl PolyTorusExecutionLayer {    /// Create a new execution layer
     pub fn new(data_context: DataContext, config: ExecutionConfig) -> Result<Self> {
         let contract_state_path = data_context.data_dir().join("contracts");
         let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
@@ -59,9 +61,14 @@ impl PolyTorusExecutionLayer {
         let tx_processor_config = TransactionProcessorConfig::default();
         let transaction_processor = Arc::new(ModularTransactionProcessor::new(tx_processor_config));
 
+        // Create eUTXO processor with default configuration
+        let eutxo_config = EUtxoProcessorConfig::default();
+        let eutxo_processor = Arc::new(EUtxoProcessor::new(eutxo_config));
+
         Ok(Self {
             contract_engine: Arc::new(Mutex::new(contract_engine)),
             transaction_processor,
+            eutxo_processor,
             state_root: Arc::new(Mutex::new("genesis".to_string())),
             account_states: Arc::new(Mutex::new(HashMap::new())),
             execution_context: Arc::new(Mutex::new(None)),
@@ -190,34 +197,67 @@ impl PolyTorusExecutionLayer {
     }
 }
 
-impl ExecutionLayer for PolyTorusExecutionLayer {
-    fn execute_block(&self, block: &Block) -> Result<ExecutionResult> {
+impl ExecutionLayer for PolyTorusExecutionLayer {    fn execute_block(&self, block: &Block) -> Result<ExecutionResult> {
         let mut receipts = Vec::new();
         let mut total_gas_used = 0;
         let mut all_events = Vec::new();
 
-        // Use the modular transaction processor for block execution
         let transactions = block.get_transactions().to_vec();
-        let tx_results = self
-            .transaction_processor
-            .process_transactions(&transactions)?;
 
-        // Convert transaction results to execution receipts
-        for (tx, tx_result) in transactions.iter().zip(tx_results.iter()) {
-            let receipt = TransactionReceipt {
+        // Process transactions with both account-based and eUTXO models
+        for tx in &transactions {
+            let mut receipt = TransactionReceipt {
                 tx_hash: tx.id.clone(),
-                success: tx_result.success,
-                gas_used: tx_result.gas_used,
-                events: tx_result
-                    .events
-                    .iter()
-                    .map(|e| Event {
-                        contract: e.address.clone(),
-                        data: e.data.clone(),
-                        topics: e.topics.clone(),
-                    })
-                    .collect(),
+                success: false,
+                gas_used: 0,
+                events: Vec::new(),
             };
+
+            // Check if this is an eUTXO transaction (has inputs with scripts/redeeemers)
+            let is_eutxo_tx = tx.vin.iter().any(|input| 
+                input.redeemer.is_some() || 
+                !input.txid.is_empty() // Not a coinbase transaction
+            );
+
+            if is_eutxo_tx {
+                // Process with eUTXO model
+                match self.eutxo_processor.process_transaction(tx) {
+                    Ok(eutxo_result) => {
+                        receipt.success = eutxo_result.success;
+                        receipt.gas_used = eutxo_result.gas_used;
+                        receipt.events = eutxo_result.events.iter()
+                            .map(|e| Event {
+                                contract: e.address.clone(),
+                                data: e.data.clone(),
+                                topics: e.topics.clone(),
+                            })
+                            .collect();
+                    }
+                    Err(e) => {
+                        log::warn!("eUTXO transaction processing failed: {}", e);
+                        continue;
+                    }
+                }
+            } else {
+                // Process with traditional account-based model
+                match self.transaction_processor.process_transaction(tx) {
+                    Ok(tx_result) => {
+                        receipt.success = tx_result.success;
+                        receipt.gas_used = tx_result.gas_used;
+                        receipt.events = tx_result.events.iter()
+                            .map(|e| Event {
+                                contract: e.address.clone(),
+                                data: e.data.clone(),
+                                topics: e.topics.clone(),
+                            })
+                            .collect();
+                    }
+                    Err(e) => {
+                        log::warn!("Account-based transaction processing failed: {}", e);
+                        continue;
+                    }
+                }
+            }
 
             total_gas_used += receipt.gas_used;
             all_events.extend(receipt.events.clone());
@@ -401,5 +441,35 @@ impl PolyTorusExecutionLayer {
     /// Process and execute a contract transaction publicly
     pub fn process_contract_transaction(&self, tx: &Transaction) -> Result<TransactionReceipt> {
         self.execute_contract_transaction(tx)
+    }
+
+    /// Process transaction with eUTXO model
+    pub fn process_eutxo_transaction(&self, tx: &Transaction) -> Result<super::transaction_processor::TransactionResult> {
+        self.eutxo_processor.process_transaction(tx)
+    }
+
+    /// Get UTXO balance for an address
+    pub fn get_eutxo_balance(&self, address: &str) -> Result<u64> {
+        self.eutxo_processor.get_balance(address)
+    }
+
+    /// Get UTXO statistics
+    pub fn get_eutxo_stats(&self) -> Result<super::eutxo_processor::UtxoStats> {
+        self.eutxo_processor.get_utxo_stats()
+    }
+
+    /// Find spendable UTXOs for a given amount
+    pub fn find_spendable_eutxos(&self, address: &str, amount: u64) -> Result<Vec<super::eutxo_processor::UtxoState>> {
+        self.eutxo_processor.find_spendable_utxos(address, amount)
+    }
+
+    /// Get hybrid account state (combines account and UTXO states)
+    pub fn get_hybrid_account_state(&self, address: &str) -> Result<ProcessorAccountState> {
+        self.eutxo_processor.get_hybrid_account_state(address)
+    }
+
+    /// Set hybrid account state
+    pub fn set_hybrid_account_state(&self, address: &str, state: ProcessorAccountState) -> Result<()> {
+        self.eutxo_processor.set_hybrid_account_state(address, state)
     }
 }

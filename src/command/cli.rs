@@ -45,14 +45,28 @@ impl Cli {
                             .arg(Arg::from_usage(
                                 "[tx-count] 'Number of transactions to include (default: 10)'",
                             )),
-                    )
-                    .subcommand(App::new("state").about("Get modular blockchain state information"))
+                    )                    .subcommand(App::new("state").about("Get modular blockchain state information"))
                     .subcommand(App::new("layers").about("Show information about all layers"))
                     .subcommand(
                         App::new("challenge")
                             .about("Submit a settlement challenge")
                             .arg(Arg::from_usage("<batch-id> 'Batch ID to challenge'"))
                             .arg(Arg::from_usage("<reason> 'Challenge reason'")),
+                    )
+                    .subcommand(
+                        App::new("eutxo")
+                            .about("Extended UTXO operations")
+                            .subcommand(App::new("stats").about("Show eUTXO statistics"))
+                            .subcommand(
+                                App::new("balance")
+                                    .about("Get eUTXO balance for address")
+                                    .arg(Arg::from_usage("<address> 'Address to check balance'")),
+                            )
+                            .subcommand(
+                                App::new("utxos")
+                                    .about("List UTXOs for address")
+                                    .arg(Arg::from_usage("<address> 'Address to list UTXOs'")),
+                            ),
                     ),
             )
             .subcommand(App::new("printchain").about("[LEGACY] print all the chain blocks"))
@@ -330,12 +344,27 @@ impl Cli {
                 }
                 ("layers", Some(_)) => {
                     cmd_modular_layers().await?;
-                }
-                ("challenge", Some(challenge_m)) => {
+                }                ("challenge", Some(challenge_m)) => {
                     let batch_id = get_value("batch-id", challenge_m)?;
                     let reason = get_value("reason", challenge_m)?;
                     cmd_modular_challenge(batch_id, reason).await?;
                 }
+                ("eutxo", Some(eutxo_m)) => match eutxo_m.subcommand() {
+                    ("stats", Some(_)) => {
+                        cmd_eutxo_stats().await?;
+                    }
+                    ("balance", Some(balance_m)) => {
+                        let address = get_value("address", balance_m)?;
+                        cmd_eutxo_balance(address).await?;
+                    }
+                    ("utxos", Some(utxos_m)) => {
+                        let address = get_value("address", utxos_m)?;
+                        cmd_eutxo_utxos(address).await?;
+                    }
+                    _ => {
+                        println!("Unknown eUTXO subcommand. Use --help for available commands.");
+                    }
+                },
                 _ => {
                     println!("Unknown modular subcommand. Use --help for available commands.");
                 }
@@ -557,6 +586,11 @@ async fn cmd_modular_state() -> Result<()> {
         "Canonical chain length: {}",
         state_info.canonical_chain_length
     );
+      println!("\n=== eUTXO Statistics ===");
+    println!("Total UTXOs: {}", state_info.eutxo_stats.total_utxos);
+    println!("Unspent UTXOs: {}", state_info.eutxo_stats.unspent_utxos);
+    println!("Total value: {}", state_info.eutxo_stats.total_value);
+    println!("eUTXO transactions: {}", state_info.eutxo_stats.eutxo_count);
 
     Ok(())
 }
@@ -633,9 +667,72 @@ async fn cmd_modular_challenge(batch_id: &str, reason: &str) -> Result<()> {
 
     println!("Challenge submitted successfully!");
     println!("Challenge ID: {}", result.challenge_id);
-    println!("Successful: {}", result.successful);
-    if let Some(penalty) = result.penalty {
+    println!("Successful: {}", result.successful);    if let Some(penalty) = result.penalty {
         println!("Penalty applied: {}", penalty);
+    }
+
+    Ok(())
+}
+
+// eUTXO-specific command implementations
+async fn cmd_eutxo_stats() -> Result<()> {
+    println!("Getting eUTXO statistics...");
+
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+
+    let state_info = blockchain.get_state_info()?;
+
+    println!("=== eUTXO Statistics ===");
+    println!("Total UTXOs: {}", state_info.eutxo_stats.total_utxos);
+    println!("Unspent UTXOs: {}", state_info.eutxo_stats.unspent_utxos);
+    println!("Total value: {}", state_info.eutxo_stats.total_value);
+    println!("eUTXO transactions: {}", state_info.eutxo_stats.eutxo_count);
+
+    Ok(())
+}
+
+async fn cmd_eutxo_balance(address: &str) -> Result<()> {
+    println!("Getting eUTXO balance for address: {}", address);
+
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+
+    let balance = blockchain.get_eutxo_balance(address)?;
+
+    println!("eUTXO Balance for {}: {}", address, balance);
+
+    Ok(())
+}
+
+async fn cmd_eutxo_utxos(address: &str) -> Result<()> {
+    println!("Listing UTXOs for address: {}", address);
+
+    let config = default_modular_config();
+    let data_context = crate::config::DataContext::default();
+    let blockchain = ModularBlockchainBuilder::new()
+        .with_config(config)
+        .with_data_context(data_context)
+        .build()?;
+
+    let utxos = blockchain.find_spendable_eutxos(address, 0)?; // 0 to find all UTXOs
+
+    if utxos.is_empty() {
+        println!("No UTXOs found for address: {}", address);
+    } else {
+        println!("Found {} UTXOs for address: {}", utxos.len(), address);
+        for (i, utxo) in utxos.iter().enumerate() {
+            println!("UTXO {}: txid={}, vout={}, value={}, height={}, spent={}", 
+                i + 1, utxo.txid, utxo.vout, utxo.output.value, utxo.block_height, utxo.is_spent);
+        }
     }
 
     Ok(())
