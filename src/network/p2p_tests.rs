@@ -80,10 +80,8 @@ mod tests {
 
         let (_node, _event_rx, _command_tx) = result.unwrap();
         // Node is created successfully
-    }
-
-    /// Test network manager creation    #[tokio::test]
-    #[allow(dead_code)]
+    }    /// Test network manager creation
+    #[tokio::test]
     async fn test_network_manager_creation() {
         let config = NetworkConfig {
             listen_address: "127.0.0.1:0".to_string(), // Use random port for testing
