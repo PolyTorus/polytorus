@@ -27,12 +27,6 @@ pub mod message_bus;
 pub mod layer_factory;
 pub mod config_manager;
 
-// Legacy implementations (deprecated)
-#[deprecated(note = "Use unified_orchestrator instead")]
-pub mod orchestrator_legacy;
-#[deprecated(note = "Use unified_orchestrator instead")]
-pub mod modular_orchestrator_legacy;
-
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
