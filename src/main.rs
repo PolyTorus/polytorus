@@ -1,5 +1,5 @@
 use env_logger::Env;
-use polytorus::command::cli::Cli;
+use polytorus::command::cli::ModernCli;
 
 /// PolyTorus - Post Quantum Modular Blockchain
 ///
@@ -16,7 +16,7 @@ async fn main() {
     println!("🚀 Quick start: polytorus modular start");
     println!();
 
-    let mut cli = Cli::new();
+    let cli = ModernCli::new();
     if let Err(e) = cli.run().await {
         eprintln!("❌ Error: {}", e);
         std::process::exit(1);

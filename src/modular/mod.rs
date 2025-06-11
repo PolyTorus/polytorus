@@ -1,29 +1,38 @@
-//! Modular blockchain architecture for PolyTorus
+//! Unified Modular Blockchain Architecture for PolyTorus
 //!
-//! This module implements a modular blockchain design where different layers
+//! This module implements a truly modular blockchain design where different layers
 //! (execution, settlement, consensus, data availability) are separated and
-//! can be independently developed, tested, and deployed.
+//! can be independently developed, tested, and deployed. The architecture supports
+//! pluggable implementations, sophisticated configuration management, and
+//! event-driven communication between layers.
 
 use crate::Result;
 use std::fs;
 use std::path::Path;
 
+// Core modular components
 pub mod consensus;
 pub mod data_availability;
+pub mod eutxo_processor;
 pub mod execution;
 pub mod network;
-pub mod orchestrator;
 pub mod settlement;
 pub mod storage;
 pub mod traits;
 pub mod transaction_processor;
 
+// Unified modular architecture
+pub mod unified_orchestrator;
+pub mod message_bus;
+pub mod layer_factory;
+pub mod config_manager;
+
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
+pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
 pub use execution::PolyTorusExecutionLayer;
 pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
-pub use orchestrator::{ModularBlockchain, ModularBlockchainBuilder, ModularEvent, StateInfo};
 pub use settlement::PolyTorusSettlementLayer;
 pub use storage::{
     BlockMetadata, ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats,
@@ -32,6 +41,33 @@ pub use traits::*;
 pub use transaction_processor::{
     ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
     TransactionResult,
+};
+
+// Main unified orchestrator exports
+pub use unified_orchestrator::{
+    UnifiedModularOrchestrator, UnifiedOrchestratorBuilder, UnifiedEvent, 
+    OrchestratorState, OrchestratorMetrics, LayerStatus, LayerMetrics,
+    ExecutionEventResult, AlertSeverity
+};
+
+// Re-export configuration types for external use
+pub use traits::{
+    ModularConfig, ExecutionConfig, SettlementConfig, ConsensusConfig, 
+    DataAvailabilityConfig, NetworkConfig, WasmConfig
+};
+
+// Supporting modular components exports
+pub use message_bus::{
+    ModularMessageBus, ModularMessage, MessageType, MessagePayload, MessagePriority,
+    LayerType, LayerInfo, HealthStatus, MessageBuilder,
+};
+pub use layer_factory::{
+    ModularLayerFactory, LayerConfig, LayerImplementation, EnhancedModularConfig,
+    create_default_enhanced_config, GlobalConfig, PerformanceMode,
+};
+pub use config_manager::{
+    ModularConfigManager, ValidationResult, ConfigTemplate, UseCase,
+    create_config_templates,
 };
 
 #[cfg(test)]

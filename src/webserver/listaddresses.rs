@@ -1,11 +1,11 @@
-// Legacy CLI command import removed in Phase 4 - using modular architecture
-// use crate::command::cil_listaddresses::cmd_list_address;
-use crate::command::cli::cmd_list_address;
+// Modern CLI integration
+use crate::command::cli::ModernCli;
 use actix_web::{post, HttpResponse, Responder};
 
 #[post("/list-addresses")]
 pub async fn list_addresses() -> impl Responder {
-    match cmd_list_address() {
+    let cli = ModernCli::new();
+    match cli.cmd_list_addresses().await {
         Ok(()) => HttpResponse::Ok().body("Complete list addresses"),
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }

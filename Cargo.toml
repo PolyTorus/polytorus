@@ -19,6 +19,10 @@ path = "examples/difficulty_adjustment_example.rs"
 name = "simple_difficulty_test"
 path = "examples/simple_difficulty_test.rs"
 
+[[example]]
+name = "modular_architecture_demo"
+path = "examples/modular_architecture_simple.rs"
+
 [dependencies]
 sha2 = "0.9"
 rust-crypto = "0.2"
