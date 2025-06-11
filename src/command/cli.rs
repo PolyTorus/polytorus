@@ -1,11 +1,10 @@
 //! cli process - Modular Architecture CLI
 
 // Legacy imports removed in Phase 4 - using modular architecture only
-use crate::crypto::transaction::Transaction;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
 use crate::modular::{
-    default_modular_config, load_modular_config_from_file, ModularBlockchainBuilder,
+    default_modular_config, load_modular_config_from_file, UnifiedModularOrchestrator,
 };
 use crate::webserver::server::WebServer;
 use crate::Result;
@@ -518,224 +517,180 @@ async fn cmd_modular_start(config_path: Option<&str>) -> Result<()> {
     } else {
         println!("No configuration file specified, using defaults...");
         default_modular_config()
-    };
+    };    let data_context = crate::config::DataContext::default();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
+    println!("🚀 Unified Modular Blockchain started successfully!");
 
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
+    // Show initial orchestrator state
+    let initial_state = orchestrator.get_state().await;
+    println!("📊 Initial state - Block height: {}", initial_state.current_block_height);
+    println!("⚡ Orchestrator running: {}", initial_state.is_running);
 
-    blockchain.start().await?;
-    println!("Modular blockchain started successfully!");
-
-    // Keep the blockchain running
+    // Keep the orchestrator running and show periodic status
+    let mut counter = 0;
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        counter += 1;
+        
+        if counter % 6 == 0 { // Every minute
+            let current_state = orchestrator.get_state().await;
+            let metrics = orchestrator.get_metrics().await;
+            println!("📈 Status update - Height: {}, Blocks processed: {}, Events: {}", 
+                current_state.current_block_height,
+                metrics.total_blocks_processed,
+                metrics.total_events_handled
+            );
+        }
     }
 }
 
 async fn cmd_modular_mine(address: &str, tx_count: usize) -> Result<()> {
-    println!(
-        "Mining block with modular architecture for address: {}",
-        address
-    );
-    println!("Including {} transactions", tx_count);
-
+    println!("⛏️ Starting mining with unified orchestrator...");
+    println!("📍 Mining address: {}", address);
+    println!("📦 Target transactions: {}", tx_count);
+    
     let config = default_modular_config();
     let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-
-    // Create sample transactions
-    let mut transactions = Vec::new();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
+    
+    // Simulate transaction processing
     for i in 0..tx_count {
-        let tx = Transaction::new_coinbase(
-            format!("{}_{}", address, i),
-            format!("Mining reward {}", i),
-        )?;
-        transactions.push(tx);
+        let tx_data = format!("tx_{}_{}", i, address).into_bytes();
+        let tx_id = orchestrator.execute_transaction(tx_data).await?;
+        println!("✅ Executed transaction {}/{}: {}", i + 1, tx_count, tx_id);
+        
+        // Small delay between transactions
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
-    let block = blockchain.mine_block(transactions).await?;
-    println!("Successfully mined block: {}", block.get_hash());
-    println!("Block height: {}", block.get_height());
-    println!("Timestamp: {}", block.get_timestamp());
-
+    
+    // Send a configuration update message
+    orchestrator.update_configuration(
+        "mining".to_string(), 
+        format!("completed_batch_for_{}", address)
+    ).await?;
+      // Send a message through the message bus
+    let message_payload = format!("Mining completed for {} with {} transactions", address, tx_count);
+    orchestrator.send_message("mining_complete".to_string(), message_payload.clone().into_bytes()).await?;
+    
+    // Also broadcast the message
+    orchestrator.broadcast_message("mining_broadcast".to_string(), message_payload.into_bytes()).await?;
+    
+    // Create a test component using the factory
+    let factory_info = orchestrator.create_test_component().await?;
+    println!("🏭 Factory info: {}", factory_info);
+    
+    // Show final state
+    let final_state = orchestrator.get_state().await;
+    let final_metrics = orchestrator.get_metrics().await;
+    
+    println!("\n=== Mining Summary ===");
+    println!("✅ Mining completed successfully!");
+    println!("📊 Total transactions processed: {}", final_metrics.total_transactions_processed);
+    println!("📨 Total events generated: {}", final_metrics.total_events_handled);
+    println!("📏 Current block height: {}", final_state.current_block_height);
+    
     Ok(())
 }
 
 async fn cmd_modular_state() -> Result<()> {
-    println!("Getting modular blockchain state...");
-
+    println!("🔍 Getting modular orchestrator state...");
     let config = default_modular_config();
     let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-
-    let state_info = blockchain.get_state_info()?;
-
-    println!("=== Modular Blockchain State ===");
-    println!("Execution state root: {}", state_info.execution_state_root);
-    println!("Settlement root: {}", state_info.settlement_root);
-    println!("Block height: {}", state_info.block_height);
-    println!(
-        "Canonical chain length: {}",
-        state_info.canonical_chain_length
-    );
-      println!("\n=== eUTXO Statistics ===");
-    println!("Total UTXOs: {}", state_info.eutxo_stats.total_utxos);
-    println!("Unspent UTXOs: {}", state_info.eutxo_stats.unspent_utxos);
-    println!("Total value: {}", state_info.eutxo_stats.total_value);
-    println!("eUTXO transactions: {}", state_info.eutxo_stats.eutxo_count);
-
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
+    
+    let state = orchestrator.get_state().await;
+    let metrics = orchestrator.get_metrics().await;
+    let health = orchestrator.get_layer_health().await?;
+    
+    println!("=== Unified Modular Orchestrator State ===");
+    println!("🚀 Running: {}", state.is_running);
+    println!("📏 Current block height: {}", state.current_block_height);
+    println!("🔗 Last finalized block: {:?}", state.last_finalized_block);
+    println!("⏳ Pending transactions: {}", state.pending_transactions);
+    println!("📊 Total blocks processed: {}", metrics.total_blocks_processed);
+    println!("💰 Total transactions processed: {}", metrics.total_transactions_processed);
+    println!("📨 Total events handled: {}", metrics.total_events_handled);
+    println!("⚡ Average block time: {:.2}ms", metrics.average_block_time_ms);
+    println!("📈 Error rate: {:.4}%", metrics.error_rate * 100.0);
+    
+    println!("\n=== Layer Health ===");
+    for (layer, healthy) in health {
+        let status = if healthy { "✅" } else { "❌" };
+        println!("{} {}: {}", status, layer, if healthy { "Healthy" } else { "Unhealthy" });
+    }
+    
     Ok(())
 }
 
 async fn cmd_modular_layers() -> Result<()> {
-    println!("=== Modular Blockchain Layers Information ===\n");
-
-    println!("1. Execution Layer:");
-    println!("   - Handles transaction execution and smart contracts");
-    println!("   - WASM-based contract engine");
-    println!("   - State management and gas metering");
-
-    println!("\n2. Settlement Layer:");
-    println!("   - Finalizes state transitions");
-    println!("   - Fraud proof verification");
-    println!("   - Challenge period management");
-
-    println!("\n3. Consensus Layer:");
-    println!("   - Proof-of-Work block validation");
-    println!("   - Chain management");
-    println!("   - Fork resolution");
-
-    println!("\n4. Data Availability Layer:");
-    println!("   - P2P data storage and retrieval");
-    println!("   - Availability proof generation");
-    println!("   - Network communication");
-
-    let config = default_modular_config();
-    println!("\n=== Current Configuration ===");
-    println!("Gas limit: {}", config.execution.gas_limit);
-    println!(
-        "Challenge period: {} blocks",
-        config.settlement.challenge_period
-    );
-    println!("Block time: {}ms", config.consensus.block_time);
-    println!("Max block size: {} bytes", config.consensus.max_block_size);
-
-    Ok(())
-}
-
-async fn cmd_modular_challenge(batch_id: &str, reason: &str) -> Result<()> {
-    use crate::modular::{FraudProof, SettlementChallenge};
-
-    println!("Submitting settlement challenge...");
-    println!("Batch ID: {}", batch_id);
-    println!("Reason: {}", reason);
-
+    println!("🔍 Getting layer information...");
     let config = default_modular_config();
     let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-    // Create a fraud proof with the reason as evidence
-    let fraud_proof = FraudProof {
-        batch_id: batch_id.to_string(),
-        proof_data: reason.as_bytes().to_vec(),
-        expected_state_root: "expected_state".to_string(),
-        actual_state_root: "actual_state".to_string(),
-    };
-
-    let challenge = SettlementChallenge {
-        challenge_id: format!("challenge_{}", batch_id),
-        batch_id: batch_id.to_string(),
-        proof: fraud_proof,
-        challenger: "cli_user".to_string(),
-        timestamp: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-    };
-
-    let result = blockchain.submit_challenge(challenge).await?;
-
-    println!("Challenge submitted successfully!");
-    println!("Challenge ID: {}", result.challenge_id);
-    println!("Successful: {}", result.successful);    if let Some(penalty) = result.penalty {
-        println!("Penalty applied: {}", penalty);
-    }
-
-    Ok(())
-}
-
-// eUTXO-specific command implementations
-async fn cmd_eutxo_stats() -> Result<()> {
-    println!("Getting eUTXO statistics...");
-
-    let config = default_modular_config();
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-
-    let state_info = blockchain.get_state_info()?;
-
-    println!("=== eUTXO Statistics ===");
-    println!("Total UTXOs: {}", state_info.eutxo_stats.total_utxos);
-    println!("Unspent UTXOs: {}", state_info.eutxo_stats.unspent_utxos);
-    println!("Total value: {}", state_info.eutxo_stats.total_value);
-    println!("eUTXO transactions: {}", state_info.eutxo_stats.eutxo_count);
-
-    Ok(())
-}
-
-async fn cmd_eutxo_balance(address: &str) -> Result<()> {
-    println!("Getting eUTXO balance for address: {}", address);
-
-    let config = default_modular_config();
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-
-    let balance = blockchain.get_eutxo_balance(address)?;
-
-    println!("eUTXO Balance for {}: {}", address, balance);
-
-    Ok(())
-}
-
-async fn cmd_eutxo_utxos(address: &str) -> Result<()> {
-    println!("Listing UTXOs for address: {}", address);
-
-    let config = default_modular_config();
-    let data_context = crate::config::DataContext::default();
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()?;
-
-    let utxos = blockchain.find_spendable_eutxos(address, 0)?; // 0 to find all UTXOs
-
-    if utxos.is_empty() {
-        println!("No UTXOs found for address: {}", address);
-    } else {
-        println!("Found {} UTXOs for address: {}", utxos.len(), address);
-        for (i, utxo) in utxos.iter().enumerate() {
-            println!("UTXO {}: txid={}, vout={}, value={}, height={}, spent={}", 
-                i + 1, utxo.txid, utxo.vout, utxo.output.value, utxo.block_height, utxo.is_spent);
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
+      let health = orchestrator.get_layer_health().await?;
+    let metrics = orchestrator.get_metrics().await;
+    let detailed_info = orchestrator.get_detailed_layer_info().await?;
+    let config_info = orchestrator.get_current_config().await?;
+    
+    println!("=== Modular Architecture Layers ===");
+    println!("⚙️ Configuration: {}", config_info);
+    
+    for (layer_name, is_healthy) in &health {
+        let status_icon = if *is_healthy { "✅" } else { "❌" };
+        let status_text = if *is_healthy { "HEALTHY" } else { "UNHEALTHY" };
+        
+        println!("\n🔹 {} Layer", layer_name.to_uppercase());
+        println!("   Status: {} {}", status_icon, status_text);
+        
+        // Show detailed layer information
+        if let Some(detail) = detailed_info.get(layer_name) {
+            println!("   Details: {}", detail);
+        }
+        
+        // Show layer-specific information
+        match layer_name.as_str() {
+            "execution" => {
+                println!("   Function: Transaction execution and smart contract processing");
+                println!("   Gas limit: 8,000,000");
+            }
+            "settlement" => {
+                println!("   Function: Batch settlement and fraud proof validation");
+                println!("   Challenge period: 100 blocks");
+            }
+            "consensus" => {
+                println!("   Function: Block validation and consensus mechanism");
+                println!("   Block time: 10 seconds");
+            }
+            "data_availability" => {
+                println!("   Function: Data storage and retrieval");
+                println!("   Retention: 7 days");
+            }
+            _ => {}
         }
     }
-
+    
+    println!("\n=== Overall Performance ===");
+    println!("📊 Total events processed: {}", metrics.total_events_handled);
+    println!("⚡ System uptime: {}s", metrics.uptime_seconds);
+    println!("📈 Error rate: {:.4}%", metrics.error_rate * 100.0);
+    
     Ok(())
+}
+
+async fn cmd_modular_challenge(_batch_id: &str, _reason: &str) -> Result<()> {
+    Err(failure::err_msg("modular challenge: not yet implemented for unified orchestrator"))
+}
+
+async fn cmd_eutxo_stats() -> Result<()> {
+    Err(failure::err_msg("eutxo stats: not yet implemented for unified orchestrator"))
+}
+
+async fn cmd_eutxo_balance(_address: &str) -> Result<()> {
+    Err(failure::err_msg("eutxo balance: not yet implemented for unified orchestrator"))
+}
+
+async fn cmd_eutxo_utxos(_address: &str) -> Result<()> {
+    Err(failure::err_msg("eutxo utxos: not yet implemented for unified orchestrator"))
 }
 
 // Tests temporarily disabled during Phase 4 legacy cleanup

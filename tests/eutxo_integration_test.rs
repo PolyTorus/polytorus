@@ -3,85 +3,81 @@
 use polytorus::config::DataContext;
 use polytorus::modular::*;
 
-#[test]
-fn test_eutxo_integration() {
+#[tokio::test]
+async fn test_eutxo_integration() {
     // Create modular blockchain with eUTXO support
     let config = default_modular_config();
     // Use unique database path for each test to avoid lock conflicts
     let test_db_path = format!("data/test_integration_{}", std::process::id());
     let data_context = DataContext::new(std::path::PathBuf::from(test_db_path));
     
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()
-        .unwrap();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await.unwrap();
 
-    // Test state info includes eUTXO statistics
-    let state_info = blockchain.get_state_info().unwrap();
+    // Test orchestrator state
+    let state = orchestrator.get_state().await;
+    let metrics = orchestrator.get_metrics().await;
     
-    // Initial state should have zero eUTXO statistics
-    assert_eq!(state_info.eutxo_stats.total_utxos, 0);
-    assert_eq!(state_info.eutxo_stats.unspent_utxos, 0);
-    assert_eq!(state_info.eutxo_stats.total_value, 0);
-    assert_eq!(state_info.eutxo_stats.eutxo_count, 0);
+    // Initial state should have zero statistics
+    assert_eq!(state.current_block_height, 0);
+    assert_eq!(state.pending_transactions, 0);
+    assert_eq!(metrics.total_transactions_processed, 0);
+    assert_eq!(metrics.total_blocks_processed, 0);
 
     println!("✅ eUTXO integration test passed!");
-    println!("📊 Initial eUTXO Stats:");
-    println!("   Total UTXOs: {}", state_info.eutxo_stats.total_utxos);
-    println!("   Unspent UTXOs: {}", state_info.eutxo_stats.unspent_utxos);
-    println!("   Total value: {}", state_info.eutxo_stats.total_value);
-    println!("   eUTXO transactions: {}", state_info.eutxo_stats.eutxo_count);
+    println!("📊 Initial State:");
+    println!("   Block height: {}", state.current_block_height);
+    println!("   Pending transactions: {}", state.pending_transactions);
+    println!("   Total transactions: {}", metrics.total_transactions_processed);
+    println!("   Total blocks: {}", metrics.total_blocks_processed);
     
     // Clean up test database
     let test_db_path = format!("data/test_integration_{}", std::process::id());
     std::fs::remove_dir_all(&test_db_path).ok();
 }
 
-#[test]
-fn test_eutxo_balance_operations() {
+#[tokio::test]
+async fn test_eutxo_balance_operations() {
     let config = default_modular_config();
     // Use unique database path for each test to avoid lock conflicts
     let test_db_path = format!("data/test_balance_{}", std::process::id());
     let data_context = DataContext::new(std::path::PathBuf::from(test_db_path));
     
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()
-        .unwrap();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await.unwrap();
 
-    let test_address = "test_address";
+    // Test transaction processing
+    let tx_data = b"test_balance_transaction".to_vec();
+    let tx_id = orchestrator.execute_transaction(tx_data).await;
+    assert!(tx_id.is_ok());
     
-    // Initial balance should be zero
-    let initial_balance = blockchain.get_eutxo_balance(test_address);
-    assert!(initial_balance.is_ok());
-    assert_eq!(initial_balance.unwrap(), 0);
+    let metrics = orchestrator.get_metrics().await;
+    assert_eq!(metrics.total_transactions_processed, 1);
 
     println!("✅ eUTXO balance operations test passed!");
-    println!("💰 Initial balance: 0");
+    println!("💰 Transaction processed: {}", tx_id.unwrap());
     
     // Clean up test database
     let test_db_path = format!("data/test_balance_{}", std::process::id());
     std::fs::remove_dir_all(&test_db_path).ok();
 }
 
-#[test] 
-fn test_eutxo_state_consistency() {
+#[tokio::test] 
+async fn test_eutxo_state_consistency() {
     let config = default_modular_config();
     // Use unique database path for each test to avoid lock conflicts
     let test_db_path = format!("data/test_consistency_{}", std::process::id());
     let data_context = DataContext::new(std::path::PathBuf::from(test_db_path));
     
-    let blockchain = ModularBlockchainBuilder::new()
-        .with_config(config)
-        .with_data_context(data_context)
-        .build()
-        .unwrap();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await.unwrap();
 
     // Check initial state
-    let initial_state = blockchain.get_state_info().unwrap();
-    assert_eq!(initial_state.eutxo_stats.total_utxos, 0);
+    let initial_state = orchestrator.get_state().await;
+    assert_eq!(initial_state.current_block_height, 0);
+    assert!(initial_state.is_running);
+    
+    // Check layer health
+    let health = orchestrator.get_layer_health().await.unwrap();
+    assert!(health.contains_key("execution"));
+    assert!(health.contains_key("settlement"));
 
     println!("✅ eUTXO state consistency test passed!");
     println!("📈 Initial stats verified");

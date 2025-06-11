@@ -10,11 +10,10 @@
 //! - Settlement challenges
 
 #[cfg(test)]
-mod tests {
-    use crate::command::cli::Cli;
+mod tests {    use crate::command::cli::Cli;
     use crate::config::DataContext;
     use crate::crypto::types::EncryptionType;
-    use crate::modular::{default_modular_config, ModularBlockchainBuilder};
+    use crate::modular::{default_modular_config, UnifiedModularOrchestrator};
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -448,17 +447,13 @@ max_peers = 50
         env::set_var("POLYTORUS_TEST_MODE", "true");
 
         // Test modular blockchain builder
-        let config = default_modular_config();
-        let data_context = DataContext::default();
+        let config = default_modular_config();        let data_context = DataContext::default();
 
-        let blockchain_result = ModularBlockchainBuilder::new()
-            .with_config(config)
-            .with_data_context(data_context)
-            .build();
+        let orchestrator_result = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await;
 
         assert!(
-            blockchain_result.is_ok(),
-            "Should build modular blockchain successfully"
+            orchestrator_result.is_ok(),
+            "Should create unified orchestrator successfully"
         );
 
         env::remove_var("POLYTORUS_TEST_MODE");

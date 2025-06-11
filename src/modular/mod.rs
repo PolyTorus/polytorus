@@ -1,4 +1,4 @@
-//! Enhanced Modular Blockchain Architecture for PolyTorus
+//! Unified Modular Blockchain Architecture for PolyTorus
 //!
 //! This module implements a truly modular blockchain design where different layers
 //! (execution, settlement, consensus, data availability) are separated and
@@ -16,17 +16,22 @@ pub mod data_availability;
 pub mod eutxo_processor;
 pub mod execution;
 pub mod network;
-pub mod orchestrator;
 pub mod settlement;
 pub mod storage;
 pub mod traits;
 pub mod transaction_processor;
 
-// Enhanced modular architecture
-pub mod modular_orchestrator;
+// Unified modular architecture
+pub mod unified_orchestrator;
 pub mod message_bus;
 pub mod layer_factory;
 pub mod config_manager;
+
+// Legacy implementations (deprecated)
+#[deprecated(note = "Use unified_orchestrator instead")]
+pub mod orchestrator_legacy;
+#[deprecated(note = "Use unified_orchestrator instead")]
+pub mod modular_orchestrator_legacy;
 
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
@@ -34,7 +39,6 @@ pub use data_availability::PolyTorusDataAvailabilityLayer;
 pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
 pub use execution::PolyTorusExecutionLayer;
 pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
-pub use orchestrator::{ModularBlockchain, ModularBlockchainBuilder, ModularEvent, StateInfo};
 pub use settlement::PolyTorusSettlementLayer;
 pub use storage::{
     BlockMetadata, ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats,
@@ -45,18 +49,20 @@ pub use transaction_processor::{
     TransactionResult,
 };
 
+// Main unified orchestrator exports
+pub use unified_orchestrator::{
+    UnifiedModularOrchestrator, UnifiedOrchestratorBuilder, UnifiedEvent, 
+    OrchestratorState, OrchestratorMetrics, LayerStatus, LayerMetrics,
+    ExecutionEventResult, AlertSeverity
+};
+
 // Re-export configuration types for external use
 pub use traits::{
     ModularConfig, ExecutionConfig, SettlementConfig, ConsensusConfig, 
     DataAvailabilityConfig, NetworkConfig, WasmConfig
 };
 
-// Enhanced modular exports
-pub use modular_orchestrator::{
-    PluggableModularBlockchain, PluggableModularBlockchainBuilder,
-    EnhancedStateInfo, LayerHealthSummary, LayerMetrics as OrchestratorLayerMetrics,
-    LayerType as OrchestratorLayerType,
-};
+// Supporting modular components exports
 pub use message_bus::{
     ModularMessageBus, ModularMessage, MessageType, MessagePayload, MessagePriority,
     LayerType, LayerInfo, HealthStatus, MessageBuilder,
