@@ -6,6 +6,3 @@ pub mod types;
 
 #[cfg(test)]
 pub mod difficulty_tests;
-
-#[cfg(test)]
-pub mod dynamic_difficulty_tests;

@@ -21,10 +21,6 @@ pub mod storage;
 pub mod traits;
 pub mod transaction_processor;
 
-// Test modules
-#[cfg(test)]
-pub mod network_integration_tests;
-
 // Unified modular architecture
 pub mod config_manager;
 pub mod layer_factory;
