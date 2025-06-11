@@ -12,5 +12,6 @@ struct StartNodeRequest {
 
 #[post("/start-node")]
 pub async fn start_node(_req: web::Json<StartNodeRequest>) -> impl Responder {
-    HttpResponse::NotImplemented().body("Legacy node has been removed. Use 'polytorus modular start' commands instead.")
+    HttpResponse::NotImplemented()
+        .body("Legacy node has been removed. Use 'polytorus modular start' commands instead.")
 }

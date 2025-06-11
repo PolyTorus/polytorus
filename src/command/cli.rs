@@ -1,11 +1,9 @@
 //! Modern CLI - Unified Modular Architecture Only
 
+use crate::config::DataContext;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
-use crate::modular::{
-    default_modular_config, UnifiedModularOrchestrator,
-};
-use crate::config::DataContext;
+use crate::modular::{default_modular_config, UnifiedModularOrchestrator};
 use crate::Result;
 use clap::{App, Arg};
 
@@ -123,24 +121,24 @@ impl ModernCli {
 
     pub async fn cmd_create_wallet(&self) -> Result<()> {
         let data_context = DataContext::default();
-        
+
         println!("Creating new wallet...");
         let mut wallets = Wallets::new_with_context(data_context)?;
         let address = wallets.create_wallet(EncryptionType::ECDSA);
         wallets.save_all()?;
-        
+
         println!("New wallet created");
         println!("Address: {}", address);
-        
+
         Ok(())
     }
 
     pub async fn cmd_list_addresses(&self) -> Result<()> {
         let data_context = DataContext::default();
-        
+
         let wallets = Wallets::new_with_context(data_context)?;
         let addresses = wallets.get_all_addresses();
-        
+
         if addresses.is_empty() {
             println!("No wallets found. Create one with --createwallet");
         } else {
@@ -149,7 +147,7 @@ impl ModernCli {
                 println!("  {}", address);
             }
         }
-        
+
         Ok(())
     }
 
@@ -157,50 +155,59 @@ impl ModernCli {
         println!("Getting balance for address: {}", address);
         println!("Balance functionality not yet implemented in unified orchestrator");
         println!("Address: {}", address);
-        
+
         Ok(())
     }
 
     async fn cmd_modular_init(&self) -> Result<()> {
         println!("Initializing modular architecture...");
-        
+
         let config = default_modular_config();
         let data_context = DataContext::default();
-        let _orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
-        
+        let _orchestrator =
+            UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context)
+                .await?;
+
         println!("Modular architecture initialized successfully");
         println!("Orchestrator status: Active");
-        
+
         Ok(())
     }
 
     async fn cmd_modular_status(&self) -> Result<()> {
         let config = default_modular_config();
         let data_context = DataContext::default();
-        let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
-        
+        let orchestrator =
+            UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context)
+                .await?;
+
         println!("=== Modular System Status ===");
         println!("Architecture: Unified Modular");
         println!("Orchestrator: Active");
         println!("Components: All modules loaded");
         println!("Status: Operational");
-        
+
         let state = orchestrator.get_state().await;
         println!("Block height: {}", state.current_block_height);
         println!("Running: {}", state.is_running);
-        
+
         let metrics = orchestrator.get_metrics().await;
         println!("Total blocks processed: {}", metrics.total_blocks_processed);
-        println!("Total transactions processed: {}", metrics.total_transactions_processed);
-        
+        println!(
+            "Total transactions processed: {}",
+            metrics.total_transactions_processed
+        );
+
         Ok(())
     }
 
     async fn cmd_modular_config(&self) -> Result<()> {
         let config = default_modular_config();
         let data_context = DataContext::default();
-        let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await?;
-        
+        let orchestrator =
+            UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context)
+                .await?;
+
         println!("=== Modular Configuration ===");
         match orchestrator.get_current_config().await {
             Ok(config_str) => {
@@ -210,35 +217,35 @@ impl ModernCli {
                 println!("Error getting config: {}", e);
             }
         }
-        
+
         Ok(())
     }
 
     async fn cmd_smart_contract_deploy(&self, contract_path: &str) -> Result<()> {
         println!("Deploying smart contract from: {}", contract_path);
         println!("Smart contract functionality not yet implemented in unified orchestrator");
-        
+
         Ok(())
     }
 
     async fn cmd_smart_contract_call(&self, contract_address: &str) -> Result<()> {
         println!("Calling smart contract: {}", contract_address);
         println!("Smart contract functionality not yet implemented in unified orchestrator");
-        
+
         Ok(())
     }
 
     async fn cmd_governance_propose(&self, proposal_data: &str) -> Result<()> {
         println!("Creating governance proposal: {}", proposal_data);
         println!("Governance functionality not yet implemented in unified orchestrator");
-        
+
         Ok(())
     }
 
     async fn cmd_governance_vote(&self, proposal_id: &str) -> Result<()> {
         println!("Voting on governance proposal: {}", proposal_id);
         println!("Governance functionality not yet implemented in unified orchestrator");
-        
+
         Ok(())
     }
 }

@@ -22,10 +22,10 @@ pub mod traits;
 pub mod transaction_processor;
 
 // Unified modular architecture
-pub mod unified_orchestrator;
-pub mod message_bus;
-pub mod layer_factory;
 pub mod config_manager;
+pub mod layer_factory;
+pub mod message_bus;
+pub mod unified_orchestrator;
 
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
@@ -45,29 +45,27 @@ pub use transaction_processor::{
 
 // Main unified orchestrator exports
 pub use unified_orchestrator::{
-    UnifiedModularOrchestrator, UnifiedOrchestratorBuilder, UnifiedEvent, 
-    OrchestratorState, OrchestratorMetrics, LayerStatus, LayerMetrics,
-    ExecutionEventResult, AlertSeverity
+    AlertSeverity, ExecutionEventResult, LayerMetrics, LayerStatus, OrchestratorMetrics,
+    OrchestratorState, UnifiedEvent, UnifiedModularOrchestrator, UnifiedOrchestratorBuilder,
 };
 
 // Re-export configuration types for external use
 pub use traits::{
-    ModularConfig, ExecutionConfig, SettlementConfig, ConsensusConfig, 
-    DataAvailabilityConfig, NetworkConfig, WasmConfig
+    ConsensusConfig, DataAvailabilityConfig, ExecutionConfig, ModularConfig, NetworkConfig,
+    SettlementConfig, WasmConfig,
 };
 
 // Supporting modular components exports
-pub use message_bus::{
-    ModularMessageBus, ModularMessage, MessageType, MessagePayload, MessagePriority,
-    LayerType, LayerInfo, HealthStatus, MessageBuilder,
+pub use config_manager::{
+    create_config_templates, ConfigTemplate, ModularConfigManager, UseCase, ValidationResult,
 };
 pub use layer_factory::{
-    ModularLayerFactory, LayerConfig, LayerImplementation, EnhancedModularConfig,
-    create_default_enhanced_config, GlobalConfig, PerformanceMode,
+    create_default_enhanced_config, EnhancedModularConfig, GlobalConfig, LayerConfig,
+    LayerImplementation, ModularLayerFactory, PerformanceMode,
 };
-pub use config_manager::{
-    ModularConfigManager, ValidationResult, ConfigTemplate, UseCase,
-    create_config_templates,
+pub use message_bus::{
+    HealthStatus, LayerInfo, LayerType, MessageBuilder, MessagePayload, MessagePriority,
+    MessageType, ModularMessage, ModularMessageBus,
 };
 
 #[cfg(test)]

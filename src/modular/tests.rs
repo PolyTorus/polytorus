@@ -56,7 +56,11 @@ async fn test_modular_blockchain_creation() {
     let config = default_modular_config();
     let test_ctx = TestContext::new("creation");
 
-    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, test_ctx.get_data_context()).await;
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+        config,
+        test_ctx.get_data_context(),
+    )
+    .await;
 
     assert!(orchestrator.is_ok());
     // TestContext will automatically cleanup when dropped
@@ -216,7 +220,12 @@ async fn test_transaction_processing() {
     let config = default_modular_config();
     let test_ctx = TestContext::new("transaction");
 
-    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, test_ctx.get_data_context()).await.unwrap();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+        config,
+        test_ctx.get_data_context(),
+    )
+    .await
+    .unwrap();
 
     // Create test transaction data
     let tx_data = b"test_transaction_data".to_vec();
@@ -235,22 +244,27 @@ async fn test_block_mining() {
     let config = default_modular_config();
     let test_ctx = TestContext::new("mining");
 
-    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, test_ctx.get_data_context()).await.unwrap();
-    
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+        config,
+        test_ctx.get_data_context(),
+    )
+    .await
+    .unwrap();
+
     // Test orchestrator state
     let state = orchestrator.get_state().await;
     assert!(state.is_running);
     assert_eq!(state.current_block_height, 0);
-    
+
     // Test metrics
     let metrics = orchestrator.get_metrics().await;
     assert_eq!(metrics.total_blocks_processed, 0);
-    
+
     // Test layer health
     let health = orchestrator.get_layer_health().await.unwrap();
     assert!(health.contains_key("execution"));
     assert!(health.contains_key("consensus"));
-    
+
     // TestContext will automatically cleanup when dropped
 }
 
@@ -292,16 +306,21 @@ async fn test_state_info() {
     let config = default_modular_config();
     let test_ctx = TestContext::new("state_info");
 
-    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(config, test_ctx.get_data_context()).await.unwrap();
+    let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+        config,
+        test_ctx.get_data_context(),
+    )
+    .await
+    .unwrap();
 
     let state = orchestrator.get_state().await;
     assert!(state.is_running);
     assert_eq!(state.current_block_height, 0); // Initial height is 0
     assert!(state.last_finalized_block.is_none()); // No blocks finalized yet
-    
+
     let metrics = orchestrator.get_metrics().await;
     assert_eq!(metrics.total_blocks_processed, 0);
     assert_eq!(metrics.total_transactions_processed, 0);
-    
+
     // TestContext will automatically cleanup when dropped
 }

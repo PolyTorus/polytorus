@@ -30,7 +30,7 @@ pub async fn create_wallet(path: web::Path<CryptoPath>) -> impl Responder {
                 Ok(_) => HttpResponse::Ok().body("Wallet created successfully"),
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
             }
-        },
+        }
         Err(_) => HttpResponse::BadRequest().body("Invalid encryption type"),
     }
 }

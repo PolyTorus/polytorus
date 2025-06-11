@@ -14,5 +14,6 @@ struct StartMinerRequest {
 
 #[post("/start-miner")]
 pub async fn start_miner(_req: web::Json<StartMinerRequest>) -> impl Responder {
-    HttpResponse::NotImplemented().body("Legacy miner has been removed. Use 'polytorus modular mine' commands instead.")
+    HttpResponse::NotImplemented()
+        .body("Legacy miner has been removed. Use 'polytorus modular mine' commands instead.")
 }

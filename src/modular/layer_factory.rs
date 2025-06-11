@@ -3,18 +3,18 @@
 //! This module provides a factory system for creating and configuring
 //! different implementations of blockchain layers in a pluggable manner.
 
-use super::traits::*;
 use super::consensus::PolyTorusConsensusLayer;
 use super::data_availability::PolyTorusDataAvailabilityLayer;
 use super::execution::PolyTorusExecutionLayer;
+use super::message_bus::{HealthStatus, LayerInfo, LayerType, ModularMessageBus};
 use super::settlement::PolyTorusSettlementLayer;
-use super::message_bus::{ModularMessageBus, LayerInfo, LayerType, HealthStatus};
+use super::traits::*;
 use crate::config::DataContext;
 use crate::Result;
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 
 /// Factory for creating modular blockchain layers
 pub struct ModularLayerFactory {
@@ -57,7 +57,11 @@ pub struct LayerImplementation {
 }
 
 /// Factory function type for creating layers
-pub type LayerFactoryFunction = Arc<dyn Fn(&LayerConfig, &DataContext) -> Result<Box<dyn std::any::Any + Send + Sync>> + Send + Sync>;
+pub type LayerFactoryFunction = Arc<
+    dyn Fn(&LayerConfig, &DataContext) -> Result<Box<dyn std::any::Any + Send + Sync>>
+        + Send
+        + Sync,
+>;
 
 /// Enhanced modular configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,9 +125,10 @@ impl ModularLayerFactory {
                 "eutxo".to_string(),
             ],
             factory: Arc::new(|config, data_context| {
-                let execution_config: ExecutionConfig = serde_json::from_value(config.config.clone())
-                    .map_err(|e| failure::format_err!("Invalid execution config: {}", e))?;
-                
+                let execution_config: ExecutionConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| failure::format_err!("Invalid execution config: {}", e))?;
+
                 let layer = PolyTorusExecutionLayer::new(data_context.clone(), execution_config)?;
                 Ok(Box::new(layer) as Box<dyn std::any::Any + Send + Sync>)
             }),
@@ -140,9 +145,10 @@ impl ModularLayerFactory {
                 "chain-management".to_string(),
             ],
             factory: Arc::new(|config, data_context| {
-                let consensus_config: ConsensusConfig = serde_json::from_value(config.config.clone())
-                    .map_err(|e| failure::format_err!("Invalid consensus config: {}", e))?;
-                
+                let consensus_config: ConsensusConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| failure::format_err!("Invalid consensus config: {}", e))?;
+
                 let layer = PolyTorusConsensusLayer::new(
                     data_context.clone(),
                     consensus_config,
@@ -163,9 +169,10 @@ impl ModularLayerFactory {
                 "challenge-resolution".to_string(),
             ],
             factory: Arc::new(|config, _data_context| {
-                let settlement_config: SettlementConfig = serde_json::from_value(config.config.clone())
-                    .map_err(|e| failure::format_err!("Invalid settlement config: {}", e))?;
-                
+                let settlement_config: SettlementConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| failure::format_err!("Invalid settlement config: {}", e))?;
+
                 let layer = PolyTorusSettlementLayer::new(settlement_config)?;
                 Ok(Box::new(layer) as Box<dyn std::any::Any + Send + Sync>)
             }),
@@ -182,13 +189,14 @@ impl ModularLayerFactory {
                 "availability-proofs".to_string(),
             ],
             factory: Arc::new(|config, _data_context| {
-                let da_config: DataAvailabilityConfig = serde_json::from_value(config.config.clone())
-                    .map_err(|e| failure::format_err!("Invalid DA config: {}", e))?;
-                
+                let da_config: DataAvailabilityConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| failure::format_err!("Invalid DA config: {}", e))?;
+
                 // Create network for DA layer
                 let network_config = super::network::ModularNetworkConfig::default();
                 let network = Arc::new(super::network::ModularNetwork::new(network_config)?);
-                
+
                 let layer = PolyTorusDataAvailabilityLayer::new(da_config, network)?;
                 Ok(Box::new(layer) as Box<dyn std::any::Any + Send + Sync>)
             }),
@@ -197,9 +205,13 @@ impl ModularLayerFactory {
 
     /// Register a new layer implementation
     pub fn register_implementation(&mut self, implementation: LayerImplementation) {
-        log::info!("Registering layer implementation: {} v{}", 
-                   implementation.name, implementation.version);
-        self.implementation_registry.insert(implementation.name.clone(), implementation);
+        log::info!(
+            "Registering layer implementation: {} v{}",
+            implementation.name,
+            implementation.version
+        );
+        self.implementation_registry
+            .insert(implementation.name.clone(), implementation);
     }
 
     /// Configure a layer
@@ -208,17 +220,27 @@ impl ModularLayerFactory {
     }
 
     /// Create an execution layer
-    pub async fn create_execution_layer(&self, data_context: &DataContext) -> Result<Arc<dyn ExecutionLayer>> {
-        let config = self.layer_configs.get(&LayerType::Execution)
+    pub async fn create_execution_layer(
+        &self,
+        data_context: &DataContext,
+    ) -> Result<Arc<dyn ExecutionLayer>> {
+        let config = self
+            .layer_configs
+            .get(&LayerType::Execution)
             .ok_or_else(|| failure::format_err!("Execution layer not configured"))?;
 
-        let implementation = self.implementation_registry.get(&config.implementation)
-            .ok_or_else(|| failure::format_err!("Implementation not found: {}", config.implementation))?;
+        let implementation = self
+            .implementation_registry
+            .get(&config.implementation)
+            .ok_or_else(|| {
+                failure::format_err!("Implementation not found: {}", config.implementation)
+            })?;
 
         let layer_any = (implementation.factory)(config, data_context)?;
-        
+
         // Try to downcast to the execution layer
-        let layer = layer_any.downcast::<PolyTorusExecutionLayer>()
+        let layer = layer_any
+            .downcast::<PolyTorusExecutionLayer>()
             .map_err(|_| failure::format_err!("Failed to downcast to execution layer"))?;
 
         // Register with message bus
@@ -229,23 +251,33 @@ impl ModularLayerFactory {
             health_status: HealthStatus::Healthy,
             message_handler: None, // Could add message handler here
         };
-        
+
         self.message_bus.register_layer(layer_info).await?;
 
         Ok(Arc::new(*layer) as Arc<dyn ExecutionLayer>)
     }
 
     /// Create a consensus layer
-    pub async fn create_consensus_layer(&self, data_context: &DataContext) -> Result<Arc<dyn ConsensusLayer>> {
-        let config = self.layer_configs.get(&LayerType::Consensus)
+    pub async fn create_consensus_layer(
+        &self,
+        data_context: &DataContext,
+    ) -> Result<Arc<dyn ConsensusLayer>> {
+        let config = self
+            .layer_configs
+            .get(&LayerType::Consensus)
             .ok_or_else(|| failure::format_err!("Consensus layer not configured"))?;
 
-        let implementation = self.implementation_registry.get(&config.implementation)
-            .ok_or_else(|| failure::format_err!("Implementation not found: {}", config.implementation))?;
+        let implementation = self
+            .implementation_registry
+            .get(&config.implementation)
+            .ok_or_else(|| {
+                failure::format_err!("Implementation not found: {}", config.implementation)
+            })?;
 
         let layer_any = (implementation.factory)(config, data_context)?;
-        
-        let layer = layer_any.downcast::<PolyTorusConsensusLayer>()
+
+        let layer = layer_any
+            .downcast::<PolyTorusConsensusLayer>()
             .map_err(|_| failure::format_err!("Failed to downcast to consensus layer"))?;
 
         // Register with message bus
@@ -256,7 +288,7 @@ impl ModularLayerFactory {
             health_status: HealthStatus::Healthy,
             message_handler: None,
         };
-        
+
         self.message_bus.register_layer(layer_info).await?;
 
         Ok(Arc::new(*layer) as Arc<dyn ConsensusLayer>)
@@ -264,17 +296,24 @@ impl ModularLayerFactory {
 
     /// Create a settlement layer
     pub async fn create_settlement_layer(&self) -> Result<Arc<dyn SettlementLayer>> {
-        let config = self.layer_configs.get(&LayerType::Settlement)
+        let config = self
+            .layer_configs
+            .get(&LayerType::Settlement)
             .ok_or_else(|| failure::format_err!("Settlement layer not configured"))?;
 
-        let implementation = self.implementation_registry.get(&config.implementation)
-            .ok_or_else(|| failure::format_err!("Implementation not found: {}", config.implementation))?;
+        let implementation = self
+            .implementation_registry
+            .get(&config.implementation)
+            .ok_or_else(|| {
+                failure::format_err!("Implementation not found: {}", config.implementation)
+            })?;
 
         // For settlement layer, we don't need data_context
         let data_context = DataContext::default();
         let layer_any = (implementation.factory)(config, &data_context)?;
-        
-        let layer = layer_any.downcast::<PolyTorusSettlementLayer>()
+
+        let layer = layer_any
+            .downcast::<PolyTorusSettlementLayer>()
             .map_err(|_| failure::format_err!("Failed to downcast to settlement layer"))?;
 
         // Register with message bus
@@ -285,7 +324,7 @@ impl ModularLayerFactory {
             health_status: HealthStatus::Healthy,
             message_handler: None,
         };
-        
+
         self.message_bus.register_layer(layer_info).await?;
 
         Ok(Arc::new(*layer) as Arc<dyn SettlementLayer>)
@@ -293,16 +332,23 @@ impl ModularLayerFactory {
 
     /// Create a data availability layer
     pub async fn create_data_availability_layer(&self) -> Result<Arc<dyn DataAvailabilityLayer>> {
-        let config = self.layer_configs.get(&LayerType::DataAvailability)
+        let config = self
+            .layer_configs
+            .get(&LayerType::DataAvailability)
             .ok_or_else(|| failure::format_err!("Data availability layer not configured"))?;
 
-        let implementation = self.implementation_registry.get(&config.implementation)
-            .ok_or_else(|| failure::format_err!("Implementation not found: {}", config.implementation))?;
+        let implementation = self
+            .implementation_registry
+            .get(&config.implementation)
+            .ok_or_else(|| {
+                failure::format_err!("Implementation not found: {}", config.implementation)
+            })?;
 
         let data_context = DataContext::default();
         let layer_any = (implementation.factory)(config, &data_context)?;
-        
-        let layer = layer_any.downcast::<PolyTorusDataAvailabilityLayer>()
+
+        let layer = layer_any
+            .downcast::<PolyTorusDataAvailabilityLayer>()
             .map_err(|_| failure::format_err!("Failed to downcast to data availability layer"))?;
 
         // Register with message bus
@@ -313,22 +359,34 @@ impl ModularLayerFactory {
             health_status: HealthStatus::Healthy,
             message_handler: None,
         };
-        
+
         self.message_bus.register_layer(layer_info).await?;
 
         Ok(Arc::new(*layer) as Arc<dyn DataAvailabilityLayer>)
     }
 
     /// Get available implementations for a layer type
-    pub fn get_available_implementations(&self, layer_type: &LayerType) -> Vec<&LayerImplementation> {
-        self.implementation_registry.values()
+    pub fn get_available_implementations(
+        &self,
+        layer_type: &LayerType,
+    ) -> Vec<&LayerImplementation> {
+        self.implementation_registry
+            .values()
             .filter(|impl_| {
                 // Filter implementations based on capabilities or layer type
                 match layer_type {
-                    LayerType::Execution => impl_.capabilities.contains(&"wasm-execution".to_string()),
-                    LayerType::Consensus => impl_.capabilities.contains(&"block-validation".to_string()),
-                    LayerType::Settlement => impl_.capabilities.contains(&"batch-settlement".to_string()),
-                    LayerType::DataAvailability => impl_.capabilities.contains(&"p2p-storage".to_string()),
+                    LayerType::Execution => {
+                        impl_.capabilities.contains(&"wasm-execution".to_string())
+                    }
+                    LayerType::Consensus => {
+                        impl_.capabilities.contains(&"block-validation".to_string())
+                    }
+                    LayerType::Settlement => {
+                        impl_.capabilities.contains(&"batch-settlement".to_string())
+                    }
+                    LayerType::DataAvailability => {
+                        impl_.capabilities.contains(&"p2p-storage".to_string())
+                    }
                     _ => false,
                 }
             })
@@ -336,16 +394,29 @@ impl ModularLayerFactory {
     }
 
     /// Validate layer configuration
-    pub fn validate_configuration(&self, layer_type: &LayerType, config: &LayerConfig) -> Result<()> {
+    pub fn validate_configuration(
+        &self,
+        layer_type: &LayerType,
+        config: &LayerConfig,
+    ) -> Result<()> {
         // Check if implementation exists
-        if !self.implementation_registry.contains_key(&config.implementation) {
-            return Err(failure::format_err!("Implementation not found: {}", config.implementation));
+        if !self
+            .implementation_registry
+            .contains_key(&config.implementation)
+        {
+            return Err(failure::format_err!(
+                "Implementation not found: {}",
+                config.implementation
+            ));
         }
 
         // Check dependencies
         for dependency in &config.dependencies {
             if !self.layer_configs.contains_key(dependency) {
-                return Err(failure::format_err!("Dependency layer not configured: {:?}", dependency));
+                return Err(failure::format_err!(
+                    "Dependency layer not configured: {:?}",
+                    dependency
+                ));
             }
         }
 
@@ -358,7 +429,7 @@ impl ModularLayerFactory {
         for (layer_type, layer_config) in &config.layers {
             // Validate configuration
             self.validate_configuration(layer_type, layer_config)?;
-            
+
             // Configure layer
             self.configure_layer(layer_type.clone(), layer_config.clone());
         }
@@ -373,64 +444,80 @@ pub fn create_default_enhanced_config() -> EnhancedModularConfig {
     let mut layers = HashMap::new();
 
     // Execution layer config
-    layers.insert(LayerType::Execution, LayerConfig {
-        implementation: "polytorus-execution".to_string(),
-        config: serde_json::to_value(ExecutionConfig {
-            gas_limit: 8_000_000,
-            gas_price: 1,
-            wasm_config: WasmConfig {
-                max_memory_pages: 256,
-                max_stack_size: 65536,
-                gas_metering: true,
-            },
-        }).unwrap(),
-        enabled: true,
-        priority: 1,
-        dependencies: vec![],
-    });
+    layers.insert(
+        LayerType::Execution,
+        LayerConfig {
+            implementation: "polytorus-execution".to_string(),
+            config: serde_json::to_value(ExecutionConfig {
+                gas_limit: 8_000_000,
+                gas_price: 1,
+                wasm_config: WasmConfig {
+                    max_memory_pages: 256,
+                    max_stack_size: 65536,
+                    gas_metering: true,
+                },
+            })
+            .unwrap(),
+            enabled: true,
+            priority: 1,
+            dependencies: vec![],
+        },
+    );
 
     // Consensus layer config
-    layers.insert(LayerType::Consensus, LayerConfig {
-        implementation: "polytorus-consensus".to_string(),
-        config: serde_json::to_value(ConsensusConfig {
-            block_time: 10000,
-            difficulty: 4,
-            max_block_size: 1024 * 1024,
-        }).unwrap(),
-        enabled: true,
-        priority: 1,
-        dependencies: vec![],
-    });
+    layers.insert(
+        LayerType::Consensus,
+        LayerConfig {
+            implementation: "polytorus-consensus".to_string(),
+            config: serde_json::to_value(ConsensusConfig {
+                block_time: 10000,
+                difficulty: 4,
+                max_block_size: 1024 * 1024,
+            })
+            .unwrap(),
+            enabled: true,
+            priority: 1,
+            dependencies: vec![],
+        },
+    );
 
     // Settlement layer config
-    layers.insert(LayerType::Settlement, LayerConfig {
-        implementation: "polytorus-settlement".to_string(),
-        config: serde_json::to_value(SettlementConfig {
-            challenge_period: 100,
-            batch_size: 100,
-            min_validator_stake: 1000,
-        }).unwrap(),
-        enabled: true,
-        priority: 2,
-        dependencies: vec![LayerType::Execution],
-    });
+    layers.insert(
+        LayerType::Settlement,
+        LayerConfig {
+            implementation: "polytorus-settlement".to_string(),
+            config: serde_json::to_value(SettlementConfig {
+                challenge_period: 100,
+                batch_size: 100,
+                min_validator_stake: 1000,
+            })
+            .unwrap(),
+            enabled: true,
+            priority: 2,
+            dependencies: vec![LayerType::Execution],
+        },
+    );
 
     // Data availability layer config
-    layers.insert(LayerType::DataAvailability, LayerConfig {
-        implementation: "polytorus-data-availability".to_string(),
-        config: serde_json::to_value(DataAvailabilityConfig {
-            network_config: NetworkConfig {
-                listen_addr: "0.0.0.0:7000".to_string(),
-                bootstrap_peers: Vec::new(),
-                max_peers: 50,
-            },
-            retention_period: 86400 * 7,
-            max_data_size: 1024 * 1024,
-        }).unwrap(),
-        enabled: true,
-        priority: 3,
-        dependencies: vec![],
-    });
+    layers.insert(
+        LayerType::DataAvailability,
+        LayerConfig {
+            implementation: "polytorus-data-availability".to_string(),
+            config: serde_json::to_value(DataAvailabilityConfig {
+                network_config: NetworkConfig {
+                    listen_addr: "0.0.0.0:7000".to_string(),
+                    bootstrap_peers: Vec::new(),
+                    max_peers: 50,
+                },
+                retention_period: 86400 * 7,
+                max_data_size: 1024 * 1024,
+            })
+            .unwrap(),
+            enabled: true,
+            priority: 3,
+            dependencies: vec![],
+        },
+    );
 
     EnhancedModularConfig {
         layers,

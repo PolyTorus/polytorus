@@ -98,7 +98,9 @@ pub enum DataOperation {
 }
 
 /// Message priority levels
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum MessagePriority {
     Critical = 0,
     High = 1,
@@ -179,9 +181,12 @@ impl ModularMessageBus {
     }
 
     /// Create a broadcast channel for a message type
-    pub async fn create_channel(&self, message_type: MessageType) -> Result<broadcast::Receiver<ModularMessage>> {
+    pub async fn create_channel(
+        &self,
+        message_type: MessageType,
+    ) -> Result<broadcast::Receiver<ModularMessage>> {
         let mut channels = self.channels.write().await;
-        
+
         if let Some(sender) = channels.get(&message_type) {
             Ok(sender.subscribe())
         } else {
@@ -199,8 +204,14 @@ impl ModularMessageBus {
         {
             let mut metrics = self.metrics.write().await;
             metrics.total_messages += 1;
-            *metrics.messages_by_type.entry(message.message_type.clone()).or_insert(0) += 1;
-            *metrics.messages_by_priority.entry(message.priority.clone()).or_insert(0) += 1;
+            *metrics
+                .messages_by_type
+                .entry(message.message_type.clone())
+                .or_insert(0) += 1;
+            *metrics
+                .messages_by_priority
+                .entry(message.priority.clone())
+                .or_insert(0) += 1;
         }
 
         // Send to appropriate channel
@@ -213,7 +224,10 @@ impl ModularMessageBus {
                 return Err(failure::format_err!("Message send failed: {}", e));
             }
         } else {
-            log::warn!("No channel found for message type: {:?}", message.message_type);
+            log::warn!(
+                "No channel found for message type: {:?}",
+                message.message_type
+            );
             return Err(failure::format_err!("No channel for message type"));
         }
 
@@ -224,13 +238,20 @@ impl ModularMessageBus {
             metrics.average_latency = (metrics.average_latency + latency) / 2.0;
         }
 
-        log::trace!("Published message: {} (type: {:?}, priority: {:?})", 
-                   message.id, message.message_type, message.priority);
+        log::trace!(
+            "Published message: {} (type: {:?}, priority: {:?})",
+            message.id,
+            message.message_type,
+            message.priority
+        );
         Ok(())
     }
 
     /// Subscribe to messages of a specific type
-    pub async fn subscribe(&self, message_type: MessageType) -> Result<broadcast::Receiver<ModularMessage>> {
+    pub async fn subscribe(
+        &self,
+        message_type: MessageType,
+    ) -> Result<broadcast::Receiver<ModularMessage>> {
         self.create_channel(message_type).await
     }
 
@@ -241,7 +262,11 @@ impl ModularMessageBus {
     }
 
     /// Update layer health status
-    pub async fn update_layer_health(&self, layer_type: LayerType, health_status: HealthStatus) -> Result<()> {
+    pub async fn update_layer_health(
+        &self,
+        layer_type: LayerType,
+        health_status: HealthStatus,
+    ) -> Result<()> {
         let mut registry = self.layer_registry.write().await;
         if let Some(layer_info) = registry.get_mut(&layer_type) {
             layer_info.health_status = health_status;
@@ -345,10 +370,16 @@ impl MessageBuilder {
     pub fn build(self) -> Result<ModularMessage> {
         Ok(ModularMessage {
             id: uuid::Uuid::new_v4().to_string(),
-            message_type: self.message_type.ok_or_else(|| failure::format_err!("Message type is required"))?,
-            source_layer: self.source_layer.ok_or_else(|| failure::format_err!("Source layer is required"))?,
+            message_type: self
+                .message_type
+                .ok_or_else(|| failure::format_err!("Message type is required"))?,
+            source_layer: self
+                .source_layer
+                .ok_or_else(|| failure::format_err!("Source layer is required"))?,
             target_layer: self.target_layer,
-            payload: self.payload.ok_or_else(|| failure::format_err!("Payload is required"))?,
+            payload: self
+                .payload
+                .ok_or_else(|| failure::format_err!("Payload is required"))?,
             priority: self.priority,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

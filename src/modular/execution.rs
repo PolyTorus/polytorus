@@ -3,11 +3,11 @@
 //! This module implements the execution layer for the modular blockchain,
 //! handling transaction execution and state management.
 
+use super::eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig};
 use super::traits::*;
 use super::transaction_processor::{
     ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
 };
-use super::eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig};
 use crate::blockchain::block::Block;
 use crate::config::DataContext;
 use crate::crypto::transaction::Transaction;
@@ -51,7 +51,8 @@ pub struct ExecutionContext {
     gas_used: u64,
 }
 
-impl PolyTorusExecutionLayer {    /// Create a new execution layer
+impl PolyTorusExecutionLayer {
+    /// Create a new execution layer
     pub fn new(data_context: DataContext, config: ExecutionConfig) -> Result<Self> {
         let contract_state_path = data_context.data_dir().join("contracts");
         let contract_state = ContractState::new(contract_state_path.to_str().unwrap())?;
@@ -197,7 +198,8 @@ impl PolyTorusExecutionLayer {    /// Create a new execution layer
     }
 }
 
-impl ExecutionLayer for PolyTorusExecutionLayer {    fn execute_block(&self, block: &Block) -> Result<ExecutionResult> {
+impl ExecutionLayer for PolyTorusExecutionLayer {
+    fn execute_block(&self, block: &Block) -> Result<ExecutionResult> {
         let mut receipts = Vec::new();
         let mut total_gas_used = 0;
         let mut all_events = Vec::new();
@@ -214,9 +216,8 @@ impl ExecutionLayer for PolyTorusExecutionLayer {    fn execute_block(&self, blo
             };
 
             // Check if this is an eUTXO transaction (has inputs with scripts/redeeemers)
-            let is_eutxo_tx = tx.vin.iter().any(|input| 
-                input.redeemer.is_some() || 
-                !input.txid.is_empty() // Not a coinbase transaction
+            let is_eutxo_tx = tx.vin.iter().any(
+                |input| input.redeemer.is_some() || !input.txid.is_empty(), // Not a coinbase transaction
             );
 
             if is_eutxo_tx {
@@ -225,7 +226,9 @@ impl ExecutionLayer for PolyTorusExecutionLayer {    fn execute_block(&self, blo
                     Ok(eutxo_result) => {
                         receipt.success = eutxo_result.success;
                         receipt.gas_used = eutxo_result.gas_used;
-                        receipt.events = eutxo_result.events.iter()
+                        receipt.events = eutxo_result
+                            .events
+                            .iter()
                             .map(|e| Event {
                                 contract: e.address.clone(),
                                 data: e.data.clone(),
@@ -244,7 +247,9 @@ impl ExecutionLayer for PolyTorusExecutionLayer {    fn execute_block(&self, blo
                     Ok(tx_result) => {
                         receipt.success = tx_result.success;
                         receipt.gas_used = tx_result.gas_used;
-                        receipt.events = tx_result.events.iter()
+                        receipt.events = tx_result
+                            .events
+                            .iter()
                             .map(|e| Event {
                                 contract: e.address.clone(),
                                 data: e.data.clone(),
@@ -444,7 +449,10 @@ impl PolyTorusExecutionLayer {
     }
 
     /// Process transaction with eUTXO model
-    pub fn process_eutxo_transaction(&self, tx: &Transaction) -> Result<super::transaction_processor::TransactionResult> {
+    pub fn process_eutxo_transaction(
+        &self,
+        tx: &Transaction,
+    ) -> Result<super::transaction_processor::TransactionResult> {
         self.eutxo_processor.process_transaction(tx)
     }
 
@@ -459,7 +467,11 @@ impl PolyTorusExecutionLayer {
     }
 
     /// Find spendable UTXOs for a given amount
-    pub fn find_spendable_eutxos(&self, address: &str, amount: u64) -> Result<Vec<super::eutxo_processor::UtxoState>> {
+    pub fn find_spendable_eutxos(
+        &self,
+        address: &str,
+        amount: u64,
+    ) -> Result<Vec<super::eutxo_processor::UtxoState>> {
         self.eutxo_processor.find_spendable_utxos(address, amount)
     }
 
@@ -469,7 +481,12 @@ impl PolyTorusExecutionLayer {
     }
 
     /// Set hybrid account state
-    pub fn set_hybrid_account_state(&self, address: &str, state: ProcessorAccountState) -> Result<()> {
-        self.eutxo_processor.set_hybrid_account_state(address, state)
+    pub fn set_hybrid_account_state(
+        &self,
+        address: &str,
+        state: ProcessorAccountState,
+    ) -> Result<()> {
+        self.eutxo_processor
+            .set_hybrid_account_state(address, state)
     }
 }

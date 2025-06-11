@@ -3,7 +3,7 @@
 //! This module integrates the eUTXO transaction model into the modular blockchain
 //! architecture, providing script validation, datum handling, and redeemer support.
 
-use crate::crypto::transaction::{Transaction, TXOutput};
+use crate::crypto::transaction::{TXOutput, Transaction};
 use crate::modular::transaction_processor::{
     ProcessorAccountState, TransactionEvent, TransactionResult,
 };
@@ -46,9 +46,9 @@ pub struct EUtxoProcessorConfig {
 impl Default for EUtxoProcessorConfig {
     fn default() -> Self {
         Self {
-            max_script_size: 32768,    // 32KB
-            max_datum_size: 8192,      // 8KB
-            max_redeemer_size: 8192,   // 8KB
+            max_script_size: 32768,  // 32KB
+            max_datum_size: 8192,    // 8KB
+            max_redeemer_size: 8192, // 8KB
             script_gas_cost: 10,
             utxo_base_gas: 5000,
         }
@@ -109,7 +109,9 @@ impl EUtxoProcessor {
 
     /// Validate transaction inputs using eUTXO rules
     fn validate_inputs(&self, tx: &Transaction, result: &mut TransactionResult) -> Result<()> {
-        let utxo_set = self.utxo_set.lock()
+        let utxo_set = self
+            .utxo_set
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
 
         for input in &tx.vin {
@@ -120,7 +122,8 @@ impl EUtxoProcessor {
 
             // Find the referenced UTXO
             let utxo_key = format!("{}:{}", input.txid, input.vout);
-            let utxo = utxo_set.get(&utxo_key)
+            let utxo = utxo_set
+                .get(&utxo_key)
                 .ok_or_else(|| failure::format_err!("UTXO not found: {}", utxo_key))?;
 
             if utxo.is_spent {
@@ -129,7 +132,10 @@ impl EUtxoProcessor {
 
             // Validate spending conditions (script + redeemer)
             if !utxo.output.validate_spending(input)? {
-                return Err(failure::format_err!("Invalid spending conditions for UTXO: {}", utxo_key));
+                return Err(failure::format_err!(
+                    "Invalid spending conditions for UTXO: {}",
+                    utxo_key
+                ));
             }
 
             // Calculate gas for script execution
@@ -145,7 +151,8 @@ impl EUtxoProcessor {
             result.events.push(TransactionEvent {
                 address: format!("utxo_{}", utxo_key),
                 topics: vec!["utxo_spent".to_string()],
-                data: format!("UTXO {} spent with value {}", utxo_key, utxo.output.value).into_bytes(),
+                data: format!("UTXO {} spent with value {}", utxo_key, utxo.output.value)
+                    .into_bytes(),
             });
         }
 
@@ -158,13 +165,19 @@ impl EUtxoProcessor {
             // Validate output constraints
             if let Some(ref script) = output.script {
                 if script.len() > self.config.max_script_size {
-                    return Err(failure::format_err!("Script too large: {} bytes", script.len()));
+                    return Err(failure::format_err!(
+                        "Script too large: {} bytes",
+                        script.len()
+                    ));
                 }
             }
 
             if let Some(ref datum) = output.datum {
                 if datum.len() > self.config.max_datum_size {
-                    return Err(failure::format_err!("Datum too large: {} bytes", datum.len()));
+                    return Err(failure::format_err!(
+                        "Datum too large: {} bytes",
+                        datum.len()
+                    ));
                 }
             }
 
@@ -186,7 +199,9 @@ impl EUtxoProcessor {
 
     /// Update the UTXO set after transaction processing
     fn update_utxo_set(&self, tx: &Transaction) -> Result<()> {
-        let mut utxo_set = self.utxo_set.lock()
+        let mut utxo_set = self
+            .utxo_set
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
 
         // Mark spent UTXOs
@@ -220,7 +235,9 @@ impl EUtxoProcessor {
 
     /// Get UTXO by transaction ID and output index
     pub fn get_utxo(&self, txid: &str, vout: i32) -> Result<Option<UtxoState>> {
-        let utxo_set = self.utxo_set.lock()
+        let utxo_set = self
+            .utxo_set
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
 
         let utxo_key = format!("{}:{}", txid, vout);
@@ -229,14 +246,16 @@ impl EUtxoProcessor {
 
     /// Get all UTXOs for a given address
     pub fn get_utxos_for_address(&self, address: &str) -> Result<Vec<UtxoState>> {
-        let utxo_set = self.utxo_set.lock()
+        let utxo_set = self
+            .utxo_set
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
 
         let mut result = Vec::new();
-        
+
         // Calculate expected pub_key_hash for the address
         let expected_pub_key_hash = self.address_to_pub_key_hash(address)?;
-        
+
         for utxo in utxo_set.values() {
             if !utxo.is_spent {
                 // Check if this UTXO belongs to the address by comparing pub_key_hash
@@ -271,7 +290,11 @@ impl EUtxoProcessor {
         }
 
         if total < amount {
-            return Err(failure::format_err!("Insufficient balance: need {}, have {}", amount, total));
+            return Err(failure::format_err!(
+                "Insufficient balance: need {}, have {}",
+                amount,
+                total
+            ));
         }
 
         Ok(spendable)
@@ -283,14 +306,16 @@ impl EUtxoProcessor {
         let utxos = self.get_utxos_for_address(address)?;
 
         // Check if we have an existing account state
-        let account_states = self.account_states.lock()
+        let account_states = self
+            .account_states
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire account states lock"))?;
-        
+
         let mut state = account_states.get(address).cloned().unwrap_or_default();
-        
+
         // Update balance from UTXO set
         state.balance = balance;
-        
+
         // Store UTXO information in storage
         let utxo_data = bincode::serialize(&utxos)?;
         state.storage.insert("utxos".to_string(), utxo_data);
@@ -299,26 +324,36 @@ impl EUtxoProcessor {
     }
 
     /// Set hybrid account state
-    pub fn set_hybrid_account_state(&self, address: &str, state: ProcessorAccountState) -> Result<()> {
-        let mut account_states = self.account_states.lock()
+    pub fn set_hybrid_account_state(
+        &self,
+        address: &str,
+        state: ProcessorAccountState,
+    ) -> Result<()> {
+        let mut account_states = self
+            .account_states
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire account states lock"))?;
-        
+
         account_states.insert(address.to_string(), state);
         Ok(())
     }
 
     /// Get UTXO set statistics
     pub fn get_utxo_stats(&self) -> Result<UtxoStats> {
-        let utxo_set = self.utxo_set.lock()
+        let utxo_set = self
+            .utxo_set
+            .lock()
             .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
 
         let total_utxos = utxo_set.len();
         let unspent_utxos = utxo_set.values().filter(|utxo| !utxo.is_spent).count();
-        let total_value: u64 = utxo_set.values()
+        let total_value: u64 = utxo_set
+            .values()
             .filter(|utxo| !utxo.is_spent)
             .map(|utxo| utxo.output.value as u64)
             .sum();
-        let eutxo_count = utxo_set.values()
+        let eutxo_count = utxo_set
+            .values()
             .filter(|utxo| !utxo.is_spent && utxo.output.is_eUTXO())
             .count();
 
@@ -336,7 +371,7 @@ impl EUtxoProcessor {
         use bitcoincash_addr::Address;
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;
-        
+
         // Extract base address without encryption suffix
         let (base_address, _) = extract_encryption_type(address)?;
 
@@ -398,7 +433,8 @@ mod tests {
         let processor = EUtxoProcessor::new(config);
 
         // Create a coinbase transaction
-        let tx = Transaction::new_coinbase("test_address".to_string(), "reward".to_string()).unwrap();
+        let tx =
+            Transaction::new_coinbase("test_address".to_string(), "reward".to_string()).unwrap();
 
         let result = processor.process_transaction(&tx).unwrap();
         assert!(result.success);
@@ -414,7 +450,8 @@ mod tests {
         let processor = EUtxoProcessor::new(config);
 
         // Create and process a coinbase transaction
-        let tx = Transaction::new_coinbase("test_address".to_string(), "reward".to_string()).unwrap();
+        let tx =
+            Transaction::new_coinbase("test_address".to_string(), "reward".to_string()).unwrap();
         processor.process_transaction(&tx).unwrap();
 
         // Check balance
