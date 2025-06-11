@@ -505,10 +505,7 @@ impl<N: NetworkConfig> Block<block_states::Building, N> {    /// Create a new bl
         prev_block_hash: String,
         height: i32,
         recent_blocks: &[&Block<block_states::Finalized, N>],
-    ) -> Self {
-        let difficulty = if height == 0 {
-            N::INITIAL_DIFFICULTY
-        } else if recent_blocks.is_empty() {
+    ) -> Self {        let difficulty = if height == 0 || recent_blocks.is_empty() {
             N::INITIAL_DIFFICULTY
         } else {
             // Calculate dynamic difficulty based on recent blocks timing

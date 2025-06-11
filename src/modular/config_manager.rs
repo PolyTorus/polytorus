@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::Path;
 
+/// Type alias for configuration change watchers
+type ConfigChangeWatcher = Box<dyn Fn(&EnhancedModularConfig) + Send + Sync>;
+
 /// Configuration manager for the modular blockchain
 pub struct ModularConfigManager {
     /// Current configuration
@@ -21,7 +24,7 @@ pub struct ModularConfigManager {
     /// Environment prefix for variables
     env_prefix: String,
     /// Watchers for configuration changes
-    change_watchers: Vec<Box<dyn Fn(&EnhancedModularConfig) + Send + Sync>>,
+    change_watchers: Vec<ConfigChangeWatcher>,
 }
 
 /// Configuration validation result

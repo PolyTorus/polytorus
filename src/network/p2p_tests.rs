@@ -22,13 +22,18 @@ mod tests {
         assert_eq!(config.connection.connection_timeout, 10);
     }
 
-    /// Test network configuration with custom values
+    /// Test network configuration with custom values    #[test]
     #[test]
     fn test_network_config_custom() {
-        let mut config = NetworkConfig::default();
-        config.listen_address = "127.0.0.1:8080".to_string();
-        config.connection.max_inbound = 10;
-        config.connection.max_outbound = 15;
+        let config = NetworkConfig {
+            listen_address: "127.0.0.1:8080".to_string(),
+            connection: ConnectionConfig {
+                max_inbound: 10,
+                max_outbound: 15,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
 
         assert_eq!(config.listen_address, "127.0.0.1:8080");
         assert_eq!(config.connection.max_inbound, 10);

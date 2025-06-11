@@ -576,7 +576,7 @@ impl UnifiedModularOrchestrator {
     }
 
     /// Advanced performance optimization methods
-
+    ///
     /// Optimize memory usage by cleaning up unused resources
     pub async fn optimize_memory_usage(&self) -> Result<()> {
         // Clean up cache entries
