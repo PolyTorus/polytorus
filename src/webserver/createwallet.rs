@@ -24,9 +24,9 @@ struct CryptoPath {
 #[post("/create_wallet/{encryption}")]
 pub async fn create_wallet(path: web::Path<CryptoPath>) -> impl Responder {
     match path.encryption.parse::<EncryptionType>() {
-        Ok(_encryption) => {
+        Ok(encryption) => {
             let cli = ModernCli::new();
-            match cli.cmd_create_wallet().await {
+            match cli.cmd_create_wallet(encryption).await {
                 Ok(_) => HttpResponse::Ok().body("Wallet created successfully"),
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
             }
