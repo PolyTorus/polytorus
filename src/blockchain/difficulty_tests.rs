@@ -8,7 +8,8 @@ mod difficulty_adjustment_tests {
 
     fn create_test_transaction() -> Transaction {
         Transaction::new_coinbase("test_address".to_string(), "50".to_string()).unwrap()
-    }    fn create_test_block(
+    }
+    fn create_test_block(
         height: i32,
         prev_hash: String,
         difficulty: usize,
@@ -71,7 +72,8 @@ mod difficulty_adjustment_tests {
 
         let success_rate = stats.success_rate();
         assert_eq!(success_rate, 0.5); // 1 success out of 2 attempts
-    }    #[test]
+    }
+    #[test]
     fn test_block_creation_with_config() {
         let block = create_test_block(1, "prev_hash".to_string(), 3);
 
@@ -90,7 +92,7 @@ mod difficulty_adjustment_tests {
         let _now = std::time::SystemTime::now()
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()
-            .as_millis();        // Simulate blocks with fast mining times (should increase difficulty)
+            .as_millis(); // Simulate blocks with fast mining times (should increase difficulty)
         let fast_blocks = vec![];
         let dynamic_diff = block.calculate_dynamic_difficulty(&fast_blocks);
 

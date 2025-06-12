@@ -91,7 +91,8 @@ impl ModularNetwork {
             pending_requests: Arc::new(Mutex::new(HashMap::new())),
             local_data: Arc::new(Mutex::new(HashMap::new())),
         })
-    }    /// Start the network layer
+    }
+    /// Start the network layer
     pub async fn start(&self) -> Result<()> {
         log::info!("Starting modular network on {}", self.config.listen_address);
 
@@ -114,14 +115,14 @@ impl ModularNetwork {
         // Parse the listen address
         let addr = &self.config.listen_address;
         log::info!("Setting up listener on {}", addr);
-        
+
         // For now, we simulate listening by logging
         // In a real implementation, we would:
         // 1. Bind to the TCP port
         // 2. Accept incoming connections
         // 3. Handle P2P protocol handshakes
         // 4. Manage peer connections
-        
+
         log::debug!("Simulated listener setup completed for {}", addr);
         Ok(())
     }
@@ -159,7 +160,8 @@ impl ModularNetwork {
         }
 
         Ok(())
-    }    /// Request data from network
+    }
+    /// Request data from network
     pub async fn request_data(&self, hash: &str) -> Result<Option<Vec<u8>>> {
         log::debug!("Requesting data: {}", hash);
 
@@ -179,7 +181,7 @@ impl ModularNetwork {
             let peers = self.peers.lock().unwrap();
             peers.keys().cloned().collect()
         };
-        
+
         for peer_id in peer_ids {
             if let Err(e) = self.request_data_from_peer(&peer_id, hash).await {
                 log::warn!("Failed to request data from peer {}: {}", peer_id, e);
@@ -208,24 +210,28 @@ impl ModularNetwork {
 
     /// Wait for data response from a specific peer
     async fn wait_for_data_response(&self, hash: &str, peer_id: &str) -> Result<Option<Vec<u8>>> {
-        log::debug!("Waiting for data response for {} from peer {}", hash, peer_id);
-        
+        log::debug!(
+            "Waiting for data response for {} from peer {}",
+            hash,
+            peer_id
+        );
+
         // In a real implementation, this would:
         // 1. Wait for network messages
         // 2. Parse incoming data responses
         // 3. Verify data integrity
         // 4. Return the data if received
-        
+
         // For simulation, we check if data was somehow received
         // (could happen through other means like broadcast)
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        
+
         // Check if the data arrived while waiting
         if let Some(data) = self.get_local_data(hash) {
             log::debug!("Data {} arrived from peer {} during wait", hash, peer_id);
             return Ok(Some(data));
         }
-          log::debug!("No response received for {} from peer {}", hash, peer_id);
+        log::debug!("No response received for {} from peer {}", hash, peer_id);
         Ok(None)
     }
 
@@ -256,7 +262,8 @@ impl ModularNetwork {
             total_data_served: peers.values().map(|p| p.data_served).sum(),
             total_data_requested: peers.values().map(|p| p.data_requested).sum(),
         }
-    }    /// Connect to a peer
+    }
+    /// Connect to a peer
     async fn connect_to_peer(&self, peer_address: &str) -> Result<()> {
         log::debug!("Connecting to peer: {}", peer_address);
 
@@ -306,27 +313,36 @@ impl ModularNetwork {
     /// Attempt to establish connection with a peer
     async fn attempt_peer_connection(&self, peer_address: &str) -> Result<()> {
         log::debug!("Attempting connection to: {}", peer_address);
-        
+
         // In a real implementation, this would:
         // 1. Parse the peer address (IP:port)
         // 2. Establish TCP connection
         // 3. Perform P2P protocol handshake
         // 4. Exchange node information
         // 5. Validate peer compatibility
-        
+
         // Simulate connection delay
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        
+
         // Simulate occasional connection failures
         if peer_address.contains("unreachable") || peer_address.contains("invalid") {
-            return Err(failure::format_err!("Connection refused by {}", peer_address));
+            return Err(failure::format_err!(
+                "Connection refused by {}",
+                peer_address
+            ));
         }
-        
+
         log::debug!("Connection established with: {}", peer_address);
         Ok(())
-    }    /// Send data to a specific peer
+    }
+    /// Send data to a specific peer
     async fn send_data_to_peer(&self, peer_id: &str, hash: &str, data: &[u8]) -> Result<()> {
-        log::debug!("Sending data {} to peer {} ({} bytes)", hash, peer_id, data.len());
+        log::debug!(
+            "Sending data {} to peer {} ({} bytes)",
+            hash,
+            peer_id,
+            data.len()
+        );
 
         // Check if peer is connected
         {
@@ -338,7 +354,12 @@ impl ModularNetwork {
 
         // Simulate data transmission
         if let Err(e) = self.transmit_data_to_peer(peer_id, hash, data).await {
-            log::warn!("Failed to transmit data {} to peer {}: {}", hash, peer_id, e);
+            log::warn!(
+                "Failed to transmit data {} to peer {}: {}",
+                hash,
+                peer_id,
+                e
+            );
             return Err(e);
         }
 
@@ -354,26 +375,39 @@ impl ModularNetwork {
 
     /// Transmit data over the network
     async fn transmit_data_to_peer(&self, peer_id: &str, hash: &str, data: &[u8]) -> Result<()> {
-        log::debug!("Transmitting {} bytes for hash {} to peer {}", data.len(), hash, peer_id);
-        
+        log::debug!(
+            "Transmitting {} bytes for hash {} to peer {}",
+            data.len(),
+            hash,
+            peer_id
+        );
+
         // In a real implementation, this would:
         // 1. Serialize the data with protocol headers
         // 2. Send over TCP connection to the peer
         // 3. Handle network errors and retries
         // 4. Verify transmission success
-        
+
         // Simulate transmission time based on data size
         let transmission_delay = std::cmp::min(data.len() / 1000, 100); // Max 100ms delay
         tokio::time::sleep(std::time::Duration::from_millis(transmission_delay as u64)).await;
-        
+
         // Simulate occasional transmission failures
         if peer_id.contains("unstable") {
-            return Err(failure::format_err!("Network transmission failed to {}", peer_id));
+            return Err(failure::format_err!(
+                "Network transmission failed to {}",
+                peer_id
+            ));
         }
-        
-        log::debug!("Data transmission completed for hash {} to peer {}", hash, peer_id);
+
+        log::debug!(
+            "Data transmission completed for hash {} to peer {}",
+            hash,
+            peer_id
+        );
         Ok(())
-    }    /// Request data from a specific peer
+    }
+    /// Request data from a specific peer
     async fn request_data_from_peer(&self, peer_id: &str, hash: &str) -> Result<()> {
         log::debug!("Requesting data {} from peer {}", hash, peer_id);
 
@@ -387,7 +421,12 @@ impl ModularNetwork {
 
         // Send the data request
         if let Err(e) = self.send_data_request_to_peer(peer_id, hash).await {
-            log::warn!("Failed to send data request {} to peer {}: {}", hash, peer_id, e);
+            log::warn!(
+                "Failed to send data request {} to peer {}: {}",
+                hash,
+                peer_id,
+                e
+            );
             return Err(e);
         }
 
@@ -397,32 +436,39 @@ impl ModularNetwork {
             peer.last_seen = SystemTime::now();
         }
 
-        log::debug!("Data request {} sent successfully to peer {}", hash, peer_id);
+        log::debug!(
+            "Data request {} sent successfully to peer {}",
+            hash,
+            peer_id
+        );
         Ok(())
     }
 
     /// Send data request message to peer
     async fn send_data_request_to_peer(&self, peer_id: &str, hash: &str) -> Result<()> {
         log::debug!("Sending data request for {} to peer {}", hash, peer_id);
-        
+
         // In a real implementation, this would:
         // 1. Create a data request message with the hash
         // 2. Serialize the request according to P2P protocol
         // 3. Send the request over the network connection
         // 4. Handle network errors and retries
-        
+
         // Simulate network request transmission
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        
+
         // Simulate occasional request failures
         if peer_id.contains("slow") {
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
-        
+
         if peer_id.contains("unreachable") {
-            return Err(failure::format_err!("Failed to reach peer {} for data request", peer_id));
+            return Err(failure::format_err!(
+                "Failed to reach peer {} for data request",
+                peer_id
+            ));
         }
-        
+
         log::debug!("Data request for {} sent to peer {}", hash, peer_id);
         Ok(())
     }
