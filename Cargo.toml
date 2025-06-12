@@ -12,10 +12,6 @@ categories = ["cryptography", "network-programming", "wasm"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[example]]
-name = "difficulty_adjustment"
-path = "examples/difficulty_adjustment_example.rs"
-
-[[example]]
 name = "simple_difficulty_test"
 path = "examples/simple_difficulty_test.rs"
 

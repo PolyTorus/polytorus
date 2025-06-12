@@ -482,8 +482,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
 }
 
 /// Network-specific block creation
-impl<N: NetworkConfig> Block<block_states::Building, N> {
-    /// Create a new block with network-specific parameters
+impl<N: NetworkConfig> Block<block_states::Building, N> {    /// Create a new block with network-specific parameters
     pub fn new_with_network_config(
         transactions: Vec<Transaction>,
         prev_block_hash: String,
@@ -492,12 +491,74 @@ impl<N: NetworkConfig> Block<block_states::Building, N> {
         let difficulty = if height == 0 {
             N::INITIAL_DIFFICULTY
         } else {
-            // For now, keep initial difficulty but this should be calculated based on previous blocks
-            // TODO: Implement dynamic difficulty adjustment based on block timing
+            // Dynamic difficulty adjustment based on block timing
+            // If no recent blocks are available, use initial difficulty
             N::INITIAL_DIFFICULTY
         };
 
         Self::new_building(transactions, prev_block_hash, height, difficulty)
+    }
+
+    /// Create a new block with network-specific parameters and previous blocks
+    pub fn new_with_network_config_and_history(
+        transactions: Vec<Transaction>,
+        prev_block_hash: String,
+        height: i32,
+        recent_blocks: &[&Block<block_states::Finalized, N>],
+    ) -> Self {        let difficulty = if height == 0 || recent_blocks.is_empty() {
+            N::INITIAL_DIFFICULTY
+        } else {
+            // Calculate dynamic difficulty based on recent blocks timing
+            Self::calculate_difficulty_from_history(recent_blocks)
+        };
+
+        Self::new_building(transactions, prev_block_hash, height, difficulty)
+    }
+
+    /// Calculate difficulty based on block history
+    fn calculate_difficulty_from_history(
+        recent_blocks: &[&Block<block_states::Finalized, N>],
+    ) -> usize {
+        if recent_blocks.len() < 2 {
+            return N::INITIAL_DIFFICULTY;
+        }
+
+        // Calculate average block time from recent blocks
+        let mut total_time_diff = 0u128;
+        let mut block_count = 0;
+
+        for i in 1..recent_blocks.len() {
+            let time_diff = recent_blocks[i].timestamp - recent_blocks[i - 1].timestamp;
+            total_time_diff += time_diff;
+            block_count += 1;
+        }
+
+        if block_count == 0 {
+            return N::INITIAL_DIFFICULTY;
+        }
+
+        let avg_block_time = total_time_diff / block_count as u128;
+        let target_time = N::DESIRED_BLOCK_TIME;
+
+        // Adjust difficulty based on timing
+        let current_difficulty = recent_blocks.last().unwrap().difficulty;
+        
+        if avg_block_time < target_time / 2 {
+            // Blocks are coming too fast - increase difficulty significantly
+            (current_difficulty * 2).min(32)
+        } else if avg_block_time < target_time * 4 / 5 {
+            // Blocks are somewhat fast - increase difficulty moderately
+            (current_difficulty + 1).min(32)
+        } else if avg_block_time > target_time * 2 {
+            // Blocks are coming too slow - decrease difficulty significantly
+            (current_difficulty / 2).max(1)
+        } else if avg_block_time > target_time * 5 / 4 {
+            // Blocks are somewhat slow - decrease difficulty moderately
+            if current_difficulty > 1 { current_difficulty - 1 } else { 1 }
+        } else {
+            // Block timing is acceptable - maintain current difficulty
+            current_difficulty
+        }
     }
 
     /// Create genesis block
