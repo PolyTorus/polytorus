@@ -390,4 +390,21 @@ Diamond IO integration includes comprehensive error handling:
 - **File System Safety**: Robust directory management and cleanup
 - **Tracing Conflicts**: Safe tracing initialization prevents conflicts
 - **Parameter Validation**: Configuration validation before operations
-````
+
+## 📚 Documentation
+
+For comprehensive guides and references, see the [documentation directory](docs/):
+
+### Quick Links
+- **[Getting Started](docs/GETTING_STARTED.md)** - New user guide
+- **[Diamond IO Contracts](docs/DIAMOND_IO_CONTRACTS.md)** - Diamond IO vs traditional contracts comparison
+- **[Modular Architecture](docs/MODULAR_ARCHITECTURE.md)** - Core design principles
+- **[Development Guide](docs/DEVELOPMENT.md)** - Developer documentation
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API documentation
+
+### Smart Contract Development
+- **Traditional Contracts**: Fast, transparent WASM-based execution
+- **Diamond IO Contracts**: Private, quantum-resistant indistinguishability obfuscation
+- **Hybrid Approach**: Choose the right tool for your use case
+
+Learn more in the [Diamond IO Contracts Guide](docs/DIAMOND_IO_CONTRACTS.md).
