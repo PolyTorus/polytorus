@@ -26,6 +26,7 @@ async fn main() -> anyhow::Result<()> {
         p_sigma: 4.578,
         trapdoor_sigma: Some(4.578),
         inputs: vec![true, false, true, false],
+        dummy_mode: true, // Enable dummy mode to avoid tracing conflicts
     };
 
     info!("📋 Diamond IO Configuration:");

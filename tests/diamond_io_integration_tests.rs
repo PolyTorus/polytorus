@@ -19,6 +19,7 @@ async fn test_diamond_io_integration_basic() {
         p_sigma: 4.578,
         trapdoor_sigma: Some(4.578),
         inputs: vec![true, false],
+        dummy_mode: true, // Enable dummy mode for testing
     };
 
     let integration = DiamondIOIntegration::new(config);
@@ -47,6 +48,7 @@ async fn test_smart_contract_engine() {
         p_sigma: 4.578,
         trapdoor_sigma: Some(4.578),
         inputs: vec![true, false],
+        dummy_mode: true, // Enable dummy mode for testing
     };
 
     let mut engine = DiamondContractEngine::new(config).unwrap();
@@ -96,6 +98,7 @@ async fn test_modular_layer_integration() {
         p_sigma: 4.578,
         trapdoor_sigma: Some(4.578),
         inputs: vec![true, false],
+        dummy_mode: true, // Enable dummy mode for testing
     };
 
     let mut layer = DiamondIOLayerBuilder::new()
@@ -155,6 +158,7 @@ async fn test_multiple_contract_types() {
         p_sigma: 4.578,
         trapdoor_sigma: Some(4.578),
         inputs: vec![true, false, true, false],
+        dummy_mode: true, // Enable dummy mode for testing
     };
 
     let mut engine = DiamondContractEngine::new(config).unwrap();

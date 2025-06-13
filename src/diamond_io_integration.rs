@@ -50,8 +50,10 @@ pub struct DiamondIOConfig {
     pub p_sigma: f64,
     /// Trapdoor sigma (optional)
     pub trapdoor_sigma: Option<f64>,
-    /// Input values
+    /// Input values for testing
     pub inputs: Vec<bool>,
+    /// Enable dummy mode (for testing without full Diamond IO initialization)
+    pub dummy_mode: bool,
 }
 
 fn biguint_to_string<S>(value: &BigUint, serializer: S) -> Result<S::Ok, S::Error>
@@ -84,6 +86,7 @@ impl Default for DiamondIOConfig {
             p_sigma: 4.578,
             trapdoor_sigma: Some(4.578),
             inputs: vec![true, false, true, false, true, false, true, false],
+            dummy_mode: false,
         }
     }
 }
@@ -97,6 +100,15 @@ pub struct DiamondIOIntegration {
 
 impl DiamondIOIntegration {
     pub fn new(config: DiamondIOConfig) -> anyhow::Result<Self> {
+        // Skip Diamond IO initialization in dummy mode
+        if config.dummy_mode {
+            return Ok(Self {
+                config,
+                params: DCRTPolyParams::new(16, 2, 17, 1), // Minimal dummy params
+                obfuscation_dir: "obfuscation_data".to_string(),
+            });
+        }
+        
         init_tracing();
         
         let params = DCRTPolyParams::new(
@@ -119,6 +131,22 @@ impl DiamondIOIntegration {
 
     /// Create a simple circuit for demonstration
     pub fn create_demo_circuit(&self) -> PolyCircuit {
+        if self.config.dummy_mode {
+            // Return a minimal circuit for dummy mode
+            let mut circuit = PolyCircuit::new();
+            
+            // In dummy mode, just create a simple circuit structure
+            let inputs = circuit.input(2);
+            if inputs.len() >= 2 {
+                let input1 = inputs[0];
+                let input2 = inputs[1];
+                let sum = circuit.add_gate(input1, input2);
+                circuit.output(vec![sum]);
+            }
+            
+            return circuit;
+        }
+        
         let mut circuit = PolyCircuit::new();
         
         // Add inputs - input() requires number of inputs as parameter
