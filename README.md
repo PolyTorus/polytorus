@@ -33,8 +33,16 @@ PolyTorus is a revolutionary **modular blockchain platform** designed for the po
 ### 🔐 **Quantum-Resistant Security**
 - **FN-DSA Cryptography**: Post-quantum cryptographic signatures for future-proof security
 - **ECDSA Support**: Traditional cryptography for current compatibility
+- **Diamond IO Integration**: Advanced indistinguishability obfuscation (iO) for ultimate privacy
 - **Flexible Wallet System**: Users choose their preferred cryptographic backend
 - **Seamless Migration**: Easy transition between cryptographic methods
+
+### 🧮 **Diamond IO Integration**
+- **Indistinguishability Obfuscation**: State-of-the-art iO implementation for smart contracts
+- **Homomorphic Encryption**: RLWE-based encryption for private computation
+- **Circuit Obfuscation**: Transform smart contracts into indistinguishable programs
+- **Zero-Knowledge Privacy**: Execute contracts without revealing logic or data
+- **Modular Integration**: Seamlessly integrated into the PolyTorus modular architecture
 
 ### 🔧 **Advanced Capabilities**
 - **Smart Contracts**: High-performance WebAssembly (WASM) based execution engine
@@ -231,7 +239,163 @@ The web interface provides a RESTful API at `http://localhost:8080` with endpoin
 - `/api/mining` - Mining operations
 - `/api/network` - Network status
 
-## 📝 Smart Contracts
+## � Diamond IO Integration
+
+PolyTorus includes cutting-edge Diamond IO integration, bringing **indistinguishability obfuscation (iO)** to blockchain smart contracts.
+
+### Diamond IO Features
+
+- **🔐 Circuit Obfuscation**: Transform smart contracts into indistinguishable programs
+- **🧮 Homomorphic Encryption**: Execute computations on encrypted data
+- **🛡️ Perfect Privacy**: Conceal both program logic and execution data
+- **⚡ Modular Architecture**: Seamlessly integrated into PolyTorus layers
+- **🔬 Configurable Security**: Adjustable cryptographic parameters
+
+### Implementation Status
+
+✅ **Completed:**
+- Diamond IO dependency integration and build configuration
+- Core Diamond IO integration APIs and wrappers
+- Smart contract engine with Diamond IO support
+- Modular layer architecture integration
+- Configuration management and serialization
+- Comprehensive test suite for basic functionality
+- Basic circuit creation and manipulation
+
+🔄 **In Progress:**
+- Full demo execution (resolving tracing subscriber conflicts)
+- Advanced smart contract deployment and execution
+- Performance optimization and benchmarking
+
+⚠️ **Known Issues:**
+- Tracing subscriber initialization conflicts when using Diamond IO APIs
+- Some tests require isolation due to global state initialization
+
+### Quick Start with Diamond IO
+
+1. **Run Basic Tests:**
+```bash
+# Test basic Diamond IO integration
+cargo test test_diamond_io_integration_basic
+
+# Test configuration functionality
+cargo test test_diamond_io_config_serialization
+cargo test test_diamond_io_config_validation
+```
+
+2. **Basic Usage Example:**
+```rust
+use polytorus::diamond_io_integration::{DiamondIOIntegration, DiamondIOConfig};
+
+// Create integration with default configuration
+let config = DiamondIOConfig::default();
+let integration = DiamondIOIntegration::new(config)?;
+
+// Create a demo circuit
+let circuit = integration.create_demo_circuit();
+println!("Circuit has {} inputs and {} outputs", 
+    circuit.num_input(), circuit.num_output());
+```
+
+3. **Configure Diamond IO:**
+```bash
+# Copy the example configuration
+cp config/diamond_io.toml config/my_diamond.toml
+
+# Edit parameters as needed
+vim config/my_diamond.toml
+```
+
+2. **Run Diamond IO Demo:**
+```bash
+# Run the comprehensive demo
+cargo run --example diamond_io_demo
+
+# View available examples
+cargo run --example diamond_io_demo --help
+```
+
+3. **Deploy an Obfuscated Contract:**
+```rust
+use polytorus::diamond_smart_contracts::DiamondContractEngine;
+use polytorus::diamond_io_integration::DiamondIOConfig;
+
+// Create engine with your configuration
+let mut engine = DiamondContractEngine::new(config)?;
+
+// Deploy a contract
+let contract_id = engine.deploy_contract(
+    "secure_voting".to_string(),
+    "Private Voting Contract".to_string(),
+    "voting_circuit".to_string(),
+    "deployer_address".to_string(),
+    "and_gate", // Circuit description
+).await?;
+
+// Obfuscate the contract for maximum privacy
+engine.obfuscate_contract(&contract_id).await?;
+
+// Execute with hidden logic
+let result = engine.execute_contract(
+    &contract_id,
+    vec![true, false, true, false], // Encrypted inputs
+    "voter_address".to_string(),
+).await?;
+```
+
+### Diamond IO Configuration
+
+Key parameters in `config/diamond_io.toml`:
+
+```toml
+[diamond_io]
+ring_dimension = 16      # Cryptographic ring size (power of 2)
+crt_depth = 2           # Chinese Remainder Theorem depth
+crt_bits = 17           # Bits per CRT component
+input_size = 4          # Circuit input size
+obfuscation_enabled = true  # Enable circuit obfuscation
+
+[security]
+hardcoded_key_sigma = 4.578  # Key generation noise
+p_sigma = 4.578             # Encryption noise
+trapdoor_sigma = 4.578      # Trapdoor sampling noise
+```
+
+### Prerequisites for Diamond IO
+
+To use Diamond IO with obfuscation features:
+
+1. **Install OpenFHE:**
+```bash
+# Install OpenFHE from the MachinaIO fork
+git clone -b feat/improve_determinant https://github.com/MachinaIO/openfhe-development
+cd openfhe-development
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+sudo make install
+```
+
+2. **Rust Nightly:**
+```bash
+rustup install nightly
+rustup default nightly
+```
+
+3. **Build with Diamond IO:**
+```bash
+cargo build --release --features diamond-io
+```
+
+### Diamond IO Smart Contract Types
+
+- **Logic Gates**: AND, OR, XOR operations with perfect privacy
+- **Arithmetic Circuits**: Addition, multiplication with homomorphic properties  
+- **Voting Systems**: Private voting with encrypted tallies
+- **Auctions**: Sealed-bid auctions with hidden bids
+- **Custom Circuits**: Define your own obfuscated logic
+
+## �📝 Smart Contracts
 
 PolyTorus features a sophisticated WebAssembly (WASM) based smart contract platform that provides:
 

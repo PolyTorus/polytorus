@@ -4,6 +4,10 @@
 // Core modular blockchain - new primary architecture
 pub mod modular;
 
+// Diamond IO integration for advanced cryptographic operations
+pub mod diamond_io_integration;
+pub mod diamond_smart_contracts;
+
 // Legacy modules - maintained for backward compatibility
 pub mod blockchain;
 pub mod command;

@@ -1,0 +1,63 @@
+# Diamond IO Configuration for PolyTorus
+# This configuration file demonstrates how to set up Diamond IO
+# for use with the PolyTorus modular blockchain
+
+[diamond_io]
+# Ring dimension - must be a power of 2
+ring_dimension = 16
+
+# CRT (Chinese Remainder Theorem) parameters
+crt_depth = 2
+crt_bits = 17
+
+# Base bits for gadget decomposition
+base_bits = 1
+
+# Switched modulus for the cryptographic scheme
+switched_modulus = "123456789012345"
+
+# Circuit parameters
+input_size = 4
+level_width = 4
+
+# Security parameters
+d = 2
+hardcoded_key_sigma = 4.578
+p_sigma = 4.578
+trapdoor_sigma = 4.578
+
+# Default input values for testing
+inputs = [true, false, true, false]
+
+[layer_config]
+# Maximum number of concurrent contract executions
+max_concurrent_executions = 10
+
+# Enable/disable obfuscation (requires OpenFHE)
+obfuscation_enabled = false
+
+# Enable/disable encryption
+encryption_enabled = true
+
+# Gas limit per contract execution
+gas_limit_per_execution = 1000000
+
+[smart_contracts]
+# Enable automatic contract obfuscation after deployment
+auto_obfuscate = false
+
+# Default gas price (in smallest unit)
+default_gas_price = 1000
+
+# Maximum contract size in bytes
+max_contract_size = 1048576  # 1MB
+
+[security]
+# Enable additional security checks
+strict_mode = true
+
+# Require signature verification for contract deployment
+require_signature = true
+
+# Enable audit logging
+audit_logging = true
