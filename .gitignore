@@ -8,3 +8,4 @@ temp*
 target/
 *.wasm
 modular_config.toml
+obfuscation_data

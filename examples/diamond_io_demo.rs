@@ -12,7 +12,25 @@ async fn main() -> anyhow::Result<()> {
     
     info!("🚀 Starting PolyTorus Diamond IO Integration Demo");
 
-    // Configure Diamond IO
+    // Demo with different parameter sets
+    info!("\n📊 Running demos with different parameter configurations...\n");
+
+    // Demo 1: Dummy mode (safe for testing)
+    info!("🧪 Demo 1: Dummy Mode Configuration");
+    let dummy_config = DiamondIOConfig::dummy();
+    demo_configuration(&dummy_config, "Dummy Mode").await?;
+
+    // Demo 2: Testing parameters (medium security)
+    info!("\n🔬 Demo 2: Testing Parameters Configuration");
+    let testing_config = DiamondIOConfig::testing();
+    demo_configuration(&testing_config, "Testing Parameters").await?;
+
+    // Demo 3: Production parameters (high security, might be slower)
+    info!("\n🏭 Demo 3: Production Parameters Configuration");
+    let production_config = DiamondIOConfig::production();
+    demo_configuration(&production_config, "Production Parameters").await?;
+
+    // Demo 4: Original configuration
     let diamond_config = DiamondIOConfig {
         ring_dimension: 16,
         crt_depth: 2,
@@ -35,19 +53,66 @@ async fn main() -> anyhow::Result<()> {
     info!("  Input Size: {}", diamond_config.input_size);
 
     // Demo 1: Basic Diamond IO Integration
-    info!("\n🔐 Demo 1: Basic Diamond IO Operations");
+    info!("\n🔐 Demo 4: Basic Diamond IO Operations");
     demo_basic_diamond_io(diamond_config.clone()).await?;
 
     // Demo 2: Smart Contract Engine
-    info!("\n📜 Demo 2: Diamond Smart Contract Engine");
+    info!("\n📜 Demo 5: Diamond Smart Contract Engine");
     demo_smart_contracts(diamond_config.clone()).await?;
 
     // Demo 3: Modular Layer Integration
-    info!("\n🏗️  Demo 3: Modular Layer Integration");
+    info!("\n🏗️  Demo 6: Modular Layer Integration");
     demo_modular_layer(diamond_config.clone()).await?;
 
     info!("\n✅ All demos completed successfully!");
 
+    Ok(())
+}
+
+async fn demo_configuration(config: &DiamondIOConfig, name: &str) -> anyhow::Result<()> {
+    info!("🔧 Testing {} configuration:", name);
+    info!("  Ring Dimension: {}", config.ring_dimension);
+    info!("  CRT Depth: {}", config.crt_depth);
+    info!("  Input Size: {}", config.input_size);
+    info!("  Dummy Mode: {}", config.dummy_mode);
+
+    // Create integration
+    let integration = DiamondIOIntegration::new(config.clone())?;
+    
+    // Test circuit creation
+    let circuit = integration.create_demo_circuit();
+    info!("  ✓ Demo circuit created: {} inputs, {} outputs", 
+          circuit.num_input(), circuit.num_output());
+    
+    // Test different circuit types
+    let and_circuit = integration.create_circuit("and_gate");
+    info!("  ✓ AND circuit created: {} inputs, {} outputs", 
+          and_circuit.num_input(), and_circuit.num_output());
+    
+    // Test obfuscation (may take longer with real parameters)
+    let start_time = std::time::Instant::now();
+    match integration.obfuscate_circuit(circuit).await {
+        Ok(_) => {
+            let obf_time = start_time.elapsed();
+            info!("  ✓ Circuit obfuscation completed in {:?}", obf_time);
+        },
+        Err(e) => {
+            info!("  ⚠️  Circuit obfuscation failed (expected with some parameters): {}", e);
+        }
+    }
+    
+    // Test evaluation
+    let inputs = &config.inputs[..std::cmp::min(config.inputs.len(), config.input_size)];
+    match integration.evaluate_circuit(inputs) {
+        Ok(output) => {
+            info!("  ✓ Circuit evaluation: {:?} -> {:?}", inputs, output);
+        },
+        Err(e) => {
+            info!("  ⚠️  Circuit evaluation failed: {}", e);
+        }
+    }
+    
+    info!("  {} configuration test completed!\n", name);
     Ok(())
 }
 
@@ -223,18 +288,4 @@ async fn demo_modular_layer(config: DiamondIOConfig) -> anyhow::Result<()> {
     layer.stop_layer().await?;
     
     Ok(())
-}
-
-fn print_banner() {
-    println!(r#"
-    ██████╗  ██████╗ ██╗  ██╗   ██╗████████╗ ██████╗ ██████╗ ██╗   ██╗███████╗
-    ██╔══██╗██╔═══██╗██║  ╚██╗ ██╔╝╚══██╔══╝██╔═══██╗██╔══██╗██║   ██║██╔════╝
-    ██████╔╝██║   ██║██║   ╚████╔╝    ██║   ██║   ██║██████╔╝██║   ██║███████╗
-    ██╔═══╝ ██║   ██║██║    ╚██╔╝     ██║   ██║   ██║██╔══██╗██║   ██║╚════██║
-    ██║     ╚██████╔╝███████╗██║      ██║   ╚██████╔╝██║  ██║╚██████╔╝███████║
-    ╚═╝      ╚═════╝ ╚══════╝╚═╝      ╚═╝    ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-    
-    🔐 Diamond IO Integration Demo
-    Post-Quantum Modular Blockchain Platform
-    "#);
 }

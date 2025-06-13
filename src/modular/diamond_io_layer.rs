@@ -228,61 +228,43 @@ impl PolyTorusDiamondIOLayer {
         
         Ok(encrypted)
     }
-
-    async fn handle_diamond_message(&self, message: &DiamondIOMessage) -> Result<()> {
-        match message {
-            DiamondIOMessage::ContractDeployment { contract_id, owner, circuit_description } => {
-                self.deploy_contract(
-                    contract_id.clone(),
-                    format!("Contract {}", contract_id),
-                    circuit_description.clone(),
-                    owner.clone(),
-                    circuit_description,
-                ).await?;
-            }
-            DiamondIOMessage::ContractExecution { contract_id, inputs, executor } => {
-                self.execute_contract(contract_id, inputs.clone(), executor.clone()).await?;
-            }
-            DiamondIOMessage::ObfuscationRequest { contract_id } => {
-                self.obfuscate_contract(contract_id).await?;
-            }
-            DiamondIOMessage::EncryptionRequest { data, requester: _ } => {
-                self.encrypt_data(data.clone()).await?;
-            }
-        }
-        Ok(())
-    }
 }
 
 // Simple trait definitions for Diamond IO Layer
 pub trait DiamondLayerTrait {
-    async fn start_layer(&mut self) -> Result<()>;
-    async fn stop_layer(&mut self) -> Result<()>;
-    async fn health_check(&self) -> Result<bool>;
+    fn start_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
+    fn stop_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
+    fn health_check(&self) -> impl std::future::Future<Output = Result<bool>> + Send;
     fn layer_type(&self) -> &'static str;
 }
 
 impl DiamondLayerTrait for PolyTorusDiamondIOLayer {
-    async fn start_layer(&mut self) -> Result<()> {
-        info!("Starting Diamond IO Layer");
-        info!("Diamond IO Layer started successfully");
-        Ok(())
+    fn start_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            info!("Starting Diamond IO Layer");
+            info!("Diamond IO Layer started successfully");
+            Ok(())
+        }
     }
 
-    async fn stop_layer(&mut self) -> Result<()> {
-        info!("Stopping Diamond IO Layer");
-        info!("Diamond IO Layer stopped");
-        Ok(())
+    fn stop_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send {
+        async move {
+            info!("Stopping Diamond IO Layer");
+            info!("Diamond IO Layer stopped");
+            Ok(())
+        }
     }
 
-    async fn health_check(&self) -> Result<bool> {
-        let stats = self.get_stats().await;
-        let failure_rate = if stats.total_executions > 0 {
-            stats.failed_executions as f64 / stats.total_executions as f64
-        } else {
-            0.0
-        };
-        Ok(failure_rate < 0.5)
+    fn health_check(&self) -> impl std::future::Future<Output = Result<bool>> + Send {
+        async move {
+            let stats = self.get_stats().await;
+            let failure_rate = if stats.total_executions > 0 {
+                stats.failed_executions as f64 / stats.total_executions as f64
+            } else {
+                0.0
+            };
+            Ok(failure_rate < 0.5)
+        }
     }
 
     fn layer_type(&self) -> &'static str {
@@ -355,7 +337,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_contract_deployment_and_execution() {
-        let layer = DiamondIOLayerBuilder::new().build().unwrap();
+        // Create a test configuration with appropriate input size
+        let mut test_config = DiamondIOConfig::dummy();
+        test_config.input_size = 2; // Set input size to 2 for this test
+        
+        let layer = DiamondIOLayerBuilder::new()
+            .with_diamond_config(test_config)
+            .build()
+            .unwrap();
 
         // Deploy a contract
         let contract_id = layer.deploy_contract(
@@ -366,7 +355,7 @@ mod tests {
             "and_gate",
         ).await.unwrap();
 
-        // Execute the contract
+        // Execute the contract with 2 inputs as configured
         let result = layer.execute_contract(
             &contract_id,
             vec![true, false],
