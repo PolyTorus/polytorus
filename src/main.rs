@@ -1,3 +1,10 @@
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::manual_async_fn)]
+#![allow(clippy::clone_on_copy)]
+
 use env_logger::Env;
 use polytorus::command::cli::ModernCli;
 
@@ -9,7 +16,7 @@ use polytorus::command::cli::ModernCli;
 #[actix_web::main]
 async fn main() {
     // Initialize logging
-    env_logger::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     println!("🔗 PolyTorus - Post Quantum Modular Blockchain");
     println!("📝 For help: polytorus --help");

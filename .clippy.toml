@@ -1,0 +1,13 @@
+# Clippy configuration for PolyTorus project
+# Configuration for common lints during transition period
+
+# Allow mixed format args (inline and non-inline)
+allow-mixed-uninlined-format-args = true
+
+# Set thresholds for complexity warnings
+type-complexity-threshold = 500
+too-many-arguments-threshold = 10
+cognitive-complexity-threshold = 50
+
+# Allow certain patterns in tests
+allow-useless-vec-in-tests = true
