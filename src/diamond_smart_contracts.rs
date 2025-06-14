@@ -320,8 +320,8 @@ impl DiamondContractEngine {
                 if inputs.len() < 4 {
                     return Err(anyhow::anyhow!("Adder requires 4 inputs"));
                 }
-                let a = (inputs[1] as u8) << 1 | (inputs[0] as u8);
-                let b = (inputs[3] as u8) << 1 | (inputs[2] as u8);
+                let a = ((inputs[1] as u8) << 1) | (inputs[0] as u8);
+                let b = ((inputs[3] as u8) << 1) | (inputs[2] as u8);
                 let sum = a + b;
                 Ok(vec![
                     (sum & 1) != 0,        // bit 0
