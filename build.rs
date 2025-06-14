@@ -1,12 +1,13 @@
 use std::path::Path;
 use std::process::Command;
+use std::env;
 
 fn main() {
     println!("cargo::rerun-if-changed=src/main.rs");
     println!("cargo::rerun-if-changed=build.rs");
 
     // Check if OpenFHE is installed
-    let openfhe_root = std::env::var("OPENFHE_ROOT").unwrap_or_else(|_| "/usr/local".to_string());
+    let openfhe_root = env::var("OPENFHE_ROOT").unwrap_or_else(|_| "/usr/local".to_string());
     let lib_path = format!("{}/lib", openfhe_root);
     let include_path = format!("{}/include", openfhe_root);
 
@@ -18,6 +19,14 @@ fn main() {
             lib_path
         );
     }
+
+    // Set C++ compiler flags for cc-rs and cxx crates
+    println!("cargo::rustc-env=CXXFLAGS=-std=c++17 -O2 -DNDEBUG");
+    println!("cargo::rustc-env=CXX_FLAGS=-std=c++17 -O2 -DNDEBUG");
+    
+    // Disable problematic compiler warnings that cause errors
+    env::set_var("CXXFLAGS", "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers");
+    env::set_var("CXX_FLAGS", "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers");
 
     // Check for pkg-config
     if let Ok(output) = Command::new("pkg-config")

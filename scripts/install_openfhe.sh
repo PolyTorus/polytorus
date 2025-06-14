@@ -98,6 +98,7 @@ cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
       -DBUILD_BENCHMARKS=OFF \
       -DWITH_OPENMP=ON \
       -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
       ..
 
 # Build
@@ -155,6 +156,8 @@ echo -e "${BLUE}🌍 Environment setup:${NC}"
 echo "export OPENFHE_ROOT=$INSTALL_PREFIX"
 echo "export LD_LIBRARY_PATH=$INSTALL_PREFIX/lib:\$LD_LIBRARY_PATH"
 echo "export PKG_CONFIG_PATH=$INSTALL_PREFIX/lib/pkgconfig:\$PKG_CONFIG_PATH"
+echo "export CXXFLAGS=\"-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers\""
+echo "export CXX_FLAGS=\"-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers\""
 
 echo ""
 echo -e "${GREEN}🎉 OpenFHE installation completed successfully!${NC}"

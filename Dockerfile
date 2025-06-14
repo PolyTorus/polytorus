@@ -35,6 +35,8 @@ RUN git clone https://github.com/MachinaIO/openfhe-development.git && \
           -DBUILD_EXAMPLES=OFF \
           -DBUILD_BENCHMARKS=OFF \
           -DWITH_OPENMP=ON \
+          -DCMAKE_CXX_STANDARD=17 \
+          -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
           .. && \
     make -j$(nproc) && \
     make install && \
@@ -66,13 +68,15 @@ RUN ldconfig
 
 # Install Rust nightly
 RUN apt-get update && apt-get install -y curl && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2024-12-01 && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2025-01-01 && \
     rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/usr/local/lib"
 ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
 ENV OPENFHE_ROOT="/usr/local"
+ENV CXXFLAGS="-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
+ENV CXX_FLAGS="-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers"
 
 # Create app directory
 WORKDIR /app
