@@ -3,7 +3,7 @@ use fn_dsa::{
     signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
     DOMAIN_NONE, HASH_ID_RAW,
 };
-use rand_core::OsRng;
+use rand;
 
 pub struct FnDsaCrypto;
 
@@ -11,8 +11,9 @@ impl CryptoProvider for FnDsaCrypto {
     fn sign(&self, private_key: &[u8], message: &[u8]) -> Vec<u8> {
         let mut sk = SigningKeyStandard::decode(private_key).unwrap();
         let mut signature = vec![0u8; signature_size(sk.get_logn())];
+        let mut rng = rand::thread_rng();
         sk.sign(
-            &mut OsRng,
+            &mut rng,
             &DOMAIN_NONE,
             &HASH_ID_RAW,
             message,

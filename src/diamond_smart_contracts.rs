@@ -145,7 +145,7 @@ impl DiamondContractEngine {
 
         let outputs = if contract.is_obfuscated {
             // Execute obfuscated circuit
-            diamond_io.evaluate_circuit(&inputs)?
+            diamond_io.evaluate_circuit(&inputs).await?
         } else {
             // Execute plain circuit (for testing/development)
             self.execute_plain_circuit(contract, &inputs)?

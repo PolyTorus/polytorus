@@ -1,15 +1,29 @@
 use diamond_io::{
     bgg::circuit::PolyCircuit,
-    poly::{
-        dcrt::{DCRTPolyParams},
+    io::{
+        params::ObfuscationParams,
+        obf::obfuscate,
+        eval::evaluate,
     },
+    poly::{
+        dcrt::{
+            DCRTPoly, DCRTPolyMatrix, DCRTPolyParams, 
+            DCRTPolyUniformSampler, DCRTPolyHashSampler, DCRTPolyTrapdoorSampler,
+        },
+        sampler::{DistType, PolyHashSampler, PolyTrapdoorSampler},
+        PolyMatrix, PolyParams,
+    },
+    bgg::hash::Keccak256,
+    utils::init_tracing,
 };
 
 use num_bigint::BigUint;
 use num_traits::Num;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 use tracing::info;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondIOConfig {
@@ -133,7 +147,6 @@ impl DiamondIOConfig {
     }
 }
 
-#[derive(Debug)]
 pub struct DiamondIOIntegration {
     config: DiamondIOConfig,
     params: DCRTPolyParams,
@@ -143,9 +156,11 @@ pub struct DiamondIOIntegration {
 impl DiamondIOIntegration {
     /// Create a new Diamond IO integration instance
     pub fn new(config: DiamondIOConfig) -> anyhow::Result<Self> {
-        // Skip tracing initialization to avoid conflicts during testing
-        // In production use, this would be initialized at application startup
-        
+        // Initialize tracing if not in dummy mode
+        if !config.dummy_mode {
+            let _ = init_tracing();
+        }
+
         // Create polynomial parameters
         let params = DCRTPolyParams::new(
             config.ring_dimension,
@@ -200,7 +215,7 @@ impl DiamondIOIntegration {
         circuit
     }
 
-    /// Obfuscate a circuit using Diamond IO
+    /// Obfuscate a circuit using real Diamond IO
     pub async fn obfuscate_circuit(
         &self,
         circuit: PolyCircuit,
@@ -210,7 +225,7 @@ impl DiamondIOIntegration {
             return Ok(());
         }
 
-        info!("Starting Diamond IO circuit obfuscation...");
+        info!("Starting real Diamond IO circuit obfuscation...");
         
         let dir = Path::new(&self.obfuscation_dir);
         if dir.exists() {
@@ -227,130 +242,57 @@ impl DiamondIOIntegration {
             return Err(anyhow::anyhow!("Invalid circuit: must have at least one input and one output"));
         }
 
-        // Real Diamond IO obfuscation - attempt to use the actual API
-        info!("Attempting real Diamond IO obfuscation...");
-        
-        // First, try actual obfuscation using Keccak256 hash for inputs
-        let circuit_inputs: Vec<bool> = (0..circuit.num_input()).map(|i| i % 2 == 0).collect();
-        let input_hash = self.keccak256_hash(&circuit_inputs);
-        
-        // Create obfuscation parameters and files
-        self.create_real_obfuscation_files(dir, &circuit, &input_hash)?;
-        
-        let obfuscation_time = start_time.elapsed();
-        info!("Diamond IO obfuscation completed in: {:?}", obfuscation_time);
-        Ok(())
-    }
+        // Create obfuscation parameters
+        let obf_params: ObfuscationParams<DCRTPolyMatrix> = ObfuscationParams {
+            params: self.params.clone(),
+            input_size: self.config.input_size,
+            public_circuit: circuit.clone(),
+            switched_modulus: Arc::new(self.config.switched_modulus.clone()),
+            level_width: self.config.level_width,
+            d: self.config.d,
+            p_sigma: self.config.p_sigma,
+            hardcoded_key_sigma: self.config.hardcoded_key_sigma,
+            trapdoor_sigma: self.config.trapdoor_sigma.unwrap_or(4.578),
+        };
 
-    /// Create real obfuscation files with cryptographic operations
-    fn create_real_obfuscation_files(&self, dir: &Path, circuit: &PolyCircuit, input_hash: &[u8; 32]) -> anyhow::Result<()> {
-        // Create parameters file with real cryptographic data
-        let params_file = dir.join("params.dat");
-        let params_data = format!(
-            "Ring dimension: {}\nCRT depth: {}\nCRT bits: {}\nBase bits: {}\nInput size: {}\nLevel width: {}\nD: {}\nSigma: {}\n",
-            self.config.ring_dimension, 
-            self.config.crt_depth, 
-            self.config.crt_bits,
-            self.config.base_bits,
-            self.config.input_size, 
-            self.config.level_width,
-            self.config.d,
-            self.config.hardcoded_key_sigma
-        );
-        fs::write(&params_file, params_data)?;
+        // Generate hardcoded key
+        let sampler_uniform = DCRTPolyUniformSampler::new();
+        let hardcoded_key = sampler_uniform.sample_poly(&self.params, &DistType::BitDist);
         
-        // Create circuit file with actual circuit structure
-        let circuit_file = dir.join("circuit.dat");
-        let circuit_data = format!(
-            "Inputs: {}\nOutputs: {}\nGates: {}\nCircuit hash: {}\n", 
-            circuit.num_input(), 
-            circuit.num_output(),
-            circuit.num_input() + circuit.num_output(), // Simplified gate count
-            hex::encode(input_hash)
-        );
-        fs::write(&circuit_file, circuit_data)?;
-        
-        // Use the input hash as cryptographic key material
-        let hash_key_file = dir.join("hash_key");
-        fs::write(&hash_key_file, input_hash)?;
-        
-        // Create matrix files with cryptographically-derived data
-        self.create_crypto_matrices(dir, input_hash)?;
-        
-        Ok(())
-    }
+        // Clone for async task
+        let obf_params_clone = obf_params.clone();
+        let dir_clone = dir.to_path_buf();
 
-    /// Create cryptographic matrices using Keccak256-derived data
-    fn create_crypto_matrices(&self, dir: &Path, base_hash: &[u8; 32]) -> anyhow::Result<()> {
-        let matrix_files = ["p_init", "s_init", "b", "final_preimage_att", "final_preimage_f"];
-        
-        for (i, file_name) in matrix_files.iter().enumerate() {
-            // Create unique hash for each matrix
-            let mut matrix_input = base_hash.to_vec();
-            matrix_input.push(i as u8);
-            matrix_input.extend_from_slice(file_name.as_bytes());
-            
-            let matrix_hash = self.keccak256_hash_bytes(&matrix_input);
-            
-            // Create matrix data based on configuration and hash
-            let matrix_size = (self.config.ring_dimension as usize) * self.config.level_width;
-            let mut matrix_data = Vec::with_capacity(matrix_size);
-            
-            // Generate matrix elements using hash as seed
-            for j in 0..matrix_size {
-                let hash_index = j % 32;
-                let element_seed = ((matrix_hash[hash_index] as usize) << 8) | (j & 0xFF);
-                matrix_data.push(element_seed as u32);
-            }
-            
-            // Serialize matrix data
-            let matrix_content = matrix_data.iter()
-                .map(|x| format!("{:08x}", x))
-                .collect::<Vec<String>>()
-                .join("\n");
+        // Perform real Diamond IO obfuscation
+        let obfuscation_result = tokio::task::spawn_blocking(move || {
+            // Use tokio runtime for async obfuscation
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                // Create seeded RNG for reproducible results
+                let mut rng = ChaCha20Rng::seed_from_u64(42);
                 
-            let file_path = dir.join(file_name);
-            fs::write(&file_path, matrix_content)?;
-        }
-        
+                info!("Calling real Diamond IO obfuscate function...");
+                
+                // Call actual Diamond IO obfuscation
+                obfuscate::<
+                    DCRTPolyMatrix,
+                    DCRTPolyUniformSampler,
+                    DCRTPolyHashSampler<Keccak256>,
+                    DCRTPolyTrapdoorSampler,
+                    _,
+                    _,
+                >(obf_params_clone, hardcoded_key, &mut rng, &dir_clone).await;
+                
+                info!("Real Diamond IO obfuscation completed successfully");
+            })
+        }).await?;
+
+        let obfuscation_time = start_time.elapsed();
+        info!("Obfuscation completed in: {:?}", obfuscation_time);
         Ok(())
     }
 
-    /// Compute Keccak256 hash of boolean array
-    fn keccak256_hash(&self, input: &[bool]) -> [u8; 32] {
-        use keccak_asm::Keccak256;
-        use digest::Digest;
-        
-        let mut hasher = Keccak256::new();
-        
-        // Convert bools to bytes for hashing
-        let byte_data: Vec<u8> = input.chunks(8)
-            .map(|chunk| {
-                let mut byte = 0u8;
-                for (i, &bit) in chunk.iter().enumerate() {
-                    if bit {
-                        byte |= 1 << i;
-                    }
-                }
-                byte
-            })
-            .collect();
-            
-        hasher.update(&byte_data);
-        hasher.finalize().into()
-    }
-
-    /// Compute Keccak256 hash of byte array
-    fn keccak256_hash_bytes(&self, input: &[u8]) -> [u8; 32] {
-        use keccak_asm::Keccak256;
-        use digest::Digest;
-        
-        let mut hasher = Keccak256::new();
-        hasher.update(input);
-        hasher.finalize().into()
-    }
-
-    /// Evaluate an obfuscated circuit
+    /// Evaluate an obfuscated circuit using real Diamond IO
     pub async fn evaluate_circuit(
         &self,
         inputs: &[bool],
@@ -359,7 +301,7 @@ impl DiamondIOIntegration {
             return self.simulate_circuit_evaluation(inputs);
         }
 
-        info!("Starting Diamond IO circuit evaluation...");
+        info!("Starting real Diamond IO circuit evaluation...");
         let start_time = std::time::Instant::now();
         
         let dir = Path::new(&self.obfuscation_dir);
@@ -367,56 +309,48 @@ impl DiamondIOIntegration {
             return Err(anyhow::anyhow!("Obfuscation data not found. Please run obfuscate_circuit first."));
         }
 
-        // Real cryptographic evaluation using Keccak256 and matrix operations
-        info!("Using real cryptographic evaluation...");
-        
-        // Read hash key from obfuscation
-        let hash_key_file = dir.join("hash_key");
-        let stored_hash = if hash_key_file.exists() {
-            fs::read(&hash_key_file).unwrap_or_else(|_| vec![42u8; 32])
-        } else {
-            vec![42u8; 32]
+        // Create obfuscation parameters
+        let obf_params: ObfuscationParams<DCRTPolyMatrix> = ObfuscationParams {
+            params: self.params.clone(),
+            input_size: self.config.input_size,
+            public_circuit: self.create_demo_circuit(), // We need the circuit for evaluation
+            switched_modulus: Arc::new(self.config.switched_modulus.clone()),
+            level_width: self.config.level_width,
+            d: self.config.d,
+            p_sigma: self.config.p_sigma,
+            hardcoded_key_sigma: self.config.hardcoded_key_sigma,
+            trapdoor_sigma: self.config.trapdoor_sigma.unwrap_or(4.578),
         };
-        
-        // Hash the input
-        let input_hash = self.keccak256_hash(inputs);
-        
-        // Perform cryptographic operations
-        let result = self.crypto_evaluate_circuit(inputs, &stored_hash, &input_hash)?;
+
+        // Pad or truncate inputs to match expected size
+        let mut eval_inputs = inputs.to_vec();
+        eval_inputs.resize(self.config.input_size, false);
+
+        // Clone for async task
+        let obf_params_clone = obf_params.clone();
+        let dir_clone = dir.to_path_buf();
+        let inputs_clone = eval_inputs.clone();
+
+        // Perform real Diamond IO evaluation
+        let evaluation_result = tokio::task::spawn_blocking(move || {
+            info!("Calling real Diamond IO evaluate function...");
+            
+            // Call actual Diamond IO evaluation
+            let output = evaluate::<
+                DCRTPolyMatrix,
+                DCRTPolyHashSampler<Keccak256>,
+                DCRTPolyTrapdoorSampler,
+                _,
+            >(obf_params_clone, &inputs_clone, &dir_clone);
+            
+            info!("Real Diamond IO evaluation completed successfully");
+            output
+        }).await?;
 
         let eval_time = start_time.elapsed();
-        info!("Real cryptographic evaluation completed in: {:?}", eval_time);
-        info!("Output: {:?}", result);
-        Ok(result)
-    }
-
-    /// Perform real cryptographic circuit evaluation
-    fn crypto_evaluate_circuit(&self, inputs: &[bool], stored_hash: &[u8], input_hash: &[u8; 32]) -> anyhow::Result<Vec<bool>> {
-        info!("Performing cryptographic circuit evaluation...");
-        
-        // Simulate homomorphic operations using hash-based computation
-        let mut computation_state = input_hash.clone();
-        
-        // Mix stored hash into computation
-        for (i, &byte) in stored_hash.iter().take(32).enumerate() {
-            computation_state[i] ^= byte;
-        }
-        
-        // Process each input bit through cryptographic transformation
-        for (i, &input_bit) in inputs.iter().enumerate() {
-            let bit_influence = if input_bit { 0xFF } else { 0x00 };
-            let index = i % 32;
-            computation_state[index] = computation_state[index].wrapping_add(bit_influence);
-        }
-        
-        // Final hash to get output
-        let final_hash = self.keccak256_hash_bytes(&computation_state);
-        
-        // Extract output bits from final hash
-        let output_bits = vec![final_hash[0] & 0x01 != 0];
-        
-        info!("Cryptographic evaluation result: {:?}", output_bits);
-        Ok(output_bits)
+        info!("Evaluation completed in: {:?}", eval_time);
+        info!("Output: {:?}", evaluation_result);
+        Ok(evaluation_result)
     }
 
     /// Simulate circuit evaluation for dummy mode or fallback
@@ -436,27 +370,6 @@ impl DiamondIOIntegration {
     /// Get parameters
     pub fn params(&self) -> &DCRTPolyParams {
         &self.params
-    }
-
-    /// Set obfuscation directory
-    pub fn set_obfuscation_dir(&mut self, dir: String) {
-        self.obfuscation_dir = dir;
-    }
-
-    /// Encrypt data (placeholder implementation)
-    pub fn encrypt_data(&self, data: &[bool]) -> anyhow::Result<Vec<u8>> {
-        info!("Encrypting data with {} bits", data.len());
-        
-        // Simple placeholder encryption: convert bools to bytes
-        let bytes: Vec<u8> = data.iter().enumerate().map(|(i, &bit)| {
-            if bit { 
-                ((i % 256) + 1) as u8 
-            } else { 
-                (i % 256) as u8 
-            }
-        }).collect();
-        
-        Ok(bytes)
     }
 }
 
