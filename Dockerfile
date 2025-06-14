@@ -113,12 +113,17 @@ RUN ls -la src/ && ls -la src/command/ && ls -la src/diamond_io_integration.rs
 
 # Build and verify the application
 RUN cargo build --release && \
-    echo "Build successful - tests skipped in Docker build"
+    echo "Build successful - tests skipped in Docker build" && \
+    ls -la target/release/polytorus && \
+    chmod +x target/release/polytorus
 
 # Create non-root user
-RUN useradd -m -u 1000 polytorus
+RUN useradd -m -u 1000 polytorus && \
+    chown -R polytorus:polytorus /app
 USER polytorus
+WORKDIR /app
 
 # Set the startup command
 EXPOSE 8080
-CMD ["./target/release/polytorus"]
+ENTRYPOINT ["./target/release/polytorus"]
+CMD []
