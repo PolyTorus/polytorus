@@ -49,12 +49,10 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y \
     libssl3 \
     libgmp10 \
-    libntl43 \
-    libboost-system1.74.0 \
-    libboost-filesystem1.74.0 \
-    libgmp3-dev \
+    libntl-dev \
+    libboost-system-dev \
+    libboost-filesystem-dev \
     libmpfr6 \
-    libfftw3-double3 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
