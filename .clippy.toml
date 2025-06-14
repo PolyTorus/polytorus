@@ -1,10 +1,13 @@
 # Clippy configuration for PolyTorus project
-# Allow certain warnings during transition period
+# Configuration for common lints during transition period
 
-# These can be gradually addressed in future development
-allow-uninlined-format-args = true
-allow-needless-range-loop = true
-allow-type-complexity = true
-allow-derivable-impls = true
-allow-manual-async-fn = true
-allow-clone-on-copy = true
+# Allow mixed format args (inline and non-inline)
+allow-mixed-uninlined-format-args = true
+
+# Set thresholds for complexity warnings
+type-complexity-threshold = 500
+too-many-arguments-threshold = 10
+cognitive-complexity-threshold = 50
+
+# Allow certain patterns in tests
+allow-useless-vec-in-tests = true
