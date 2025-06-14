@@ -1,8 +1,18 @@
 #![allow(non_snake_case)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::manual_async_fn)]
+#![allow(clippy::clone_on_copy)]
 
 // src/lib.rs
 // Core modular blockchain - new primary architecture
 pub mod modular;
+
+// Diamond IO integration for advanced cryptographic operations
+pub mod diamond_io_integration;
+pub mod diamond_smart_contracts;
 
 // Legacy modules - maintained for backward compatibility
 pub mod blockchain;

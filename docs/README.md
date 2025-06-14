@@ -23,6 +23,7 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 
 ### Technical Features
 - **[Smart Contracts](SMART_CONTRACTS.md)** - WASM smart contract development and deployment
+- **[Diamond IO Contracts](DIAMOND_IO_CONTRACTS.md)** - ⭐ **NEW** Diamond IO vs traditional contracts comparison and usage guide
 - **[Difficulty Adjustment](DIFFICULTY_ADJUSTMENT.md)** - Mining difficulty and network adaptation
 - **[TPS Analysis](TPS_IMPLEMENTATION_SUMMARY.md)** - Transaction throughput analysis and benchmarks
 
@@ -30,6 +31,7 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 
 ### New Documentation
 - **[Execution Layer Enhancement Guide](EXECUTION_LAYER_ENHANCEMENT.md)** - Comprehensive guide to the enhanced execution layer with practical examples and migration information
+- **[Diamond IO Contracts Guide](DIAMOND_IO_CONTRACTS.md)** - Complete comparison between Diamond IO and traditional smart contracts with usage examples
 
 ### Updated Documentation
 - **[Modular Architecture](MODULAR_ARCHITECTURE.md)** - Updated with recent improvements and enhanced API details
@@ -56,8 +58,9 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 
 ### For Smart Contract Developers
 1. [Smart Contracts](SMART_CONTRACTS.md) - WASM contract development
-2. [Execution Layer Enhancement](EXECUTION_LAYER_ENHANCEMENT.md) - Contract execution APIs
-3. [API Reference](API_REFERENCE.md) - Contract-related API methods
+2. [Diamond IO Contracts](DIAMOND_IO_CONTRACTS.md) - Private contract development with Diamond IO
+3. [Execution Layer Enhancement](EXECUTION_LAYER_ENHANCEMENT.md) - Contract execution APIs
+4. [API Reference](API_REFERENCE.md) - Contract-related API methods
 
 ## 🔗 External Resources
 

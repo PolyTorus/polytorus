@@ -151,14 +151,13 @@ impl Transaction {
         Ok(tx)
     }
     */
-
     /// NewCoinbaseTX creates a new coinbase transaction
     pub fn new_coinbase(to: String, mut data: String) -> Result<Transaction> {
         info!("new coinbase Transaction to: {}", to);
         let mut key: [u8; 32] = [0; 32];
         if data.is_empty() {
-            let mut rand = rand::thread_rng();
-            key = rand.gen();
+            let mut rng = rand::thread_rng();
+            key = rng.gen();
             data = format!("Reward to '{}'", to);
         }
         let mut pub_key = Vec::from(data.as_bytes());

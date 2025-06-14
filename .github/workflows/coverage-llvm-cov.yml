@@ -16,6 +16,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   coverage:
@@ -26,10 +27,62 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          git \
+          pkg-config \
+          libssl-dev \
+          autoconf \
+          automake \
+          libtool \
+          libgmp-dev \
+          libntl-dev \
+          wget
+
+    - name: Install OpenFHE dependencies
+      run: |
+        sudo apt-get install -y \
+          libboost-all-dev \
+          libgmp3-dev \
+          libmpfr-dev \
+          libfftw3-dev
+          
+    - name: Clone and build OpenFHE
+      run: |
+        git clone https://github.com/MachinaIO/openfhe-development.git
+        cd openfhe-development
+        git checkout feat/improve_determinant
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_UNITTESTS=OFF \
+              -DBUILD_EXAMPLES=OFF \
+              -DBUILD_BENCHMARKS=OFF \
+              -DWITH_OPENMP=ON \
+              -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+              ..
+        make -j$(nproc)
+        sudo make install
+        sudo ldconfig
+
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@nightly
       with:
+        toolchain: nightly-2025-01-01
         components: llvm-tools-preview
+        
+    - name: Set environment variables for OpenFHE
+      run: |
+        echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "CXXFLAGS=-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" >> $GITHUB_ENV
+        echo "CXX_FLAGS=-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" >> $GITHUB_ENV
 
     - name: Cache cargo dependencies
       uses: actions/cache@v4
@@ -52,10 +105,15 @@ jobs:
         fi
 
     - name: Clean previous coverage data
-      run: cargo llvm-cov clean --workspace
+      run: |
+        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+        cargo llvm-cov clean --workspace
 
     - name: Run tests with coverage
       run: |
+        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
         cargo llvm-cov \
           --workspace \
           --all-features \
@@ -64,6 +122,8 @@ jobs:
 
     - name: Generate HTML report
       run: |
+        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
         cargo llvm-cov \
           --workspace \
           --all-features \
@@ -73,6 +133,8 @@ jobs:
     - name: Generate coverage summary
       id: coverage
       run: |
+        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
         echo "## 📊 Code Coverage Report" > coverage_summary.txt
         echo "" >> coverage_summary.txt
         
@@ -131,6 +193,8 @@ jobs:
 
     - name: Print coverage summary
       run: |
+        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
         echo "## 📊 Coverage Report Generated Successfully"
         echo ""
         echo "Coverage Summary:"
