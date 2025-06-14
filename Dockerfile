@@ -48,12 +48,17 @@ FROM ubuntu:22.04
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
     libssl3 \
+    libssl-dev \
     libgmp10 \
+    libgmp-dev \
     libntl-dev \
     libboost-system-dev \
     libboost-filesystem-dev \
     libmpfr6 \
+    libmpfr-dev \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
