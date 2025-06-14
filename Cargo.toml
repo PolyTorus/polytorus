@@ -24,11 +24,19 @@ name = "diamond_io_demo"
 path = "examples/diamond_io_demo.rs"
 
 [dependencies]
-# Cryptography - unified versions
-sha2 = "0.10"  # Upgraded to match diamond-io
+# Cryptography - unified versions (modern alternatives)
+sha2 = "0.10"  # Modern cryptographic hash functions
 digest = "0.10"
 keccak-asm = "0.1.4"
 secp256k1 = {version="0.30.0", features = ["rand"]}
+
+# Legacy crypto (temporary - for compatibility during migration)
+rust-crypto = "0.2"
+
+# Modern crypto alternatives (being integrated)
+ring = "0.17"  # Modern cryptography library
+aes-gcm = "0.10"  # Modern AES-GCM implementation
+chacha20poly1305 = "0.10"  # Modern ChaCha20-Poly1305 implementation
 
 # Random number generation - unified versions for fn-dsa compatibility
 rand = "0.8.5"  # Keep 0.8 for fn-dsa compatibility
@@ -36,18 +44,15 @@ rand_core = "0.6.4"  # Keep 0.6 for fn-dsa compatibility
 rand_chacha = "0.3"  # Keep 0.3 for fn-dsa compatibility
 rand_distr = "0.5.1"
 
-# Legacy crypto (keep for compatibility)
-rust-crypto = "0.2"
-
-# Core dependencies
+# Core dependencies (updated to modern versions)
 bincode = "1.3"
-failure = "0.1"
+failure = "0.1"  # Temporary - migrating to anyhow
 sled = "0.34"
 serde = {version ="1.0", features =["derive"]}
 serde_json = "1.0"
 log = "0.4"
-env_logger = "0.7.1"
-clap = "2.33"
+env_logger = "0.11"  # Updated to latest version
+clap = "2.34"  # Keep old version for now, will upgrade later
 bitcoincash-addr = "0.5.2"
 merkle-cbt = "0.2.2"
 fn-dsa = "0.2.0"
@@ -61,7 +66,7 @@ reqwest = { version = "0.11", features = ["json"] }
 
 # Utilities
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
-wasmtime = "25.0.0"
+wasmtime = "27.0.0"  # Updated to latest version
 anyhow = "1.0"
 wat = "1.0"
 hex = "0.4"

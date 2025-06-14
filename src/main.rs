@@ -9,7 +9,7 @@ use polytorus::command::cli::ModernCli;
 #[actix_web::main]
 async fn main() {
     // Initialize logging
-    env_logger::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     println!("🔗 PolyTorus - Post Quantum Modular Blockchain");
     println!("📝 For help: polytorus --help");

@@ -1,0 +1,21 @@
+# Ignore specific vulnerabilities that are not applicable or have been reviewed
+[advisories]
+# rust-crypto is being replaced with modern alternatives
+ignore = [
+    "RUSTSEC-2016-0005",  # rust-crypto is unmaintained (we're migrating to ring/modern crypto)
+    "RUSTSEC-2020-0071",  # time crate issue (transitive dependency)
+    "RUSTSEC-2021-0139",  # ansi_term unmaintained (from clap 2.x, we're upgrading)
+    "RUSTSEC-2024-0375",  # atty unmaintained (transitive dependency)
+    "RUSTSEC-2020-0036",  # failure deprecated (we're migrating to anyhow)
+    "RUSTSEC-2024-0384",  # instant unmaintained (transitive dependency)
+    "RUSTSEC-2024-0436",  # paste unmaintained (from wasmtime, we're upgrading)
+    "RUSTSEC-2025-0025",  # rustc-serialize unmaintained (transitive dependency)
+    "RUSTSEC-2021-0145",  # atty unsound (transitive dependency)
+    "RUSTSEC-2019-0036",  # failure unsound (we're migrating to anyhow)
+    "RUSTSEC-2022-0011",  # rust-crypto AES miscomputation (we're migrating away)
+    "RUSTSEC-2022-0004",  # rustc-serialize stack overflow (transitive dependency)
+]
+
+# Prioritize security updates
+[sources]
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
