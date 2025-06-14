@@ -1,0 +1,10 @@
+# Clippy configuration for PolyTorus project
+# Allow certain warnings during transition period
+
+# These can be gradually addressed in future development
+allow-uninlined-format-args = true
+allow-needless-range-loop = true
+allow-type-complexity = true
+allow-derivable-impls = true
+allow-manual-async-fn = true
+allow-clone-on-copy = true

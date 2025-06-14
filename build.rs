@@ -8,16 +8,16 @@ fn main() {
 
     // Check if OpenFHE is installed
     let openfhe_root = env::var("OPENFHE_ROOT").unwrap_or_else(|_| "/usr/local".to_string());
-    let lib_path = format!("{}/lib", openfhe_root);
-    let include_path = format!("{}/include", openfhe_root);
+    let lib_path = format!("{openfhe_root}/lib");
+    let include_path = format!("{openfhe_root}/include");
 
     // Verify OpenFHE installation - check all required libraries
     let required_libs = ["libOPENFHEcore", "libOPENFHEpke", "libOPENFHEbinfhe"];
     let mut missing_libs = Vec::new();
 
     for lib in &required_libs {
-        let so_path = format!("{}/{}.so", lib_path, lib);
-        let a_path = format!("{}/{}.a", lib_path, lib);
+        let so_path = format!("{lib_path}/{lib}.so");
+        let a_path = format!("{lib_path}/{lib}.a");
 
         if !Path::new(&so_path).exists() && !Path::new(&a_path).exists() {
             missing_libs.push(lib);
@@ -26,17 +26,15 @@ fn main() {
 
     if !missing_libs.is_empty() {
         panic!(
-            "OpenFHE libraries not found at {}: {:?}. Please install OpenFHE from https://github.com/MachinaIO/openfhe-development (feat/improve_determinant branch) to /usr/local",
-            lib_path, missing_libs
+            "OpenFHE libraries not found at {lib_path}: {missing_libs:?}. Please install OpenFHE from https://github.com/MachinaIO/openfhe-development (feat/improve_determinant branch) to /usr/local"
         );
     }
 
     // Verify OpenFHE headers
-    let openfhe_include = format!("{}/openfhe", include_path);
+    let openfhe_include = format!("{include_path}/openfhe");
     if !Path::new(&openfhe_include).exists() {
         panic!(
-            "OpenFHE headers not found at {}. Please install OpenFHE development headers.",
-            openfhe_include
+            "OpenFHE headers not found at {openfhe_include}. Please install OpenFHE development headers."
         );
     }
 
@@ -50,18 +48,18 @@ fn main() {
 
     // Check for pkg-config
     if let Ok(output) = Command::new("pkg-config")
-        .args(&["--exists", "openfhe"])
+        .args(["--exists", "openfhe"])
         .output()
     {
         if output.status.success() {
             // Use pkg-config if available
             let libs = Command::new("pkg-config")
-                .args(&["--libs", "openfhe"])
+                .args(["--libs", "openfhe"])
                 .output()
                 .expect("Failed to run pkg-config");
 
             let cflags = Command::new("pkg-config")
-                .args(&["--cflags", "openfhe"])
+                .args(["--cflags", "openfhe"])
                 .output()
                 .expect("Failed to run pkg-config");
 
@@ -77,7 +75,7 @@ fn main() {
     }
 
     // Fallback to manual linking
-    println!("cargo::rustc-link-search=native={}", lib_path);
+    println!("cargo::rustc-link-search=native={lib_path}");
     println!("cargo::rustc-link-lib=OPENFHEpke");
     println!("cargo::rustc-link-lib=OPENFHEbinfhe");
     println!("cargo::rustc-link-lib=OPENFHEcore");
@@ -90,10 +88,10 @@ fn main() {
     }
 
     // Set rpath for runtime library loading
-    println!("cargo::rustc-link-arg=-Wl,-rpath,{}", lib_path);
+    println!("cargo::rustc-link-arg=-Wl,-rpath,{lib_path}");
 
     // Set environment variables for dependent crates
-    println!("cargo::rustc-env=OPENFHE_ROOT={}", openfhe_root);
-    println!("cargo::rustc-env=OPENFHE_LIB_DIR={}", lib_path);
-    println!("cargo::rustc-env=OPENFHE_INCLUDE_DIR={}", include_path);
+    println!("cargo::rustc-env=OPENFHE_ROOT={openfhe_root}");
+    println!("cargo::rustc-env=OPENFHE_LIB_DIR={lib_path}");
+    println!("cargo::rustc-env=OPENFHE_INCLUDE_DIR={include_path}");
 }

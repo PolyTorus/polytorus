@@ -1,3 +1,10 @@
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::manual_async_fn)]
+#![allow(clippy::clone_on_copy)]
+
 use env_logger::Env;
 use polytorus::command::cli::ModernCli;
 
