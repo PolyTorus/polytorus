@@ -109,11 +109,62 @@ PolyTorus implements a revolutionary **modular blockchain architecture** that se
 
 ## 🚀 Quick Start (Modular Architecture)
 
+### System Requirements
+
+**For Diamond IO Integration (Required):**
+- **Rust**: 1.87 nightly or later
+- **OpenFHE**: MachinaIO fork with `feat/improve_determinant` branch
+- **System Libraries**: cmake, libgmp-dev, libntl-dev, libboost-all-dev
+
+### OpenFHE Installation
+
+PolyTorus requires OpenFHE to be installed at system level (`/usr/local/lib`):
+
+```bash
+# Automated installation (Ubuntu/Debian)
+sudo ./scripts/install_openfhe.sh
+
+# Manual installation
+git clone https://github.com/MachinaIO/openfhe-development.git
+cd openfhe-development
+git checkout feat/improve_determinant
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_UNITTESTS=OFF \
+      -DBUILD_EXAMPLES=OFF \
+      -DBUILD_BENCHMARKS=OFF \
+      -DWITH_OPENMP=ON \
+      ..
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+```
+
 ### Installation
 ```bash
 git clone https://github.com/quantumshiro/polytorus.git
 cd polytorus
+
+# Set environment variables
+export OPENFHE_ROOT=/usr/local
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+
+# Build with OpenFHE support
 cargo build --release
+```
+
+### Verify Diamond IO Integration
+```bash
+# Test Diamond IO functionality
+cargo test diamond -- --nocapture
+
+# Run Diamond IO demo
+cargo run --example diamond_io_demo
+
+# Performance benchmarks
+cargo run --example diamond_io_performance_test
 ```
 
 ### Start Modular Blockchain
