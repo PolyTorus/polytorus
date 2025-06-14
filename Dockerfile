@@ -85,18 +85,21 @@ COPY Cargo.toml Cargo.lock ./
 COPY build.rs ./
 
 # Create dummy source to cache dependencies
-RUN mkdir src && \
+RUN mkdir src benches && \
     echo "fn main() {}" > src/main.rs && \
-    echo 'pub fn add(left: usize, right: usize) -> usize { left + right }' > src/lib.rs
+    echo 'pub fn add(left: usize, right: usize) -> usize { left + right }' > src/lib.rs && \
+    echo 'fn main() {}' > benches/blockchain_bench.rs && \
+    echo 'fn main() {}' > benches/quick_tps_bench.rs
 
 # Build dependencies (cached layer)
-RUN cargo build --release && \
-    rm -rf src
+RUN cargo build --release --bins && \
+    rm -rf src benches
 
 # Copy source code
 COPY src/ ./src/
 COPY examples/ ./examples/
 COPY tests/ ./tests/
+COPY benches/ ./benches/
 COPY config/ ./config/
 COPY contracts/ ./contracts/
 
