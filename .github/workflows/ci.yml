@@ -78,12 +78,30 @@ jobs:
     - name: Verify OpenFHE installation
       run: |
         # Check if OpenFHE libraries are installed
+        echo "Checking OpenFHE libraries..."
         ls -la /usr/local/lib/libOPENFHE* || echo "OpenFHE libraries not found"
+        
+        # Check specific required libraries
+        for lib in libOPENFHEcore libOPENFHEpke libOPENFHEbinfhe; do
+          if ls /usr/local/lib/${lib}.* 1> /dev/null 2>&1; then
+            echo "✅ Found: ${lib}"
+          else
+            echo "❌ Missing: ${lib}"
+            exit 1
+          fi
+        done
+        
+        # Check headers
         ls -la /usr/local/include/openfhe/ || echo "OpenFHE headers not found"
+        if [ ! -d "/usr/local/include/openfhe" ]; then
+          echo "❌ OpenFHE headers directory not found"
+          exit 1
+        fi
         
         # Check library paths
         echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
         echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
+        echo "OPENFHE_ROOT: $OPENFHE_ROOT"
         
     - name: Install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
@@ -215,14 +233,68 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          git \
+          pkg-config \
+          libssl-dev \
+          autoconf \
+          automake \
+          libtool \
+          libgmp-dev \
+          libntl-dev \
+          wget
+
+    - name: Install OpenFHE dependencies
+      run: |
+        sudo apt-get install -y \
+          libboost-all-dev \
+          libgmp3-dev \
+          libmpfr-dev \
+          libfftw3-dev
+          
+    - name: Clone and build OpenFHE
+      run: |
+        git clone https://github.com/MachinaIO/openfhe-development.git
+        cd openfhe-development
+        git checkout feat/improve_determinant
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_UNITTESTS=OFF \
+              -DBUILD_EXAMPLES=OFF \
+              -DBUILD_BENCHMARKS=OFF \
+              -DWITH_OPENMP=ON \
+              -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+              ..
+        make -j$(nproc)
+        sudo make install
+        sudo ldconfig
+      
     - name: Install Rust stable
       uses: dtolnay/rust-toolchain@stable
+      
+    - name: Set environment variables for OpenFHE
+      run: |
+        echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "CXXFLAGS=-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" >> $GITHUB_ENV
+        echo "CXX_FLAGS=-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" >> $GITHUB_ENV
       
     - name: Install cargo-audit
       run: cargo install cargo-audit
       
     - name: Run security audit
-      run: cargo audit
+      run: |
+        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+        cargo audit
 
   docker:
     name: Docker Build

@@ -1,6 +1,6 @@
+use std::env;
 use std::path::Path;
 use std::process::Command;
-use std::env;
 
 fn main() {
     println!("cargo::rerun-if-changed=src/main.rs");
@@ -11,19 +11,39 @@ fn main() {
     let lib_path = format!("{}/lib", openfhe_root);
     let include_path = format!("{}/include", openfhe_root);
 
-    // Verify OpenFHE installation
-    if !Path::new(&format!("{}/libOPENFHEcore.so", lib_path)).exists() &&
-       !Path::new(&format!("{}/libOPENFHEcore.a", lib_path)).exists() {
+    // Verify OpenFHE installation - check all required libraries
+    let required_libs = ["libOPENFHEcore", "libOPENFHEpke", "libOPENFHEbinfhe"];
+    let mut missing_libs = Vec::new();
+
+    for lib in &required_libs {
+        let so_path = format!("{}/{}.so", lib_path, lib);
+        let a_path = format!("{}/{}.a", lib_path, lib);
+
+        if !Path::new(&so_path).exists() && !Path::new(&a_path).exists() {
+            missing_libs.push(lib);
+        }
+    }
+
+    if !missing_libs.is_empty() {
         panic!(
-            "OpenFHE not found at {}. Please install OpenFHE from https://github.com/MachinaIO/openfhe-development (feat/improve_determinant branch) to /usr/local",
-            lib_path
+            "OpenFHE libraries not found at {}: {:?}. Please install OpenFHE from https://github.com/MachinaIO/openfhe-development (feat/improve_determinant branch) to /usr/local",
+            lib_path, missing_libs
+        );
+    }
+
+    // Verify OpenFHE headers
+    let openfhe_include = format!("{}/openfhe", include_path);
+    if !Path::new(&openfhe_include).exists() {
+        panic!(
+            "OpenFHE headers not found at {}. Please install OpenFHE development headers.",
+            openfhe_include
         );
     }
 
     // Set C++ compiler flags for cc-rs and cxx crates
     println!("cargo::rustc-env=CXXFLAGS=-std=c++17 -O2 -DNDEBUG");
     println!("cargo::rustc-env=CXX_FLAGS=-std=c++17 -O2 -DNDEBUG");
-    
+
     // Disable problematic compiler warnings that cause errors
     env::set_var("CXXFLAGS", "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers");
     env::set_var("CXX_FLAGS", "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers");
@@ -39,14 +59,20 @@ fn main() {
                 .args(&["--libs", "openfhe"])
                 .output()
                 .expect("Failed to run pkg-config");
-            
+
             let cflags = Command::new("pkg-config")
                 .args(&["--cflags", "openfhe"])
                 .output()
                 .expect("Failed to run pkg-config");
 
-            println!("cargo::rustc-flags={}", String::from_utf8_lossy(&libs.stdout).trim());
-            println!("cargo::rustc-flags={}", String::from_utf8_lossy(&cflags.stdout).trim());
+            println!(
+                "cargo::rustc-flags={}",
+                String::from_utf8_lossy(&libs.stdout).trim()
+            );
+            println!(
+                "cargo::rustc-flags={}",
+                String::from_utf8_lossy(&cflags.stdout).trim()
+            );
         }
     }
 
@@ -55,7 +81,7 @@ fn main() {
     println!("cargo::rustc-link-lib=OPENFHEpke");
     println!("cargo::rustc-link-lib=OPENFHEbinfhe");
     println!("cargo::rustc-link-lib=OPENFHEcore");
-    
+
     // Link OpenMP if available
     if cfg!(target_os = "linux") {
         println!("cargo::rustc-link-lib=gomp");

@@ -1,9 +1,9 @@
 use crate::diamond_io_integration::DiamondIOConfig;
-use crate::diamond_smart_contracts::{DiamondContractEngine, DiamondContract, ContractExecution};
+use crate::diamond_smart_contracts::{ContractExecution, DiamondContract, DiamondContractEngine};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::RwLock;
-use anyhow::Result;
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,7 +88,10 @@ impl std::fmt::Debug for PolyTorusDiamondIOLayer {
             .field("config", &self.config)
             .field("contract_engine", &"<RwLock<DiamondContractEngine>>")
             .field("stats", &self.stats)
-            .field("message_handlers", &format!("{} handlers", self.message_handlers.len()))
+            .field(
+                "message_handlers",
+                &format!("{} handlers", self.message_handlers.len()),
+            )
             .finish()
     }
 }
@@ -96,7 +99,7 @@ impl std::fmt::Debug for PolyTorusDiamondIOLayer {
 impl PolyTorusDiamondIOLayer {
     pub fn new(config: DiamondIOLayerConfig) -> Result<Self> {
         let contract_engine = DiamondContractEngine::new(config.diamond_config.clone())?;
-        
+
         Ok(Self {
             config,
             contract_engine: RwLock::new(contract_engine),
@@ -114,15 +117,17 @@ impl PolyTorusDiamondIOLayer {
         circuit_description: &str,
     ) -> Result<String> {
         info!("Deploying Diamond contract: {} by {}", name, owner);
-        
+
         let mut engine = self.contract_engine.write().await;
-        let result = engine.deploy_contract(
-            contract_id.clone(),
-            name,
-            description,
-            owner,
-            circuit_description,
-        ).await;
+        let result = engine
+            .deploy_contract(
+                contract_id.clone(),
+                name,
+                description,
+                owner,
+                circuit_description,
+            )
+            .await;
 
         if result.is_ok() {
             let mut stats = self.stats.write().await;
@@ -134,7 +139,7 @@ impl PolyTorusDiamondIOLayer {
 
     pub async fn obfuscate_contract(&self, contract_id: &str) -> Result<()> {
         info!("Obfuscating contract: {}", contract_id);
-        
+
         if !self.config.obfuscation_enabled {
             return Err(anyhow::anyhow!("Obfuscation is disabled"));
         }
@@ -157,7 +162,7 @@ impl PolyTorusDiamondIOLayer {
         executor: String,
     ) -> Result<Vec<bool>> {
         info!("Executing contract: {} by {}", contract_id, executor);
-        
+
         // Check concurrent execution limit
         {
             let stats = self.stats.read().await;
@@ -182,12 +187,14 @@ impl PolyTorusDiamondIOLayer {
         {
             let mut stats = self.stats.write().await;
             stats.active_executions -= 1;
-            
+
             match &result {
                 Ok(_) => {
                     stats.successful_executions += 1;
                     // Update average execution time
-                    let total_time = stats.average_execution_time_ms * (stats.successful_executions - 1) + execution_time;
+                    let total_time = stats.average_execution_time_ms
+                        * (stats.successful_executions - 1)
+                        + execution_time;
                     stats.average_execution_time_ms = total_time / stats.successful_executions;
                 }
                 Err(_) => {
@@ -211,7 +218,11 @@ impl PolyTorusDiamondIOLayer {
 
     pub async fn get_execution_history(&self, contract_id: &str) -> Vec<ContractExecution> {
         let engine = self.contract_engine.read().await;
-        engine.get_execution_history(contract_id).into_iter().cloned().collect()
+        engine
+            .get_execution_history(contract_id)
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
     pub async fn get_stats(&self) -> DiamondIOLayerStats {
@@ -225,7 +236,7 @@ impl PolyTorusDiamondIOLayer {
 
         let engine = self.contract_engine.read().await;
         let encrypted = engine.encrypt_data(&data)?;
-        
+
         Ok(encrypted)
     }
 }
@@ -340,27 +351,29 @@ mod tests {
         // Create a test configuration with appropriate input size
         let mut test_config = DiamondIOConfig::dummy();
         test_config.input_size = 2; // Set input size to 2 for this test
-        
+
         let layer = DiamondIOLayerBuilder::new()
             .with_diamond_config(test_config)
             .build()
             .unwrap();
 
         // Deploy a contract
-        let contract_id = layer.deploy_contract(
-            "test_and".to_string(),
-            "Test AND Gate".to_string(),
-            "and_gate".to_string(),
-            "alice".to_string(),
-            "and_gate",
-        ).await.unwrap();
+        let contract_id = layer
+            .deploy_contract(
+                "test_and".to_string(),
+                "Test AND Gate".to_string(),
+                "and_gate".to_string(),
+                "alice".to_string(),
+                "and_gate",
+            )
+            .await
+            .unwrap();
 
         // Execute the contract with 2 inputs as configured
-        let result = layer.execute_contract(
-            &contract_id,
-            vec![true, false],
-            "bob".to_string(),
-        ).await.unwrap();
+        let result = layer
+            .execute_contract(&contract_id, vec![true, false], "bob".to_string())
+            .await
+            .unwrap();
 
         assert_eq!(result, vec![false]);
 

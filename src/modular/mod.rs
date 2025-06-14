@@ -31,7 +31,10 @@ pub mod unified_orchestrator;
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
-pub use diamond_io_layer::{PolyTorusDiamondIOLayer, DiamondIOLayerBuilder, DiamondIOLayerConfig, DiamondIOLayerStats, DiamondIOMessage, DiamondLayerTrait};
+pub use diamond_io_layer::{
+    DiamondIOLayerBuilder, DiamondIOLayerConfig, DiamondIOLayerStats, DiamondIOMessage,
+    DiamondLayerTrait, PolyTorusDiamondIOLayer,
+};
 pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
 pub use execution::PolyTorusExecutionLayer;
 pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};

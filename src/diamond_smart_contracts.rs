@@ -1,8 +1,8 @@
-use crate::diamond_io_integration::{DiamondIOIntegration, DiamondIOConfig};
+use crate::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
+use anyhow::Result;
 use diamond_io::bgg::circuit::PolyCircuit;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use anyhow::Result;
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ pub struct DiamondContractEngine {
 impl DiamondContractEngine {
     pub fn new(config: DiamondIOConfig) -> Result<Self> {
         let diamond_io = DiamondIOIntegration::new(config)?;
-        
+
         Ok(Self {
             contracts: HashMap::new(),
             executions: Vec::new(),
@@ -59,7 +59,7 @@ impl DiamondContractEngine {
 
         // Create a circuit based on description (not stored due to serialization issues)
         let _circuit = self.create_circuit_from_description(circuit_description)?;
-        
+
         let contract = DiamondContract {
             id: id.clone(),
             name,
@@ -75,7 +75,7 @@ impl DiamondContractEngine {
 
         self.contracts.insert(id.clone(), contract);
         info!("Contract {} deployed successfully", id);
-        
+
         Ok(id)
     }
 
@@ -83,9 +83,11 @@ impl DiamondContractEngine {
     pub async fn obfuscate_contract(&mut self, contract_id: &str) -> Result<()> {
         // Get contract information first (not the mutable reference)
         let (description, config) = {
-            let contract = self.contracts.get(contract_id)
+            let contract = self
+                .contracts
+                .get(contract_id)
                 .ok_or_else(|| anyhow::anyhow!("Contract not found: {}", contract_id))?;
-            
+
             if contract.is_obfuscated {
                 warn!("Contract {} is already obfuscated", contract_id);
                 return Ok(());
@@ -109,7 +111,7 @@ impl DiamondContractEngine {
         if let Some(contract) = self.contracts.get_mut(contract_id) {
             contract.is_obfuscated = true;
         }
-        
+
         info!("Contract {} obfuscated successfully", contract_id);
 
         Ok(())
@@ -122,13 +124,18 @@ impl DiamondContractEngine {
         inputs: Vec<bool>,
         executor: String,
     ) -> Result<Vec<bool>> {
-        let contract = self.contracts.get(contract_id)
+        let contract = self
+            .contracts
+            .get(contract_id)
             .ok_or_else(|| anyhow::anyhow!("Contract not found: {}", contract_id))?;
 
-        info!("Executing contract: {} with inputs: {:?}", contract_id, inputs);
+        info!(
+            "Executing contract: {} with inputs: {:?}",
+            contract_id, inputs
+        );
 
         let start_time = std::time::Instant::now();
-        
+
         // Check if inputs match expected size
         if inputs.len() != contract.config.input_size {
             return Err(anyhow::anyhow!(
@@ -168,7 +175,7 @@ impl DiamondContractEngine {
         };
 
         self.executions.push(execution);
-        
+
         info!(
             "Contract {} executed successfully in {}ms, gas used: {}",
             contract_id, execution_time, gas_used
@@ -210,9 +217,9 @@ impl DiamondContractEngine {
     /// Create a circuit from textual description
     fn create_circuit_from_description(&self, description: &str) -> Result<PolyCircuit> {
         info!("Creating circuit from description: {}", description);
-        
+
         let mut circuit = PolyCircuit::new();
-        
+
         // Parse simple circuit descriptions
         match description.to_lowercase().as_str() {
             "and_gate" => {
@@ -250,16 +257,16 @@ impl DiamondContractEngine {
                 let a1 = inputs[1];
                 let b0 = inputs[2];
                 let b1 = inputs[3];
-                
+
                 // Sum bit 0: a0 XOR b0
                 let sum0_temp = circuit.add_gate(a0, b0);
                 let carry0_temp = circuit.mul_gate(a0, b0);
                 let carry0_double = circuit.add_gate(carry0_temp, carry0_temp);
                 let sum0 = circuit.sub_gate(sum0_temp, carry0_double);
-                
+
                 // Carry from bit 0
                 let carry0 = carry0_temp;
-                
+
                 // Sum bit 1: a1 XOR b1 XOR carry0
                 let sum1_temp1 = circuit.add_gate(a1, b1);
                 let sum1_temp2 = circuit.add_gate(sum1_temp1, carry0);
@@ -269,7 +276,7 @@ impl DiamondContractEngine {
                 let product2_double = circuit.add_gate(product2, product2);
                 let products_sum = circuit.add_gate(product1_double, product2_double);
                 let sum1 = circuit.sub_gate(sum1_temp2, products_sum);
-                
+
                 circuit.output(vec![sum0, sum1]);
             }
             _ => {
@@ -279,7 +286,7 @@ impl DiamondContractEngine {
                 circuit.output(vec![input]);
             }
         }
-        
+
         Ok(circuit)
     }
 
@@ -339,7 +346,7 @@ impl DiamondContractEngine {
         let input_gas = inputs.len() as u64 * 100; // Gas per input
         let output_gas = outputs.len() as u64 * 50; // Gas per output
         let time_gas = execution_time_ms / 10; // Time-based gas
-        
+
         base_gas + input_gas + output_gas + time_gas
     }
 }
@@ -365,15 +372,18 @@ mod tests {
     async fn test_contract_deployment() {
         let config = get_test_config();
         let mut engine = DiamondContractEngine::new(config).unwrap();
-        
-        let contract_id = engine.deploy_contract(
-            "test_and".to_string(),
-            "Test AND Gate".to_string(),
-            "and_gate".to_string(),
-            "alice".to_string(),
-            "and_gate",
-        ).await.unwrap();
-        
+
+        let contract_id = engine
+            .deploy_contract(
+                "test_and".to_string(),
+                "Test AND Gate".to_string(),
+                "and_gate".to_string(),
+                "alice".to_string(),
+                "and_gate",
+            )
+            .await
+            .unwrap();
+
         assert_eq!(contract_id, "test_and");
         assert!(engine.get_contract(&contract_id).is_some());
     }
@@ -382,30 +392,31 @@ mod tests {
     async fn test_contract_execution() {
         let config = get_test_config();
         let mut engine = DiamondContractEngine::new(config).unwrap();
-        
-        let contract_id = engine.deploy_contract(
-            "test_and".to_string(),
-            "Test AND Gate".to_string(),
-            "and_gate".to_string(),
-            "alice".to_string(),
-            "and_gate",
-        ).await.unwrap();
-        
+
+        let contract_id = engine
+            .deploy_contract(
+                "test_and".to_string(),
+                "Test AND Gate".to_string(),
+                "and_gate".to_string(),
+                "alice".to_string(),
+                "and_gate",
+            )
+            .await
+            .unwrap();
+
         // Test AND gate
-        let result = engine.execute_contract(
-            &contract_id,
-            vec![true, false],
-            "bob".to_string(),
-        ).await.unwrap();
-        
+        let result = engine
+            .execute_contract(&contract_id, vec![true, false], "bob".to_string())
+            .await
+            .unwrap();
+
         assert_eq!(result, vec![false]);
-        
-        let result = engine.execute_contract(
-            &contract_id,
-            vec![true, true],
-            "charlie".to_string(),
-        ).await.unwrap();
-        
+
+        let result = engine
+            .execute_contract(&contract_id, vec![true, true], "charlie".to_string())
+            .await
+            .unwrap();
+
         assert_eq!(result, vec![true]);
     }
 
@@ -413,19 +424,28 @@ mod tests {
     async fn test_execution_history() {
         let config = get_test_config();
         let mut engine = DiamondContractEngine::new(config).unwrap();
-        
-        let contract_id = engine.deploy_contract(
-            "test_or".to_string(),
-            "Test OR Gate".to_string(),
-            "or_gate".to_string(),
-            "alice".to_string(),
-            "or_gate",
-        ).await.unwrap();
-        
+
+        let contract_id = engine
+            .deploy_contract(
+                "test_or".to_string(),
+                "Test OR Gate".to_string(),
+                "or_gate".to_string(),
+                "alice".to_string(),
+                "or_gate",
+            )
+            .await
+            .unwrap();
+
         // Execute multiple times
-        engine.execute_contract(&contract_id, vec![true, false], "bob".to_string()).await.unwrap();
-        engine.execute_contract(&contract_id, vec![false, false], "charlie".to_string()).await.unwrap();
-        
+        engine
+            .execute_contract(&contract_id, vec![true, false], "bob".to_string())
+            .await
+            .unwrap();
+        engine
+            .execute_contract(&contract_id, vec![false, false], "charlie".to_string())
+            .await
+            .unwrap();
+
         let history = engine.get_execution_history(&contract_id);
         assert_eq!(history.len(), 2);
     }

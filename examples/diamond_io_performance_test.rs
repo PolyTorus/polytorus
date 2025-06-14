@@ -1,4 +1,4 @@
-use polytorus::diamond_io_integration::{DiamondIOIntegration, DiamondIOConfig};
+use polytorus::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
 use std::time::Instant;
 
 #[tokio::main]
@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
     let prod_circuit = prod_integration.create_demo_circuit();
     let initialization_time = start.elapsed();
     println!("   ⏱️  初期化時間: {:?}", initialization_time);
-    
+
     let start = Instant::now();
     let prod_obfuscation = prod_integration.obfuscate_circuit(prod_circuit).await;
     let obfuscation_time = start.elapsed();
@@ -49,10 +49,18 @@ async fn main() -> anyhow::Result<()> {
     println!("├─────────────┼─────────────┼─────────────┤");
     println!("│ ダミー      │ {:>10?} │ {:>10}x │", dummy_time, 1);
     if test_time.as_nanos() > 0 {
-        println!("│ テスト      │ {:>10?} │ {:>10.1}x │", test_time, test_time.as_nanos() as f64 / dummy_time.as_nanos() as f64);
+        println!(
+            "│ テスト      │ {:>10?} │ {:>10.1}x │",
+            test_time,
+            test_time.as_nanos() as f64 / dummy_time.as_nanos() as f64
+        );
     }
     if obfuscation_time.as_nanos() > 0 {
-        println!("│ 本番        │ {:>10?} │ {:>10.1}x │", obfuscation_time, obfuscation_time.as_nanos() as f64 / dummy_time.as_nanos() as f64);
+        println!(
+            "│ 本番        │ {:>10?} │ {:>10.1}x │",
+            obfuscation_time,
+            obfuscation_time.as_nanos() as f64 / dummy_time.as_nanos() as f64
+        );
     }
     println!("└─────────────┴─────────────┴─────────────┘");
 
