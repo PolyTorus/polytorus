@@ -5,6 +5,10 @@ on:
     branches: [ "develop" ]
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
 permissions:
   contents: write
 
@@ -15,18 +19,74 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            git \
+            pkg-config \
+            libssl-dev \
+            autoconf \
+            automake \
+            libtool \
+            libgmp-dev \
+            libntl-dev \
+            wget
+
+      - name: Install OpenFHE dependencies
+        run: |
+          sudo apt-get install -y \
+            libboost-all-dev \
+            libgmp3-dev \
+            libmpfr-dev \
+            libfftw3-dev
+            
+      - name: Clone and build OpenFHE
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git
+          cd openfhe-development
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+
       # https://github.com/dtolnay/rust-toolchain
-      - name: Install rust components
-        uses: dtolnay/rust-toolchain@56f84321dbccf38fb67ce29ab63e4754056677e0
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: stable
+          toolchain: nightly-2025-01-01
           components: clippy, rustfmt
 
       - name: Cache rust components
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          
+      - name: Set environment variables for OpenFHE
+        run: |
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CXXFLAGS=-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" >> $GITHUB_ENV
+          echo "CXX_FLAGS=-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" >> $GITHUB_ENV
 
       - name: Format
-        run: cargo fmt --all && cargo clippy --fix --allow-dirty
+        run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+          cargo fmt --all && cargo clippy --fix --allow-dirty
 
       - name: Commit
         run: |
