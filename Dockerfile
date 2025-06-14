@@ -40,6 +40,7 @@ RUN git clone https://github.com/MachinaIO/openfhe-development.git && \
           .. && \
     make -j$(nproc) && \
     make install && \
+    mkdir -p /usr/local/lib/pkgconfig && \
     ldconfig
 
 # Runtime stage
