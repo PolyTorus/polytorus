@@ -56,6 +56,14 @@ clap = "2.34"  # Keep old version for now, will upgrade later
 bitcoincash-addr = "0.5.2"
 merkle-cbt = "0.2.2"
 fn-dsa = "0.2.0"
+# Verkle Tree dependencies
+ark-ed-on-bls12-381 = "0.5.0"
+ark-ff = "0.5.0"
+ark-ec = "0.5.0"
+ark-serialize = "0.5.0"
+ark-std = "0.5.0"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+blake3 = "1.3"
 
 # Web and async
 actix-web = "4"
