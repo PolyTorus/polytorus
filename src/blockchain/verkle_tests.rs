@@ -13,7 +13,7 @@ mod verkle_integration_tests {
     fn create_test_transaction(from: &str, to: &str, amount: i64) -> Transaction {
         Transaction::new(
             from.to_string(),
-            to.string(),
+            to.to_string(),
             amount,
             10, // fee
             vec![TxInput::new("prev_hash".to_string(), 0, "sig".to_string())],
