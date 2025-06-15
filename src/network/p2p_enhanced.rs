@@ -1337,40 +1337,37 @@ impl EnhancedP2PNode {
     /// Get peer information
     #[allow(clippy::await_holding_lock)]
     pub async fn get_peer_info(&self, peer_id: PeerId) -> Result<Option<NetPeerInfo>> {
-        let result = {
+        {
             let manager = self
                 .network_manager
                 .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.get_peer_info(peer_id).await
-        };
-        result
+        }
     }
 
     /// Add peer to blacklist
     #[allow(clippy::await_holding_lock)]
     pub async fn blacklist_peer(&self, peer_id: PeerId, reason: String) -> Result<()> {
-        let result = {
+        {
             let manager = self
                 .network_manager
                 .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.blacklist_peer(peer_id, reason).await
-        };
-        result
+        }
     }
 
     /// Remove peer from blacklist
     #[allow(clippy::await_holding_lock)]
     pub async fn unblacklist_peer(&self, peer_id: PeerId) -> Result<()> {
-        let result = {
+        {
             let manager = self
                 .network_manager
                 .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.unblacklist_peer(peer_id).await
-        };
-        result
+        }
     }
 
     /// Get message queue statistics
