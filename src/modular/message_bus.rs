@@ -50,7 +50,7 @@ pub struct ModularMessage {
 #[derive(Debug, Clone)]
 pub enum MessagePayload {
     BlockProposal {
-        block: crate::blockchain::block::Block,
+        block: Box<crate::blockchain::block::Block>,
         proposer_id: String,
     },
     BlockValidation {

@@ -240,12 +240,12 @@ impl VerkleTree {
                 new_values.insert(key.to_vec(), value.to_vec());
                 let commitment = self.compute_leaf_commitment(&new_values)?;
                 Ok(VerkleNode::Leaf {
-                    commitment: commitment,
+                    commitment,
                     values: new_values,
                 })
             }
             VerkleNode::Internal { children, .. } => {
-                let child_index = key_hash[depth] as u8;
+                let child_index = key_hash[depth];
                 let child = children
                     .get(&child_index)
                     .map(|c| c.as_ref())
@@ -266,6 +266,7 @@ impl VerkleTree {
     }
 
     /// Recursive get
+    #[allow(clippy::only_used_in_recursion)]
     fn get_recursive(
         &self,
         node: &VerkleNode,
@@ -280,7 +281,7 @@ impl VerkleTree {
                 if depth >= key_hash.len() {
                     return None;
                 }
-                let child_index = key_hash[depth] as u8;
+                let child_index = key_hash[depth];
                 if let Some(child) = children.get(&child_index) {
                     self.get_recursive(child, key_hash, key, depth + 1)
                 } else {
@@ -322,7 +323,7 @@ impl VerkleTree {
                     return Ok((node.clone(), None));
                 }
 
-                let child_index = key_hash[depth] as u8;
+                let child_index = key_hash[depth];
                 if let Some(child) = children.get(&child_index) {
                     let (new_child, deleted_value) =
                         self.delete_recursive(child, key_hash, key, depth + 1)?;
@@ -354,6 +355,7 @@ impl VerkleTree {
     }
 
     /// Generate proof recursively
+    #[allow(clippy::only_used_in_recursion)]
     fn generate_proof_recursive(
         &self,
         node: &VerkleNode,
@@ -382,7 +384,7 @@ impl VerkleTree {
                     return Err(VerkleError::InvalidProof);
                 }
 
-                let child_index = key_hash[depth] as u8;
+                let child_index = key_hash[depth];
                 let mut sibling_commitments = BTreeMap::new();
 
                 // Collect sibling commitments for proof
@@ -452,7 +454,7 @@ impl VerkleTree {
                     return false;
                 }
 
-                let expected_child_index = key_hash[depth] as u8;
+                let expected_child_index = key_hash[depth];
                 if *child_index != expected_child_index {
                     return false;
                 }
