@@ -3,26 +3,50 @@
 //! This example demonstrates how to run multiple PolyTorus nodes locally
 //! and simulate transaction propagation across the network.
 
-use actix_web::{web, App, HttpServer, Result as ActixResult};
-use clap::{Arg, App as ClapApp};
-use polytorus::config::{ConfigManager, DataContext};
-use polytorus::config::{ConfigManager, DataContext};
-use polytorus::modular::{default_modular_config, UnifiedModularOrchestrator};
-use polytorus::Result;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+
+use actix_web::{
+    web,
+    App,
+    HttpServer,
+    Result as ActixResult,
+};
+use clap::{
+    App as ClapApp,
+    Arg,
+};
+use polytorus::config::{
+    ConfigManager,
+    DataContext,
+};
+use polytorus::config::{
+    ConfigManager,
+    DataContext,
+};
+use polytorus::modular::{
+    default_modular_config,
+    UnifiedModularOrchestrator,
+};
+use polytorus::Result;
+use reqwest::Client;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::sync::Mutex;
-use tokio::time::{interval, sleep};
+use tokio::time::{
+    interval,
+    sleep,
+};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeConfig {
     pub node_id: String,
-    pub port: u16,         // HTTP API port
-    pub p2p_port: u16,     // P2P network port
+    pub port: u16,     // HTTP API port
+    pub p2p_port: u16, // P2P network port
     pub data_dir: String,
     pub bootstrap_peers: Vec<String>,
 }
@@ -94,20 +118,20 @@ impl MultiNodeSimulator {
     /// Generate node configurations
     pub fn generate_node_configs(&self) -> Vec<NodeConfig> {
         let mut configs = Vec::new();
-        
+
         for i in 0..self.config.num_nodes {
             let node_id = format!("node-{}", i);
             let port = self.config.base_port + i as u16;
             let p2p_port = self.config.base_p2p_port + i as u16;
             let data_dir = format!("./data/simulation/{}", node_id);
-            
+
             // Generate bootstrap peers (connect to previous nodes)
             let mut bootstrap_peers = Vec::new();
             for j in 0..i {
                 let peer_port = self.config.base_p2p_port + j as u16;
                 bootstrap_peers.push(format!("127.0.0.1:{}", peer_port));
             }
-            
+
             configs.push(NodeConfig {
                 node_id,
                 port,
@@ -116,38 +140,42 @@ impl MultiNodeSimulator {
                 bootstrap_peers,
             });
         }
-        
+
         configs
     }
 
     /// Initialize and start all nodes
     pub async fn start_nodes(&mut self) -> Result<()> {
-        println!("🚀 Starting {} nodes for simulation...", self.config.num_nodes);
-        
+        println!(
+            "🚀 Starting {} nodes for simulation...",
+            self.config.num_nodes
+        );
+
         let node_configs = self.generate_node_configs();
-        
+
         for (i, node_config) in node_configs.iter().enumerate() {
             println!("📡 Starting node {} ({})", i + 1, node_config.node_id);
-            
+
             // Create data directory
             let data_context = DataContext::new(PathBuf::from(node_config.data_dir.clone()));
             data_context.ensure_directories()?;
-            
+
             // Create custom configuration for this node
             let config_manager = ConfigManager::default();
             let mut config = config_manager.get_config().clone();
-            
+
             // Configure network settings
             config.network.listen_addr = format!("127.0.0.1:{}", node_config.p2p_port);
             config.network.bootstrap_peers = node_config.bootstrap_peers.clone();
-            
+
             // Create modular orchestrator
             let modular_config = default_modular_config();
             let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
                 modular_config,
                 data_context,
-            ).await?;
-            
+            )
+            .await?;
+
             let node_instance = NodeInstance {
                 config: node_config.clone(),
                 orchestrator: Arc::new(orchestrator),
@@ -155,17 +183,17 @@ impl MultiNodeSimulator {
                 rx_count: Arc::new(Mutex::new(0)),
                 http_client: Client::new(),
             };
-            
+
             self.nodes.push(node_instance);
-            
+
             // Small delay between node starts to avoid port conflicts
             sleep(Duration::from_millis(1000)).await;
         }
-        
+
         // Wait for network to stabilize
         println!("⏳ Waiting for network to stabilize...");
         sleep(Duration::from_secs(5)).await;
-        
+
         println!("✅ All nodes started successfully!");
         Ok(())
     }
@@ -173,19 +201,19 @@ impl MultiNodeSimulator {
     /// Start the HTTP API servers for each node
     pub async fn start_api_servers(&self) -> Result<()> {
         println!("🌐 Starting HTTP API servers...");
-        
+
         for node in &self.nodes {
             let node_config = node.config.clone();
             let orchestrator = node.orchestrator.clone();
             let tx_count = node.tx_count.clone();
             let rx_count = node.rx_count.clone();
-            
+
             tokio::spawn(async move {
                 let server = HttpServer::new(move || {
                     let orchestrator = orchestrator.clone();
                     let tx_count = tx_count.clone();
                     let rx_count = rx_count.clone();
-                    
+
                     App::new()
                         .app_data(web::Data::new(orchestrator))
                         .app_data(web::Data::new(tx_count))
@@ -197,13 +225,13 @@ impl MultiNodeSimulator {
                 .bind(format!("127.0.0.1:{}", node_config.port))
                 .expect("Failed to bind server")
                 .run();
-                
+
                 if let Err(e) = server.await {
                     eprintln!("Server error for {}: {}", node_config.node_id, e);
                 }
             });
         }
-        
+
         println!("✅ API servers started!");
         Ok(())
     }
@@ -212,60 +240,62 @@ impl MultiNodeSimulator {
     pub async fn start_simulation(&self) -> Result<()> {
         println!("🎯 Starting transaction simulation...");
         *self.is_running.lock().await = true;
-        
+
         let is_running = self.is_running.clone();
         let nodes = self.nodes.clone();
         let config = self.config.clone();
-        
+
         // Transaction generator task
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(config.transaction_interval));
             let mut tx_counter = 0u64;
-            
+
             while *is_running.lock().await {
                 interval.tick().await;
-                
+
                 // Generate transactions
                 for _ in 0..config.transactions_per_batch {
                     let sender_idx = tx_counter as usize % nodes.len();
                     let receiver_idx = (tx_counter as usize + 1) % nodes.len();
-                    
+
                     if let Err(e) = Self::generate_and_submit_transaction(
                         &nodes[sender_idx],
                         &nodes[receiver_idx],
                         tx_counter,
-                    ).await {
+                    )
+                    .await
+                    {
                         eprintln!("Failed to generate transaction {}: {}", tx_counter, e);
                     }
-                    
+
                     tx_counter += 1;
                 }
-                
+
                 // Print progress
                 if tx_counter % 10 == 0 {
                     println!("📊 Generated {} transactions", tx_counter);
                 }
             }
         });
-        
+
         // Statistics reporter task
         let nodes_clone = self.nodes.clone();
         let is_running_clone = self.is_running.clone();
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(30));
-            
+
             while *is_running_clone.lock().await {
                 interval.tick().await;
                 Self::print_network_statistics(&nodes_clone).await;
             }
         });
-        
+
         // Run simulation for specified duration
         sleep(Duration::from_secs(self.config.simulation_duration)).await;
-        
+
         println!("⏹️  Simulation completed!");
         *self.is_running.lock().await = false;
-        
+
         Ok(())
     }
 
@@ -281,10 +311,11 @@ impl MultiNodeSimulator {
             amount: 100 + (tx_id % 900), // Random amount between 100-1000
             nonce: Some(tx_id),
         };
-        
+
         // First, submit to sender node's /send endpoint to record it as sent
         let sender_url = format!("http://127.0.0.1:{}/send", sender_node.config.port);
-        match sender_node.http_client
+        match sender_node
+            .http_client
             .post(&sender_url)
             .json(&tx_request)
             .send()
@@ -293,21 +324,31 @@ impl MultiNodeSimulator {
             Ok(response) => {
                 if response.status().is_success() {
                     if let Ok(tx_response) = response.json::<TransactionResponse>().await {
-                        println!("📤 Transaction {} sent from {}: {} -> {} (amount: {})", 
-                            tx_id, sender_node.config.node_id, tx_request.from, tx_request.to, tx_request.amount);
+                        println!(
+                            "📤 Transaction {} sent from {}: {} -> {} (amount: {})",
+                            tx_id,
+                            sender_node.config.node_id,
+                            tx_request.from,
+                            tx_request.to,
+                            tx_request.amount
+                        );
                     }
                 } else {
-                    eprintln!("❌ Failed to send transaction to sender node: {}", response.status());
+                    eprintln!(
+                        "❌ Failed to send transaction to sender node: {}",
+                        response.status()
+                    );
                 }
             }
             Err(e) => {
                 eprintln!("❌ HTTP error when sending to sender node: {}", e);
             }
         }
-        
+
         // Then, submit to receiver node's /transaction endpoint to record it as received
         let receiver_url = format!("http://127.0.0.1:{}/transaction", receiver_node.config.port);
-        match receiver_node.http_client
+        match receiver_node
+            .http_client
             .post(&receiver_url)
             .json(&tx_request)
             .send()
@@ -316,41 +357,50 @@ impl MultiNodeSimulator {
             Ok(response) => {
                 if response.status().is_success() {
                     if let Ok(tx_response) = response.json::<TransactionResponse>().await {
-                        println!("� Transaction {} received by {}: {} -> {} (amount: {})", 
-                            tx_id, receiver_node.config.node_id, tx_request.from, tx_request.to, tx_request.amount);
+                        println!(
+                            "� Transaction {} received by {}: {} -> {} (amount: {})",
+                            tx_id,
+                            receiver_node.config.node_id,
+                            tx_request.from,
+                            tx_request.to,
+                            tx_request.amount
+                        );
                     }
                 } else {
-                    eprintln!("❌ Failed to submit transaction to receiver node: {}", response.status());
+                    eprintln!(
+                        "❌ Failed to submit transaction to receiver node: {}",
+                        response.status()
+                    );
                 }
             }
             Err(e) => {
                 eprintln!("❌ HTTP error when submitting to receiver node: {}", e);
             }
         }
-        
+
         Ok(())
     }
 
     async fn print_network_statistics(nodes: &[NodeInstance]) {
         println!("\n📈 Network Statistics:");
         println!("======================");
-        
+
         let mut total_tx = 0u64;
         let mut total_rx = 0u64;
-        
+
         for node in nodes {
             let tx_count = *node.tx_count.lock().await;
             let rx_count = *node.rx_count.lock().await;
-            
+
             println!(
                 "📡 {}: TX: {}, RX: {}",
                 node.config.node_id, tx_count, rx_count
             );
-            
+
             total_tx += tx_count;
             total_rx += rx_count;
         }
-        
+
         println!("📊 Total: TX: {}, RX: {}", total_tx, total_rx);
         println!();
     }
@@ -358,13 +408,13 @@ impl MultiNodeSimulator {
     pub async fn stop(&self) -> Result<()> {
         println!("🛑 Stopping simulation...");
         *self.is_running.lock().await = false;
-        
+
         for node in &self.nodes {
             // Stop orchestrator
             // Note: Add actual stop method to orchestrator if needed
             println!("⏹️  Stopping node {}", node.config.node_id);
         }
-        
+
         println!("✅ Simulation stopped!");
         Ok(())
     }
@@ -376,7 +426,7 @@ async fn get_node_status(
 ) -> ActixResult<web::Json<serde_json::Value>> {
     let state = orchestrator.get_state().await;
     let metrics = orchestrator.get_metrics().await;
-    
+
     let status = serde_json::json!({
         "status": "running",
         "block_height": state.current_block_height,
@@ -385,7 +435,7 @@ async fn get_node_status(
         "total_blocks": metrics.total_blocks_processed,
         "error_rate": metrics.error_rate
     });
-    
+
     Ok(web::Json(status))
 }
 
@@ -395,12 +445,12 @@ async fn submit_transaction(
     _transaction: web::Json<serde_json::Value>,
 ) -> ActixResult<web::Json<serde_json::Value>> {
     *tx_count.lock().await += 1;
-    
+
     let response = serde_json::json!({
         "status": "accepted",
         "transaction_id": Uuid::new_v4().to_string()
     });
-    
+
     Ok(web::Json(response))
 }
 
@@ -410,20 +460,20 @@ async fn get_node_stats(
 ) -> ActixResult<web::Json<serde_json::Value>> {
     let tx = *tx_count.lock().await;
     let rx = *rx_count.lock().await;
-    
+
     let stats = serde_json::json!({
         "transactions_sent": tx,
         "transactions_received": rx,
         "timestamp": chrono::Utc::now().to_rfc3339()
     });
-    
+
     Ok(web::Json(stats))
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    
+
     let matches = ClapApp::new("Multi-Node Simulation")
         .version("0.1.0")
         .about("Simulate multiple PolyTorus nodes for transaction testing")
@@ -452,14 +502,14 @@ async fn main() -> Result<()> {
                 .default_value("5000"),
         )
         .get_matches();
-    
+
     let config = SimulationConfig {
         num_nodes: matches.value_of("nodes").unwrap().parse().unwrap(),
         simulation_duration: matches.value_of("duration").unwrap().parse().unwrap(),
         transaction_interval: matches.value_of("interval").unwrap().parse().unwrap(),
         ..Default::default()
     };
-    
+
     println!("🎭 Multi-Node Transaction Simulation");
     println!("=====================================");
     println!("📊 Configuration:");
@@ -469,29 +519,32 @@ async fn main() -> Result<()> {
     println!("   Base Port: {}", config.base_port);
     println!("   Base P2P Port: {}", config.base_p2p_port);
     println!();
-    
+
     let mut simulator = MultiNodeSimulator::new(config);
-    
+
     // Start nodes
     simulator.start_nodes().await?;
-    
+
     // Start API servers
     simulator.start_api_servers().await?;
-    
+
     println!("🌐 Node APIs available at:");
     for node in &simulator.nodes {
-        println!("   {}: http://127.0.0.1:{}", node.config.node_id, node.config.port);
+        println!(
+            "   {}: http://127.0.0.1:{}",
+            node.config.node_id, node.config.port
+        );
     }
     println!();
-    
+
     // Start simulation
     simulator.start_simulation().await?;
-    
+
     // Final statistics
     MultiNodeSimulator::print_network_statistics(&simulator.nodes).await;
-    
+
     // Cleanup
     simulator.stop().await?;
-    
+
     Ok(())
 }

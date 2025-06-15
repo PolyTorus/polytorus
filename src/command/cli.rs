@@ -1,5 +1,10 @@
 //! Modern CLI - Unified Modular Architecture Only
 
+use actix_web::{
+    web,
+    App as ActixApp,
+    HttpServer,
+};
 use clap::{
     App,
     Arg,
@@ -13,9 +18,15 @@ use crate::modular::{
     default_modular_config,
     UnifiedModularOrchestrator,
 };
-use crate::webserver::simulation_api::{SimulationState, get_status, submit_transaction, send_transaction, get_stats, health_check};
+use crate::webserver::simulation_api::{
+    get_stats,
+    get_status,
+    health_check,
+    send_transaction,
+    submit_transaction,
+    SimulationState,
+};
 use crate::Result;
-use actix_web::{web, App as ActixApp, HttpServer};
 
 pub struct ModernCli {}
 
@@ -28,7 +39,8 @@ impl Default for ModernCli {
 impl ModernCli {
     pub fn new() -> ModernCli {
         ModernCli {}
-    }    pub async fn run(&self) -> Result<()> {
+    }
+    pub async fn run(&self) -> Result<()> {
         let matches = App::new("Polytorus - Modern Blockchain")
             .version("2.0.0")
             .author("Modern Architecture Team")
@@ -40,7 +52,8 @@ impl ModernCli {
                     .takes_value(true)
                     .value_name("CONFIG_FILE"),
             )
-            .arg(                Arg::with_name("data-dir")
+            .arg(
+                Arg::with_name("data-dir")
                     .long("data-dir")
                     .help("Data directory path")
                     .takes_value(true)
@@ -174,7 +187,7 @@ impl ModernCli {
                     .help("Show message queue statistics")
                     .takes_value(false),
             )
-            .get_matches();        // Extract common options
+            .get_matches(); // Extract common options
         let config_path = matches.value_of("config");
         let data_dir = matches.value_of("data-dir");
         let http_port = matches.value_of("http-port");
@@ -186,11 +199,14 @@ impl ModernCli {
         } else if let Some(address) = matches.value_of("getbalance") {
             self.cmd_get_balance(address).await?;
         } else if matches.is_present("modular-init") {
-            self.cmd_modular_init_with_options(config_path, data_dir).await?;
+            self.cmd_modular_init_with_options(config_path, data_dir)
+                .await?;
         } else if matches.is_present("modular-start") {
-            self.cmd_modular_start_with_options(config_path, data_dir, http_port).await?;
+            self.cmd_modular_start_with_options(config_path, data_dir, http_port)
+                .await?;
         } else if matches.is_present("modular-status") {
-            self.cmd_modular_status_with_options(config_path, data_dir).await?;
+            self.cmd_modular_status_with_options(config_path, data_dir)
+                .await?;
         } else if matches.is_present("modular-config") {
             self.cmd_modular_config().await?;
         } else if let Some(contract_path) = matches.value_of("smart-contract-deploy") {
@@ -262,9 +278,15 @@ impl ModernCli {
         println!("Address: {}", address);
 
         Ok(())
-    }    async fn cmd_modular_init(&self) -> Result<()> {
+    }
+    async fn cmd_modular_init(&self) -> Result<()> {
         self.cmd_modular_init_with_options(None, None).await
-    }    async fn cmd_modular_init_with_options(&self, _config_path: Option<&str>, data_dir: Option<&str>) -> Result<()> {
+    }
+    async fn cmd_modular_init_with_options(
+        &self,
+        _config_path: Option<&str>,
+        data_dir: Option<&str>,
+    ) -> Result<()> {
         println!("Initializing modular architecture...");
 
         let config = default_modular_config();
@@ -292,14 +314,19 @@ impl ModernCli {
 
     async fn cmd_modular_status(&self) -> Result<()> {
         self.cmd_modular_status_with_options(None, None).await
-    }    async fn cmd_modular_status_with_options(&self, _config_path: Option<&str>, data_dir: Option<&str>) -> Result<()> {
+    }
+    async fn cmd_modular_status_with_options(
+        &self,
+        _config_path: Option<&str>,
+        data_dir: Option<&str>,
+    ) -> Result<()> {
         let config = default_modular_config();
         let data_context = if let Some(data_dir) = data_dir {
             DataContext::new(std::path::PathBuf::from(data_dir))
         } else {
             DataContext::default()
         };
-        
+
         let orchestrator =
             UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context)
                 .await?;
@@ -538,11 +565,17 @@ impl ModernCli {
         };
 
         Ok(network_config)
-    }    async fn cmd_modular_start(&self) -> Result<()> {
+    }
+    async fn cmd_modular_start(&self) -> Result<()> {
         self.cmd_modular_start_with_options(None, None, None).await
     }
 
-    async fn cmd_modular_start_with_options(&self, _config_path: Option<&str>, data_dir: Option<&str>, http_port: Option<&str>) -> Result<()> {
+    async fn cmd_modular_start_with_options(
+        &self,
+        _config_path: Option<&str>,
+        data_dir: Option<&str>,
+        http_port: Option<&str>,
+    ) -> Result<()> {
         println!("Starting modular blockchain with P2P network...");
 
         // Load network configuration
@@ -580,23 +613,23 @@ impl ModernCli {
         println!("Status: Running");
         if let Some(data_dir) = data_dir {
             println!("Data directory: {}", data_dir);
-        }        // Show current status
+        } // Show current status
         let state = orchestrator.get_state().await;
         println!("Block height: {}", state.current_block_height);
-        println!("Running: {}", state.is_running);        // Start HTTP API server if port is specified
+        println!("Running: {}", state.is_running); // Start HTTP API server if port is specified
         if let Some(port_str) = http_port {
             let port: u16 = port_str.parse().unwrap_or(9000);
             let node_id = format!("node-{}", port - 9000);
             let data_dir_path = data_dir.unwrap_or("./data").to_string();
-            
+
             println!("🌐 Starting HTTP API server on port {}", port);
-            
+
             let simulation_state = SimulationState::new(node_id.clone(), data_dir_path.clone());
-            
+
             // Start HTTP server in background
             tokio::spawn(async move {
                 let simulation_state_data = web::Data::new(simulation_state);
-                  let server_result = HttpServer::new(move || {
+                let server_result = HttpServer::new(move || {
                     ActixApp::new()
                         .app_data(simulation_state_data.clone())
                         .route("/status", web::get().to(get_status))
@@ -614,12 +647,14 @@ impl ModernCli {
                     eprintln!("HTTP server error: {}", e);
                 }
             });
-            
+
             println!("✅ HTTP API available at: http://127.0.0.1:{}", port);
         }
 
         // Keep the orchestrator running
-        tokio::signal::ctrl_c().await.expect("Failed to listen for ctrl+c");
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for ctrl+c");
         println!("Shutting down...");
 
         Ok(())

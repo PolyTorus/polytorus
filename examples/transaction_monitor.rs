@@ -1,13 +1,20 @@
 //! Transaction Monitor
-//! 
+//!
 //! A simple monitoring tool to observe transaction flow between nodes
 
-use clap::{Arg, App};
-use reqwest::Client;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::time::{interval, sleep};
+
+use clap::{
+    App,
+    Arg,
+};
+use reqwest::Client;
+use serde_json::Value;
+use tokio::time::{
+    interval,
+    sleep,
+};
 
 #[derive(Debug, Clone)]
 pub struct NodeStats {
@@ -32,7 +39,7 @@ impl TransactionMonitor {
         let nodes = (0..num_nodes)
             .map(|i| format!("http://127.0.0.1:{}", base_port + i as u16))
             .collect();
-            
+
         Self {
             client,
             nodes,
@@ -40,7 +47,10 @@ impl TransactionMonitor {
         }
     }
 
-    pub async fn start_monitoring(&mut self, interval_seconds: u64) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn start_monitoring(
+        &mut self,
+        interval_seconds: u64,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         println!("🔍 Starting Transaction Monitor");
         println!("================================");
         println!("Monitoring {} nodes", self.nodes.len());
@@ -48,7 +58,7 @@ impl TransactionMonitor {
         println!();
 
         let mut interval = interval(Duration::from_secs(interval_seconds));
-        
+
         loop {
             interval.tick().await;
             self.update_stats().await;
@@ -60,7 +70,7 @@ impl TransactionMonitor {
     async fn update_stats(&mut self) {
         for (i, endpoint) in self.nodes.iter().enumerate() {
             let node_id = format!("node-{}", i);
-            
+
             let mut stats = NodeStats {
                 node_id: node_id.clone(),
                 endpoint: endpoint.clone(),
@@ -84,10 +94,14 @@ impl TransactionMonitor {
 
             // Try to get node-specific stats
             if let Ok(node_stats) = self.fetch_node_stats(endpoint).await {
-                if let Some(tx_sent) = node_stats.get("transactions_sent").and_then(|v| v.as_u64()) {
+                if let Some(tx_sent) = node_stats.get("transactions_sent").and_then(|v| v.as_u64())
+                {
                     stats.transactions_sent = tx_sent;
                 }
-                if let Some(tx_received) = node_stats.get("transactions_received").and_then(|v| v.as_u64()) {
+                if let Some(tx_received) = node_stats
+                    .get("transactions_received")
+                    .and_then(|v| v.as_u64())
+                {
                     stats.transactions_received = tx_received;
                 }
             }
@@ -98,31 +112,36 @@ impl TransactionMonitor {
 
     async fn fetch_node_status(&self, endpoint: &str) -> Result<Value, Box<dyn std::error::Error>> {
         let url = format!("{}/status", endpoint);
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .timeout(Duration::from_secs(5))
             .send()
             .await?;
-        
+
         let json: Value = response.json().await?;
         Ok(json)
     }
 
     async fn fetch_node_stats(&self, endpoint: &str) -> Result<Value, Box<dyn std::error::Error>> {
         let url = format!("{}/stats", endpoint);
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .timeout(Duration::from_secs(5))
             .send()
             .await?;
-        
+
         let json: Value = response.json().await?;
         Ok(json)
     }
 
     fn display_stats(&self) {
         let now = chrono::Utc::now();
-        println!("📊 Network Statistics - {}", now.format("%Y-%m-%d %H:%M:%S UTC"));
+        println!(
+            "📊 Network Statistics - {}",
+            now.format("%Y-%m-%d %H:%M:%S UTC")
+        );
         println!("┌─────────┬────────┬──────────┬──────────┬────────────┬─────────────┐");
         println!("│ Node    │ Status │ TX Sent  │ TX Recv  │ Block Height│ Last Update │");
         println!("├─────────┼────────┼──────────┼──────────┼────────────┼─────────────┤");
@@ -134,7 +153,11 @@ impl TransactionMonitor {
         for i in 0..self.nodes.len() {
             let node_id = format!("node-{}", i);
             if let Some(stats) = self.stats.get(&node_id) {
-                let status = if stats.is_online { "🟢 Online " } else { "🔴 Offline" };
+                let status = if stats.is_online {
+                    "🟢 Online "
+                } else {
+                    "🔴 Offline"
+                };
                 let last_update = if stats.is_online {
                     let duration = now - stats.last_updated;
                     if duration.num_seconds() < 60 {
@@ -184,26 +207,38 @@ impl TransactionMonitor {
         // Network health indicators
         println!("🏥 Network Health:");
         let health_percentage = (online_nodes as f64 / self.nodes.len() as f64) * 100.0;
-        println!("   Network Connectivity: {:.1}% ({}/{} nodes online)", 
-                health_percentage, online_nodes, self.nodes.len());
-        
+        println!(
+            "   Network Connectivity: {:.1}% ({}/{} nodes online)",
+            health_percentage,
+            online_nodes,
+            self.nodes.len()
+        );
+
         if total_sent > 0 {
             let propagation_rate = (total_received as f64 / total_sent as f64) * 100.0;
-            println!("   Transaction Propagation: {:.1}% ({} received / {} sent)", 
-                    propagation_rate, total_received, total_sent);
+            println!(
+                "   Transaction Propagation: {:.1}% ({} received / {} sent)",
+                propagation_rate, total_received, total_sent
+            );
         }
 
         // Show recent activity
-        if let Some(max_height) = self.stats.values()
+        if let Some(max_height) = self
+            .stats
+            .values()
             .filter(|s| s.is_online)
             .map(|s| s.block_height)
-            .max() 
+            .max()
         {
-            let synced_nodes = self.stats.values()
+            let synced_nodes = self
+                .stats
+                .values()
                 .filter(|s| s.is_online && s.block_height == max_height)
                 .count();
-            println!("   Block Synchronization: {}/{} nodes at height {}", 
-                    synced_nodes, online_nodes, max_height);
+            println!(
+                "   Block Synchronization: {}/{} nodes at height {}",
+                synced_nodes, online_nodes, max_height
+            );
         }
     }
 }
@@ -247,17 +282,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let interval: u64 = matches.value_of("interval").unwrap().parse()?;
 
     let mut monitor = TransactionMonitor::new(base_port, num_nodes);
-    
+
     println!("🚀 PolyTorus Transaction Monitor");
     println!("=================================");
-    println!("Monitoring ports: {} - {}", base_port, base_port + num_nodes as u16 - 1);
+    println!(
+        "Monitoring ports: {} - {}",
+        base_port,
+        base_port + num_nodes as u16 - 1
+    );
     println!("Press Ctrl+C to stop monitoring");
     println!();
-    
+
     // Initial stats fetch
     monitor.update_stats().await;
     monitor.display_stats();
-    
+
     // Wait a bit then start continuous monitoring
     sleep(Duration::from_secs(2)).await;
     monitor.start_monitoring(interval).await?;
