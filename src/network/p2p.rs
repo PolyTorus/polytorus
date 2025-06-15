@@ -33,7 +33,8 @@ const PROTOCOL_VERSION: u32 = 1;
 #[derive(Debug, Clone)]
 pub enum NetworkEvent {
     /// New peer connected
-    PeerConnected(PeerId),    /// Peer disconnected
+    PeerConnected(PeerId),
+    /// Peer disconnected
     PeerDisconnected(PeerId),
     /// New block received
     BlockReceived(Box<FinalizedBlock>),
@@ -102,7 +103,8 @@ pub enum P2PMessage {
     /// Block announcement
     BlockAnnouncement {
         block_hash: String,
-        block_height: i32,    },
+        block_height: i32,
+    },
     /// Block data
     BlockData { block: Box<Block> },
     /// Transaction announcement
@@ -527,7 +529,8 @@ impl P2PNode {
                         connection.last_pong = Instant::now();
                     }
                 }
-            }            P2PMessage::BlockData { block } => {
+            }
+            P2PMessage::BlockData { block } => {
                 let _ = event_tx.send(NetworkEvent::BlockReceived(block));
             }
             P2PMessage::TransactionData { transaction } => {
@@ -595,7 +598,8 @@ impl P2PNode {
         // Deserialize
         let message = bincode::deserialize(&data)?;
         Ok(message)
-    }    /// Handle commands from application
+    }
+    /// Handle commands from application
     async fn handle_command(&mut self, command: NetworkCommand) -> Result<()> {
         match command {
             NetworkCommand::BroadcastBlock(block) => {
@@ -603,7 +607,9 @@ impl P2PNode {
                 self.broadcast_message(message).await?;
             }
             NetworkCommand::BroadcastTransaction(transaction) => {
-                let message = P2PMessage::TransactionData { transaction: Box::new(transaction) };
+                let message = P2PMessage::TransactionData {
+                    transaction: Box::new(transaction),
+                };
                 self.broadcast_message(message).await?;
             }
             NetworkCommand::RequestBlock(hash, peer_id) => {
