@@ -54,7 +54,7 @@ impl Blockchain {
         // ブロックハッシュの計算と設定
         block.hash = self.calculate_hash(&block.header);
         self.blocks.push(block);
-        
+
         true
     }
 
@@ -66,7 +66,7 @@ impl Blockchain {
         hash.push((header.timestamp % 256) as u8);
         hash.push((header.nonce % 256) as u8);
         hash.push((header.difficulty % 256) as u8);
-        
+
         // 簡単な「ハッシュ」として最初の8バイトのみ返す
         hash.truncate(8);
         hash
@@ -107,7 +107,7 @@ fn verify_block_hash_consistency() {
     let timestamp: u64 = kani::any();
     let nonce: u64 = kani::any();
     let difficulty: u32 = kani::any();
-    
+
     kani::assume(difficulty > 0 && difficulty < 1000);
 
     let header = BlockHeader {
@@ -176,7 +176,7 @@ fn verify_difficulty_adjustment() {
     if blockchain.difficulty > u32::MAX / 2 {
         blockchain.difficulty = u32::MAX / 2;
     }
-    
+
     assert!(blockchain.difficulty <= u32::MAX / 2);
 }
 
@@ -224,7 +224,7 @@ fn verify_invalid_block_rejection() {
 
     // チェーンの長さは変わらない
     assert!(blockchain.blocks.len() == 1);
-    
+
     // チェーンの整合性は保たれている
     assert!(blockchain.validate_chain());
 }

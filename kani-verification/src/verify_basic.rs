@@ -9,13 +9,13 @@ use kani;
 fn verify_basic_arithmetic() {
     let x: u32 = kani::any();
     let y: u32 = kani::any();
-    
+
     // Assume small values to avoid overflow
     kani::assume(x <= 1000);
     kani::assume(y <= 1000);
-    
+
     let sum = x + y;
-    
+
     // Basic properties
     assert!(sum >= x);
     assert!(sum >= y);
@@ -28,11 +28,11 @@ fn verify_basic_arithmetic() {
 fn verify_boolean_logic() {
     let a: bool = kani::any();
     let b: bool = kani::any();
-    
+
     // De Morgan's laws
     assert!(!(a && b) == (!a || !b));
     assert!(!(a || b) == (!a && !b));
-    
+
     // Basic boolean properties
     assert!((a || !a) == true);
     assert!((a && !a) == false);
@@ -44,13 +44,13 @@ fn verify_boolean_logic() {
 fn verify_array_bounds() {
     let size: usize = kani::any();
     kani::assume(size > 0 && size <= 10);
-    
+
     let arr = vec![0u8; size];
-    
+
     // Properties
     assert!(arr.len() == size);
     assert!(!arr.is_empty());
-    
+
     // Bounds check
     if size > 0 {
         assert!(arr.get(0).is_some());
@@ -64,11 +64,11 @@ fn verify_array_bounds() {
 #[kani::proof]
 fn verify_hash_determinism() {
     let data: [u8; 4] = kani::any();
-    
+
     // Simple hash function
     let hash1 = simple_hash(&data);
     let hash2 = simple_hash(&data);
-    
+
     // Same input should produce same hash
     assert!(hash1 == hash2);
 }
@@ -88,22 +88,22 @@ fn simple_hash(data: &[u8]) -> u32 {
 fn verify_queue_operations() {
     let capacity: usize = kani::any();
     kani::assume(capacity > 0 && capacity <= 5);
-    
+
     let mut queue = Vec::with_capacity(capacity);
     let item_count: usize = kani::any();
     kani::assume(item_count <= 10);
-    
+
     // Add items
     for i in 0..item_count {
         if queue.len() < capacity {
             queue.push(i);
         }
     }
-    
+
     // Properties
     assert!(queue.len() <= capacity);
     assert!(queue.len() <= item_count);
-    
+
     if item_count <= capacity {
         assert!(queue.len() == item_count);
     } else {

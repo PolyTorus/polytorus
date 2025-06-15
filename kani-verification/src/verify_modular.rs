@@ -70,7 +70,12 @@ impl ModularLayer {
         true
     }
 
-    fn send_message(&self, to_layer: LayerType, message_type: MessageType, data: Vec<u8>) -> LayerMessage {
+    fn send_message(
+        &self,
+        to_layer: LayerType,
+        message_type: MessageType,
+        data: Vec<u8>,
+    ) -> LayerMessage {
         LayerMessage {
             from_layer: self.layer_type,
             to_layer,
@@ -97,12 +102,23 @@ impl ModularArchitecture {
     }
 
     fn get_layer_mut(&mut self, layer_type: LayerType) -> Option<&mut ModularLayer> {
-        self.layers.iter_mut().find(|layer| layer.layer_type == layer_type)
+        self.layers
+            .iter_mut()
+            .find(|layer| layer.layer_type == layer_type)
     }
 
-    fn send_message(&mut self, from: LayerType, to: LayerType, message_type: MessageType, data: Vec<u8>) -> bool {
+    fn send_message(
+        &mut self,
+        from: LayerType,
+        to: LayerType,
+        message_type: MessageType,
+        data: Vec<u8>,
+    ) -> bool {
         // Get sender layer
-        let sender_exists = self.layers.iter().any(|layer| layer.layer_type == from && layer.is_active);
+        let sender_exists = self
+            .layers
+            .iter()
+            .any(|layer| layer.layer_type == from && layer.is_active);
         if !sender_exists {
             return false;
         }
@@ -138,7 +154,10 @@ impl ModularArchitecture {
         ];
 
         for required_layer in &required_layers {
-            let exists = self.layers.iter().any(|layer| layer.layer_type == *required_layer);
+            let exists = self
+                .layers
+                .iter()
+                .any(|layer| layer.layer_type == *required_layer);
             if !exists {
                 return false;
             }
@@ -261,7 +280,11 @@ fn verify_layer_state_update() {
     );
 
     // Check if DataAvailability layer state was updated
-    if let Some(da_layer) = architecture.layers.iter().find(|l| l.layer_type == LayerType::DataAvailability) {
+    if let Some(da_layer) = architecture
+        .layers
+        .iter()
+        .find(|l| l.layer_type == LayerType::DataAvailability)
+    {
         assert!(da_layer.state[0] != initial_state);
         assert!(da_layer.state[0] == initial_state.wrapping_add(1));
     }
@@ -318,7 +341,11 @@ fn verify_layer_isolation() {
     }
 
     // DataAvailability layer is still active
-    if let Some(da_layer) = architecture.layers.iter().find(|l| l.layer_type == LayerType::DataAvailability) {
+    if let Some(da_layer) = architecture
+        .layers
+        .iter()
+        .find(|l| l.layer_type == LayerType::DataAvailability)
+    {
         assert!(da_layer.is_active);
     }
 
@@ -366,17 +393,23 @@ fn verify_multiple_message_processing() {
     assert!(architecture.message_count == initial_count + 3);
 
     // Each layer has received messages
-    let da_messages = architecture.layers.iter()
+    let da_messages = architecture
+        .layers
+        .iter()
         .find(|l| l.layer_type == LayerType::DataAvailability)
         .map(|l| l.message_queue.len())
         .unwrap_or(0);
-    
-    let exec_messages = architecture.layers.iter()
+
+    let exec_messages = architecture
+        .layers
+        .iter()
         .find(|l| l.layer_type == LayerType::Execution)
         .map(|l| l.message_queue.len())
         .unwrap_or(0);
-    
-    let settle_messages = architecture.layers.iter()
+
+    let settle_messages = architecture
+        .layers
+        .iter()
         .find(|l| l.layer_type == LayerType::Settlement)
         .map(|l| l.message_queue.len())
         .unwrap_or(0);
