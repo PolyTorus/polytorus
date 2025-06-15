@@ -23,6 +23,16 @@ pub mod smart_contract;
 pub mod test_helpers;
 pub mod webserver;
 
+// Kani verification utilities
+#[cfg(kani)]
+pub mod kani_macros;
+
+#[cfg(kani)]
+pub mod simple_kani_tests;
+
+#[cfg(kani)]
+pub mod basic_kani_test;
+
 #[macro_use]
 extern crate log;
 

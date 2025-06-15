@@ -28,6 +28,9 @@ pub mod layer_factory;
 pub mod message_bus;
 pub mod unified_orchestrator;
 
+#[cfg(kani)]
+pub mod kani_verification;
+
 // Re-export main types and traits
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;

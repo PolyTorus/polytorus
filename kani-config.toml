@@ -1,0 +1,36 @@
+# Kani Configuration for Polytorus Blockchain Verification
+
+[verification.crypto_verification]
+description = "Formal verification of cryptographic operations"
+harnesses = [
+    "verify_ecdsa_sign_verify",
+    "verify_fndsa_sign_verify",
+    "verify_transaction_integrity",
+    "verify_merkle_tree_properties"
+]
+
+[verification.blockchain_verification]
+description = "Formal verification of blockchain operations"
+harnesses = [
+    "verify_block_hash_consistency",
+    "verify_difficulty_adjustment",
+    "verify_mining_stats",
+    "verify_verkle_tree_operations"
+]
+
+[verification.transaction_verification]
+description = "Formal verification of transaction processing"
+harnesses = [
+    "verify_transaction_signing",
+    "verify_utxo_consistency",
+    "verify_contract_transaction_integrity"
+]
+
+# Global verification settings
+[solver]
+engine = "cbmc"
+unwinding = 5
+
+[restrictions]
+function_call_limit = 100
+loop_unroll = 10
