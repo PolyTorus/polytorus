@@ -21,10 +21,6 @@ use polytorus::config::{
     ConfigManager,
     DataContext,
 };
-use polytorus::config::{
-    ConfigManager,
-    DataContext,
-};
 use polytorus::modular::{
     default_modular_config,
     UnifiedModularOrchestrator,
@@ -102,7 +98,6 @@ pub struct MultiNodeSimulator {
     config: SimulationConfig,
     nodes: Vec<NodeInstance>,
     is_running: Arc<Mutex<bool>>,
-    http_client: Client,
 }
 
 impl MultiNodeSimulator {
@@ -111,7 +106,6 @@ impl MultiNodeSimulator {
             config,
             nodes: Vec::new(),
             is_running: Arc::new(Mutex::new(false)),
-            http_client: Client::new(),
         }
     }
 
@@ -323,7 +317,7 @@ impl MultiNodeSimulator {
         {
             Ok(response) => {
                 if response.status().is_success() {
-                    if let Ok(tx_response) = response.json::<TransactionResponse>().await {
+                    if let Ok(_tx_response) = response.json::<TransactionResponse>().await {
                         println!(
                             "📤 Transaction {} sent from {}: {} -> {} (amount: {})",
                             tx_id,
@@ -356,7 +350,7 @@ impl MultiNodeSimulator {
         {
             Ok(response) => {
                 if response.status().is_success() {
-                    if let Ok(tx_response) = response.json::<TransactionResponse>().await {
+                    if let Ok(_tx_response) = response.json::<TransactionResponse>().await {
                         println!(
                             "� Transaction {} received by {}: {} -> {} (amount: {})",
                             tx_id,

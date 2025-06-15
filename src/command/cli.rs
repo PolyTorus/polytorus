@@ -279,9 +279,6 @@ impl ModernCli {
 
         Ok(())
     }
-    async fn cmd_modular_init(&self) -> Result<()> {
-        self.cmd_modular_init_with_options(None, None).await
-    }
     async fn cmd_modular_init_with_options(
         &self,
         _config_path: Option<&str>,
@@ -312,9 +309,6 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_modular_status(&self) -> Result<()> {
-        self.cmd_modular_status_with_options(None, None).await
-    }
     async fn cmd_modular_status_with_options(
         &self,
         _config_path: Option<&str>,
@@ -565,9 +559,6 @@ impl ModernCli {
         };
 
         Ok(network_config)
-    }
-    async fn cmd_modular_start(&self) -> Result<()> {
-        self.cmd_modular_start_with_options(None, None, None).await
     }
 
     async fn cmd_modular_start_with_options(
