@@ -78,13 +78,13 @@ pub async fn get_status(
     Ok(HttpResponse::Ok().json(status))
 }
 
-/// Submit transaction endpoint
+/// Submit transaction endpoint (receives transaction from another node)
 pub async fn submit_transaction(
     state: web::Data<SimulationState>,
     req: web::Json<TransactionRequest>,
 ) -> Result<HttpResponse> {
-    // Increment transaction count
-    *state.tx_count.lock().await += 1;
+    // Increment received transaction count
+    *state.rx_count.lock().await += 1;
 
     let response = TransactionResponse {
         status: "accepted".to_string(),
@@ -95,7 +95,31 @@ pub async fn submit_transaction(
         )),
     };
 
-    println!("💸 Transaction received: {} -> {} ({})", req.from, req.to, req.amount);
+    println!("� Transaction received on {}: {} -> {} ({})", 
+        state.node_id, req.from, req.to, req.amount);
+
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// Send transaction endpoint (sends transaction from this node)
+pub async fn send_transaction(
+    state: web::Data<SimulationState>,
+    req: web::Json<TransactionRequest>,
+) -> Result<HttpResponse> {
+    // Increment sent transaction count
+    *state.tx_count.lock().await += 1;
+
+    let response = TransactionResponse {
+        status: "sent".to_string(),
+        transaction_id: Uuid::new_v4().to_string(),
+        message: Some(format!(
+            "Transaction from {} to {} for {} sent",
+            req.from, req.to, req.amount
+        )),
+    };
+
+    println!("📤 Transaction sent from {}: {} -> {} ({})", 
+        state.node_id, req.from, req.to, req.amount);
 
     Ok(HttpResponse::Ok().json(response))
 }

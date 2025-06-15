@@ -13,7 +13,7 @@ use crate::modular::{
     default_modular_config,
     UnifiedModularOrchestrator,
 };
-use crate::webserver::simulation_api::{SimulationState, get_status, submit_transaction, get_stats, health_check};
+use crate::webserver::simulation_api::{SimulationState, get_status, submit_transaction, send_transaction, get_stats, health_check};
 use crate::Result;
 use actix_web::{web, App as ActixApp, HttpServer};
 
@@ -596,12 +596,12 @@ impl ModernCli {
             // Start HTTP server in background
             tokio::spawn(async move {
                 let simulation_state_data = web::Data::new(simulation_state);
-                
-                let server_result = HttpServer::new(move || {
+                  let server_result = HttpServer::new(move || {
                     ActixApp::new()
                         .app_data(simulation_state_data.clone())
                         .route("/status", web::get().to(get_status))
                         .route("/transaction", web::post().to(submit_transaction))
+                        .route("/send", web::post().to(send_transaction))
                         .route("/stats", web::get().to(get_stats))
                         .route("/health", web::get().to(health_check))
                 })

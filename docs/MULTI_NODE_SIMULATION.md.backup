@@ -1,0 +1,283 @@
+# Multi-Node Transaction Simulation & Complete Propagation
+
+PolyTor## 🌐 HTTP API エンドポイント
+
+各ノードは以下のHTTP APIを提供します：
+
+### 完全伝播対応API
+
+- `POST /send` - **送信記録API** (送信者ノードで使用)
+- `POST /transaction` - **受信記録API** (受信者ノードで使用)
+- `GET /stats` - **統計情報** (送信/受信カウンターを含む)
+- `GET /status` - ノードの状態
+- `GET /health` - ヘルスチェック
+
+### API使用例
+
+```bash
+# 完全なトランザクション伝播の例：Node 0 → Node 1
+
+# Step 1: 送信者ノード(Node 0)で送信を記録
+curl -X POST http://127.0.0.1:9000/send \
+  -H "Content-Type: application/json" \
+  -d '{"from":"wallet_node-0","to":"wallet_node-1","amount":100,"nonce":1001}'
+
+# Step 2: 受信者ノード(Node 1)で受信を記録
+curl -X POST http://127.0.0.1:9001/transaction \
+  -H "Content-Type: application/json" \
+  -d '{"from":"wallet_node-0","to":"wallet_node-1","amount":100,"nonce":1001}'
+
+# Step 3: 統計を確認
+curl http://127.0.0.1:9000/stats  # 送信者の統計
+curl http://127.0.0.1:9001/stats  # 受信者の統計
+```
+
+### レスポンス例
+
+**送信記録API (`/send`) のレスポンス:**
+```json
+{
+  "status": "sent",
+  "transaction_id": "8d705e89-50fb-4a34-bb0e-a8083bbcb40c",
+  "message": "Transaction from wallet_node-0 to wallet_node-1 for 100 sent"
+}
+```
+
+**受信記録API (`/transaction`) のレスポンス:**
+```json
+{
+  "status": "accepted", 
+  "transaction_id": "baf3ecb7-86dd-4523-9d8a-0eb90eb6da43",
+  "message": "Transaction from wallet_node-0 to wallet_node-1 for 100 accepted"
+}
+```
+
+**統計API (`/stats`) のレスポンス:**
+```json
+{
+  "transactions_sent": 3,
+  "transactions_received": 8,
+  "timestamp": "2025-06-15T19:47:44.380841660+00:00",
+  "node_id": "node-0"
+}
+```境でのトランザクションシミュレーション機能です。
+**完全なトランザクション伝播**をサポートし、送信と受信の両方を正確に追跡します。
+
+## 🎯 新機能: 完全なトランザクション伝播
+
+### 概要
+- **送信側API**: `/send`エンドポイントで送信者ノードの`tx_count`をインクリメント
+- **受信側API**: `/transaction`エンドポイントで受信者ノードの`rx_count`をインクリメント  
+- **完全な追跡**: 各トランザクションが送信側と受信側の両方で正しく記録される
+
+### 伝播フロー
+```
+送信者ノード           受信者ノード
+    ↓                     ↓
+POST /send           POST /transaction
+    ↓                     ↓
+tx_count++           rx_count++
+    ↓                     ↓
+「送信記録」         「受信記録」
+```
+
+## 🚀 クイックスタート
+
+### 方法1: 統合スクリプトを使用
+
+```bash
+# 基本的なシミュレーション（4ノード、5分間）
+./scripts/simulate.sh local
+
+# 完全な伝播テスト
+./scripts/test_complete_propagation.sh
+
+# カスタム設定でのシミュレーション
+./scripts/simulate.sh local --nodes 6 --duration 600 --interval 3000
+```
+
+### 方法2: 手動での完全伝播テスト
+
+```bash
+# Step 1: 送信者ノードに送信を記録
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"from":"wallet_node-0","to":"wallet_node-1","amount":100,"nonce":1001}' \
+  "http://127.0.0.1:9000/send"
+
+# Step 2: 受信者ノードに受信を記録  
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"from":"wallet_node-0","to":"wallet_node-1","amount":100,"nonce":1001}' \
+  "http://127.0.0.1:9001/transaction"
+```
+
+## 📊 監視とデバッグ
+
+### リアルタイム監視
+
+```bash
+# トランザクション監視ツールを起動
+cargo run --example transaction_monitor
+
+# ログファイル監視
+tail -f ./data/simulation/node-*.log
+
+# 統合スクリプトでの状況確認
+./scripts/simulate.sh status
+```
+
+### API エンドポイント
+
+各ノードは以下のHTTP APIを提供します：
+
+- `GET /status` - ノードの状態
+- `POST /transaction` - トランザクション送信
+- `GET /stats` - ノード統計情報
+
+```bash
+# ノード状態確認
+curl http://127.0.0.1:9000/status
+
+# トランザクション送信
+curl -X POST http://127.0.0.1:9000/transaction \
+  -H "Content-Type: application/json" \
+  -d '{"from":"wallet1","to":"wallet2","amount":100}'
+```
+
+## ⚙️ 設定オプション
+
+### シミュレーション設定
+
+| パラメータ | デフォルト | 説明 |
+|-----------|-----------|------|
+| `--nodes` | 4 | ノード数 |
+| `--duration` | 300 | シミュレーション時間（秒） |
+| `--interval` | 5000 | トランザクション送信間隔（ミリ秒） |
+| `--base-port` | 9000 | HTTP APIベースポート |
+| `--p2p-port` | 8000 | P2Pネットワークベースポート |
+
+### ノード設定
+
+各ノードは個別の設定ファイルを持ちます：
+
+```toml
+[network]
+listen_addr = "127.0.0.1:8000"
+bootstrap_peers = ["127.0.0.1:8001", "127.0.0.1:8002"]
+max_peers = 50
+
+[storage]
+data_dir = "./data/simulation/node-0"
+max_cache_size = 1073741824
+
+[logging]
+level = "INFO"
+output = "console"
+```
+
+## 📈 パフォーマンス評価
+
+### シミュレーション結果の分析
+
+```bash
+# ログファイルから統計情報を抽出
+grep "Transaction" ./data/simulation/node-*.log | wc -l
+
+# ノード間のレイテンシ測定
+./scripts/analyze_performance.sh
+
+# TPS（Transaction Per Second）計算
+./scripts/calculate_tps.sh
+```
+
+### メトリクス
+
+- **Transaction Throughput**: 秒間処理トランザクション数
+- **Network Latency**: ノード間通信遅延
+- **Block Propagation**: ブロック伝播時間
+- **Memory Usage**: メモリ使用量
+- **CPU Usage**: CPU使用率
+
+## 🛠️ トラブルシューティング
+
+### よくある問題
+
+1. **ポート競合エラー**
+   ```bash
+   # 使用中のポートを確認
+   netstat -tulpn | grep :9000
+   
+   # 別のベースポートを使用
+   ./scripts/simulate.sh local --base-port 9100
+   ```
+
+2. **ノード起動失敗**
+   ```bash
+   # ログを確認
+   ./scripts/simulate.sh logs
+   
+   # データディレクトリをクリーン
+   ./scripts/simulate.sh clean
+   ```
+
+3. **トランザクション送信失敗**
+   ```bash
+   # ノード状態を確認
+   ./scripts/simulate.sh status
+   
+   # APIエンドポイントを確認
+   curl http://127.0.0.1:9000/status
+   ```
+
+### デバッグモード
+
+```bash
+# デバッグログレベルで実行
+RUST_LOG=debug ./scripts/simulate.sh local
+
+# 詳細な実行ログ
+./scripts/simulate.sh local --nodes 2 --duration 60 2>&1 | tee simulation.log
+```
+
+## 🔧 カスタマイズ
+
+### 独自のトランザクションパターン
+
+`examples/multi_node_simulation.rs`を編集して、カスタムトランザクションパターンを実装できます：
+
+```rust
+// カスタムトランザクション生成ロジック
+async fn generate_custom_transaction_pattern(nodes: &[NodeInstance]) -> Result<()> {
+    // 独自のロジックを実装
+    Ok(())
+}
+```
+
+### ネットワーク障害シミュレーション
+
+```rust
+// ネットワーク分断のシミュレーション
+async fn simulate_network_partition(nodes: &mut [NodeInstance]) -> Result<()> {
+    // 一部のノードの接続を切断
+    Ok(())
+}
+```
+
+## 📚 関連ドキュメント
+
+- [Network Architecture](../docs/NETWORK_ARCHITECTURE.md)
+- [Configuration Guide](../docs/CONFIGURATION.md)
+- [Development Guide](../docs/DEVELOPMENT.md)
+- [API Reference](../docs/API_REFERENCE.md)
+
+## 🤝 コントリビューション
+
+シミュレーション機能の改善にご協力ください：
+
+1. 新しいシミュレーションシナリオの追加
+2. パフォーマンス測定ツールの改善
+3. 監視ダッシュボードの実装
+4. バグ修正とドキュメント改善
+
+## 📄 ライセンス
+
+MIT License - 詳細は[LICENSE](../LICENSE)ファイルを確認してください。

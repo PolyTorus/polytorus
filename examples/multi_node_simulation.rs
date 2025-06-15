@@ -4,14 +4,14 @@
 //! and simulate transaction propagation across the network.
 
 use actix_web::{web, App, HttpServer, Result as ActixResult};
-use clap::{Arg, Command};
+use clap::{Arg, App as ClapApp};
 use polytorus::config::{ConfigManager, DataContext};
-use polytorus::crypto::transaction::{SignedTransaction, Transaction};
+use polytorus::config::{ConfigManager, DataContext};
 use polytorus::modular::{default_modular_config, UnifiedModularOrchestrator};
-use polytorus::network::{EnhancedP2PNode, NetworkConfig};
 use polytorus::Result;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -21,10 +21,25 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeConfig {
     pub node_id: String,
-    pub port: u16,
-    pub p2p_port: u16,
+    pub port: u16,         // HTTP API port
+    pub p2p_port: u16,     // P2P network port
     pub data_dir: String,
     pub bootstrap_peers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionRequest {
+    pub from: String,
+    pub to: String,
+    pub amount: u64,
+    pub nonce: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionResponse {
+    pub status: String,
+    pub transaction_id: String,
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,18 +65,20 @@ impl Default for SimulationConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct NodeInstance {
     pub config: NodeConfig,
     pub orchestrator: Arc<UnifiedModularOrchestrator>,
     pub tx_count: Arc<Mutex<u64>>,
     pub rx_count: Arc<Mutex<u64>>,
+    pub http_client: Client,
 }
 
 pub struct MultiNodeSimulator {
     config: SimulationConfig,
     nodes: Vec<NodeInstance>,
     is_running: Arc<Mutex<bool>>,
+    http_client: Client,
 }
 
 impl MultiNodeSimulator {
@@ -70,6 +87,7 @@ impl MultiNodeSimulator {
             config,
             nodes: Vec::new(),
             is_running: Arc::new(Mutex::new(false)),
+            http_client: Client::new(),
         }
     }
 
@@ -112,11 +130,11 @@ impl MultiNodeSimulator {
             println!("📡 Starting node {} ({})", i + 1, node_config.node_id);
             
             // Create data directory
-            let data_context = DataContext::new(node_config.data_dir.clone());
+            let data_context = DataContext::new(PathBuf::from(node_config.data_dir.clone()));
             data_context.ensure_directories()?;
             
             // Create custom configuration for this node
-            let mut config_manager = ConfigManager::default();
+            let config_manager = ConfigManager::default();
             let mut config = config_manager.get_config().clone();
             
             // Configure network settings
@@ -135,6 +153,7 @@ impl MultiNodeSimulator {
                 orchestrator: Arc::new(orchestrator),
                 tx_count: Arc::new(Mutex::new(0)),
                 rx_count: Arc::new(Mutex::new(0)),
+                http_client: Client::new(),
             };
             
             self.nodes.push(node_instance);
@@ -255,35 +274,59 @@ impl MultiNodeSimulator {
         receiver_node: &NodeInstance,
         tx_id: u64,
     ) -> Result<()> {
-        // Create a simple transaction
-        let transaction = Transaction {
+        // Create transaction request
+        let tx_request = TransactionRequest {
             from: format!("wallet_{}", sender_node.config.node_id),
             to: format!("wallet_{}", receiver_node.config.node_id),
             amount: 100 + (tx_id % 900), // Random amount between 100-1000
-            nonce: tx_id,
-            gas_limit: 21000,
-            gas_price: 1,
-            data: vec![],
+            nonce: Some(tx_id),
         };
         
-        // For simulation, we'll create a mock signed transaction
-        let signed_tx = SignedTransaction {
-            transaction,
-            signature: vec![0u8; 64], // Mock signature
-            public_key: vec![0u8; 32], // Mock public key
-        };
+        // First, submit to sender node's /send endpoint to record it as sent
+        let sender_url = format!("http://127.0.0.1:{}/send", sender_node.config.port);
+        match sender_node.http_client
+            .post(&sender_url)
+            .json(&tx_request)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    if let Ok(tx_response) = response.json::<TransactionResponse>().await {
+                        println!("📤 Transaction {} sent from {}: {} -> {} (amount: {})", 
+                            tx_id, sender_node.config.node_id, tx_request.from, tx_request.to, tx_request.amount);
+                    }
+                } else {
+                    eprintln!("❌ Failed to send transaction to sender node: {}", response.status());
+                }
+            }
+            Err(e) => {
+                eprintln!("❌ HTTP error when sending to sender node: {}", e);
+            }
+        }
         
-        // Submit to sender node's orchestrator
-        // Note: This would normally go through the actual transaction submission API
-        *sender_node.tx_count.lock().await += 1;
-        
-        println!(
-            "💸 Transaction {} submitted: {} -> {} (amount: {})",
-            tx_id,
-            sender_node.config.node_id,
-            receiver_node.config.node_id,
-            signed_tx.transaction.amount
-        );
+        // Then, submit to receiver node's /transaction endpoint to record it as received
+        let receiver_url = format!("http://127.0.0.1:{}/transaction", receiver_node.config.port);
+        match receiver_node.http_client
+            .post(&receiver_url)
+            .json(&tx_request)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    if let Ok(tx_response) = response.json::<TransactionResponse>().await {
+                        println!("� Transaction {} received by {}: {} -> {} (amount: {})", 
+                            tx_id, receiver_node.config.node_id, tx_request.from, tx_request.to, tx_request.amount);
+                    }
+                } else {
+                    eprintln!("❌ Failed to submit transaction to receiver node: {}", response.status());
+                }
+            }
+            Err(e) => {
+                eprintln!("❌ HTTP error when submitting to receiver node: {}", e);
+            }
+        }
         
         Ok(())
     }
@@ -381,28 +424,28 @@ async fn get_node_stats(
 async fn main() -> Result<()> {
     env_logger::init();
     
-    let matches = Command::new("Multi-Node Simulation")
+    let matches = ClapApp::new("Multi-Node Simulation")
         .version("0.1.0")
         .about("Simulate multiple PolyTorus nodes for transaction testing")
         .arg(
-            Arg::new("nodes")
-                .short('n')
+            Arg::with_name("nodes")
+                .short("n")
                 .long("nodes")
                 .value_name("NUMBER")
                 .help("Number of nodes to simulate")
                 .default_value("4"),
         )
         .arg(
-            Arg::new("duration")
-                .short('d')
+            Arg::with_name("duration")
+                .short("d")
                 .long("duration")
                 .value_name("SECONDS")
                 .help("Simulation duration in seconds")
                 .default_value("300"),
         )
         .arg(
-            Arg::new("interval")
-                .short('i')
+            Arg::with_name("interval")
+                .short("i")
                 .long("interval")
                 .value_name("MILLISECONDS")
                 .help("Transaction generation interval")
@@ -411,9 +454,9 @@ async fn main() -> Result<()> {
         .get_matches();
     
     let config = SimulationConfig {
-        num_nodes: matches.get_one::<String>("nodes").unwrap().parse().unwrap(),
-        simulation_duration: matches.get_one::<String>("duration").unwrap().parse().unwrap(),
-        transaction_interval: matches.get_one::<String>("interval").unwrap().parse().unwrap(),
+        num_nodes: matches.value_of("nodes").unwrap().parse().unwrap(),
+        simulation_duration: matches.value_of("duration").unwrap().parse().unwrap(),
+        transaction_interval: matches.value_of("interval").unwrap().parse().unwrap(),
         ..Default::default()
     };
     
