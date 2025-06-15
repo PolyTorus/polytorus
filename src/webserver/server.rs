@@ -1,15 +1,15 @@
+use crate::network::NetworkCommand;
 use crate::webserver::createwallet;
 use crate::webserver::listaddresses;
 use crate::webserver::network_api::{
-    get_network_health, get_peer_info, get_message_queue_stats, 
-    blacklist_peer, unblacklist_peer, NetworkApiState
+    blacklist_peer, get_message_queue_stats, get_network_health, get_peer_info, unblacklist_peer,
+    NetworkApiState,
 };
 use crate::webserver::printchain;
 use crate::webserver::reindex;
 use crate::webserver::startminer;
 use crate::webserver::startnode;
-use crate::network::NetworkCommand;
-use actix_web::{App, HttpServer, web};
+use actix_web::{web, App, HttpServer};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 

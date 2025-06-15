@@ -20,10 +20,10 @@ use tokio::{
 /// Message priority levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum MessagePriority {
-    Critical = 0,   // Consensus messages, block announcements
-    High = 1,       // Transaction propagation, peer discovery
-    Normal = 2,     // General communication
-    Low = 3,        // Background sync, statistics
+    Critical = 0, // Consensus messages, block announcements
+    High = 1,     // Transaction propagation, peer discovery
+    Normal = 2,   // General communication
+    Low = 3,      // Background sync, statistics
 }
 
 impl Default for MessagePriority {
@@ -147,7 +147,7 @@ pub struct PriorityMessageQueue {
 impl PriorityMessageQueue {
     pub fn new(config: RateLimitConfig) -> Self {
         let bandwidth_permits = config.max_bytes_per_second as usize;
-        
+
         Self {
             queues: [
                 VecDeque::new(), // Critical
@@ -156,7 +156,9 @@ impl PriorityMessageQueue {
                 VecDeque::new(), // Low
             ],
             rate_limiters: Arc::new(RwLock::new(HashMap::new())),
-            global_rate_limiter: Arc::new(Mutex::new(RateLimiterState::new(config.burst_allowance))),
+            global_rate_limiter: Arc::new(Mutex::new(RateLimiterState::new(
+                config.burst_allowance,
+            ))),
             config: config.clone(),
             bandwidth_semaphore: Arc::new(Semaphore::new(bandwidth_permits)),
         }
@@ -170,7 +172,7 @@ impl PriorityMessageQueue {
 
         let priority_index = message.priority as usize;
         self.queues[priority_index].push_back(message);
-        
+
         Ok(())
     }
 
@@ -193,16 +195,18 @@ impl PriorityMessageQueue {
             if let Some(message) = queue.pop_front() {
                 // Update rate limits and try to acquire bandwidth
                 self.update_rate_limit_state_sync(&message);
-                
+
                 // Try to acquire bandwidth semaphore
                 if self.bandwidth_semaphore.available_permits() > message.data.len() {
-                    let _ = self.bandwidth_semaphore.try_acquire_many(message.data.len() as u32);
+                    let _ = self
+                        .bandwidth_semaphore
+                        .try_acquire_many(message.data.len() as u32);
                 }
-                
+
                 return Some(message);
             }
         }
-        
+
         None
     }
 
@@ -231,7 +235,7 @@ impl PriorityMessageQueue {
                 }
             }
         }
-        
+
         None
     }
 
@@ -241,7 +245,7 @@ impl PriorityMessageQueue {
         if let Ok(mut global_limiter) = self.global_rate_limiter.try_lock() {
             global_limiter.message_count += 1;
             global_limiter.byte_count += message.data.len() as u64;
-            
+
             if global_limiter.burst_tokens > 0 {
                 global_limiter.burst_tokens -= 1;
             }
@@ -251,23 +255,26 @@ impl PriorityMessageQueue {
     /// Check if message passes rate limiting
     async fn check_rate_limit(&self, message: &PrioritizedMessage) -> bool {
         let now = Instant::now();
-        
+
         // Check global rate limit
         {
             let mut global_limiter = self.global_rate_limiter.lock().unwrap();
-            
+
             // Reset window if needed
             if now.duration_since(global_limiter.window_start) >= self.config.window_size {
                 global_limiter.reset_window(self.config.burst_allowance);
             }
-            
+
             // Check global limits
-            if global_limiter.message_count >= self.config.max_messages_per_second &&
-               global_limiter.burst_tokens == 0 {
+            if global_limiter.message_count >= self.config.max_messages_per_second
+                && global_limiter.burst_tokens == 0
+            {
                 return false;
             }
-            
-            if global_limiter.byte_count + message.data.len() as u64 > self.config.max_bytes_per_second {
+
+            if global_limiter.byte_count + message.data.len() as u64
+                > self.config.max_bytes_per_second
+            {
                 return false;
             }
         }
@@ -279,15 +286,16 @@ impl PriorityMessageQueue {
                 let limiter = rate_limiters
                     .entry(peer_id.clone())
                     .or_insert_with(|| RateLimiterState::new(self.config.burst_allowance));
-                
+
                 // Reset window if needed
                 if now.duration_since(limiter.window_start) >= self.config.window_size {
                     limiter.reset_window(self.config.burst_allowance);
                 }
-                
+
                 // Check per-peer limits
                 if limiter.message_count >= self.config.max_messages_per_second / 10 && // 10% of global limit per peer
-                   limiter.burst_tokens == 0 {
+                   limiter.burst_tokens == 0
+                {
                     return false;
                 }
             }
@@ -308,7 +316,7 @@ impl PriorityMessageQueue {
             let mut global_limiter = self.global_rate_limiter.lock().unwrap();
             global_limiter.message_count += 1;
             global_limiter.byte_count += message.data.len() as u64;
-            
+
             if global_limiter.burst_tokens > 0 {
                 global_limiter.burst_tokens -= 1;
             }
@@ -321,7 +329,7 @@ impl PriorityMessageQueue {
                 if let Some(limiter) = rate_limiters.get_mut(peer_id) {
                     limiter.message_count += 1;
                     limiter.byte_count += message.data.len() as u64;
-                    
+
                     if limiter.burst_tokens > 0 {
                         limiter.burst_tokens -= 1;
                     }
@@ -330,7 +338,12 @@ impl PriorityMessageQueue {
         }
 
         // Acquire bandwidth permits
-        if let Ok(permit) = self.bandwidth_semaphore.clone().acquire_many_owned(message.data.len() as u32).await {
+        if let Ok(permit) = self
+            .bandwidth_semaphore
+            .clone()
+            .acquire_many_owned(message.data.len() as u32)
+            .await
+        {
             // Release permits after a delay to simulate bandwidth usage
             tokio::spawn(async move {
                 sleep(Duration::from_millis(10)).await;
@@ -356,21 +369,23 @@ impl PriorityMessageQueue {
     /// Get basic queue statistics as HashMap
     pub fn get_basic_stats(&self) -> HashMap<String, u64> {
         let mut stats = HashMap::new();
-        
+
         for (priority, queue) in self.queues.iter().enumerate() {
             let priority_name = match priority {
                 0 => "critical",
-                1 => "high", 
+                1 => "high",
                 2 => "normal",
                 3 => "low",
                 _ => "unknown",
             };
             stats.insert(format!("{}_queue_size", priority_name), queue.len() as u64);
         }
-        
-        stats.insert("total_queue_size".to_string(), 
-                    self.queues.iter().map(|q| q.len() as u64).sum());
-        
+
+        stats.insert(
+            "total_queue_size".to_string(),
+            self.queues.iter().map(|q| q.len() as u64).sum(),
+        );
+
         stats
     }
 
@@ -404,7 +419,7 @@ impl PriorityMessageQueue {
         // Clean up old rate limiter states
         let mut rate_limiters = self.rate_limiters.write().await;
         let now = Instant::now();
-        
+
         rate_limiters.retain(|_, limiter| {
             now.duration_since(limiter.window_start) < Duration::from_secs(300) // Keep for 5 minutes
         });
@@ -415,7 +430,7 @@ impl PriorityMessageQueue {
 pub struct BandwidthMonitor {
     upload_bytes: Arc<Mutex<u64>>,
     download_bytes: Arc<Mutex<u64>>,
-    upload_rate: Arc<Mutex<f64>>, // bytes per second
+    upload_rate: Arc<Mutex<f64>>,   // bytes per second
     download_rate: Arc<Mutex<f64>>, // bytes per second
     last_update: Arc<Mutex<Instant>>,
 }
@@ -446,18 +461,19 @@ impl BandwidthMonitor {
     fn update_rates(&self) {
         let now = Instant::now();
         let mut last_update = self.last_update.lock().unwrap();
-        
+
         let elapsed = now.duration_since(*last_update).as_secs_f64();
-        if elapsed >= 1.0 { // Update rates every second
+        if elapsed >= 1.0 {
+            // Update rates every second
             let upload_bytes = *self.upload_bytes.lock().unwrap();
             let download_bytes = *self.download_bytes.lock().unwrap();
-            
+
             let mut upload_rate = self.upload_rate.lock().unwrap();
             let mut download_rate = self.download_rate.lock().unwrap();
-            
+
             *upload_rate = upload_bytes as f64 / elapsed;
             *download_rate = download_bytes as f64 / elapsed;
-            
+
             // Reset counters
             *self.upload_bytes.lock().unwrap() = 0;
             *self.download_bytes.lock().unwrap() = 0;
@@ -525,7 +541,7 @@ mod tests {
     async fn test_priority_queue() {
         let config = RateLimitConfig::default();
         let mut queue = PriorityMessageQueue::new(config);
-        
+
         // Add messages with different priorities
         let critical_msg = PrioritizedMessage::new(
             Uuid::new_v4().to_string(),
@@ -533,21 +549,21 @@ mod tests {
             b"critical".to_vec(),
             None,
         );
-        
+
         let normal_msg = PrioritizedMessage::new(
             Uuid::new_v4().to_string(),
             MessagePriority::Normal,
             b"normal".to_vec(),
             None,
         );
-        
+
         queue.enqueue(normal_msg).unwrap();
         queue.enqueue(critical_msg).unwrap();
-        
+
         // Critical message should come out first
         let dequeued = queue.dequeue().unwrap();
         assert_eq!(dequeued.priority, MessagePriority::Critical);
-        
+
         let dequeued = queue.dequeue().unwrap();
         assert_eq!(dequeued.priority, MessagePriority::Normal);
     }
@@ -556,7 +572,7 @@ mod tests {
     async fn test_message_expiration() {
         let config = RateLimitConfig::default();
         let mut queue = PriorityMessageQueue::new(config);
-        
+
         let mut expired_msg = PrioritizedMessage::new(
             Uuid::new_v4().to_string(),
             MessagePriority::Normal,
@@ -564,7 +580,7 @@ mod tests {
             None,
         );
         expired_msg.expires_at = Some(Instant::now() - Duration::from_secs(1));
-        
+
         // Should fail to enqueue expired message
         assert!(queue.enqueue(expired_msg).is_err());
     }
@@ -572,10 +588,10 @@ mod tests {
     #[test]
     fn test_bandwidth_monitor() {
         let monitor = BandwidthMonitor::new();
-        
+
         monitor.record_upload(1024);
         monitor.record_download(2048);
-        
+
         assert_eq!(monitor.get_total_upload(), 1024);
         assert_eq!(monitor.get_total_download(), 2048);
     }

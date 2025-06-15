@@ -1021,6 +1021,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "creusot-contracts"
+version = "0.6.0-dev"
+dependencies = [
+ "creusot-contracts-proc",
+ "num-rational",
+]
+
+[[package]]
+name = "creusot-contracts-proc"
+version = "0.6.0-dev"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.103",
+]
+
+[[package]]
 name = "criterion"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2533,6 +2550,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-rational"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
+dependencies = [
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2784,6 +2812,7 @@ dependencies = [
  "blake3",
  "chacha20poly1305",
  "clap 2.34.0",
+ "creusot-contracts",
  "criterion",
  "dashmap",
  "diamond-io",

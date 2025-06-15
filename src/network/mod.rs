@@ -11,7 +11,7 @@ pub mod p2p_enhanced;
 
 // Re-export commonly used types
 pub use blockchain_integration::{BlockchainState, NetworkedBlockchainNode, SyncState};
-pub use message_priority::{MessagePriority, PriorityMessageQueue, PrioritizedMessage};
+pub use message_priority::{MessagePriority, PrioritizedMessage, PriorityMessageQueue};
 pub use network_config::NetworkConfig;
 pub use network_manager::{NetworkManager, NetworkManagerConfig, NodeHealth};
 pub use p2p_enhanced::{EnhancedP2PNode, NetworkCommand, NetworkEvent, PeerId};

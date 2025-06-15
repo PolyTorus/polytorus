@@ -80,6 +80,9 @@ wat = "1.0"
 hex = "0.4"
 toml = "0.8"
 
+# Formal verification with Creusot
+creusot-contracts = "0.6.0-dev"
+
 # Diamond IO dependencies
 diamond-io = { git = "https://github.com/MachinaIO/diamond-io", default-features = false, features = ["debug"] }
 openfhe = { git = "https://github.com/MachinaIO/openfhe-rs.git", branch = "exp/reimpl_trapdoor" }
@@ -105,3 +108,6 @@ reqwest = { version = "0.12", features = ["blocking"] }
 [[bench]]
 name = "blockchain_bench"
 harness = false
+
+[patch.crates-io]
+creusot-contracts = { path = "/home/shiro/setting/creusot/creusot-contracts" }

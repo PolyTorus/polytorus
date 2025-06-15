@@ -4,7 +4,7 @@
 //! and message queue statistics using Actix-web.
 
 use crate::network::{NetworkCommand, PeerId};
-use actix_web::{get, post, delete, web, HttpResponse, Result as ActixResult};
+use actix_web::{delete, get, post, web, HttpResponse, Result as ActixResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -63,9 +63,7 @@ pub struct NetworkApiState {
 
 impl NetworkApiState {
     pub fn new(network_command_tx: mpsc::UnboundedSender<NetworkCommand>) -> Self {
-        Self {
-            network_command_tx,
-        }
+        Self { network_command_tx }
     }
 }
 
@@ -75,7 +73,11 @@ pub async fn get_network_health(
     state: web::Data<Arc<NetworkApiState>>,
 ) -> ActixResult<HttpResponse> {
     // Send command to get network health
-    if state.network_command_tx.send(NetworkCommand::GetNetworkHealth).is_err() {
+    if state
+        .network_command_tx
+        .send(NetworkCommand::GetNetworkHealth)
+        .is_err()
+    {
         return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to communicate with network node"
         })));
@@ -103,7 +105,7 @@ pub async fn get_peer_info(
     state: web::Data<Arc<NetworkApiState>>,
 ) -> ActixResult<HttpResponse> {
     let peer_id = path.into_inner();
-    
+
     // Parse peer ID
     let peer_id_parsed = match uuid::Uuid::parse_str(&peer_id) {
         Ok(id) => PeerId(id),
@@ -115,7 +117,11 @@ pub async fn get_peer_info(
     };
 
     // Send command to get peer info
-    if state.network_command_tx.send(NetworkCommand::GetPeerInfo(peer_id_parsed)).is_err() {
+    if state
+        .network_command_tx
+        .send(NetworkCommand::GetPeerInfo(peer_id_parsed))
+        .is_err()
+    {
         return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to communicate with network node"
         })));
@@ -144,7 +150,11 @@ pub async fn get_message_queue_stats(
     state: web::Data<Arc<NetworkApiState>>,
 ) -> ActixResult<HttpResponse> {
     // Send command to get queue stats
-    if state.network_command_tx.send(NetworkCommand::GetMessageQueueStats).is_err() {
+    if state
+        .network_command_tx
+        .send(NetworkCommand::GetMessageQueueStats)
+        .is_err()
+    {
         return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to communicate with network node"
         })));
@@ -182,7 +192,14 @@ pub async fn blacklist_peer(
     };
 
     // Send blacklist command
-    if state.network_command_tx.send(NetworkCommand::BlacklistPeer(peer_id, request.reason.clone())).is_err() {
+    if state
+        .network_command_tx
+        .send(NetworkCommand::BlacklistPeer(
+            peer_id,
+            request.reason.clone(),
+        ))
+        .is_err()
+    {
         return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to communicate with network node"
         })));
@@ -201,7 +218,7 @@ pub async fn unblacklist_peer(
     state: web::Data<Arc<NetworkApiState>>,
 ) -> ActixResult<HttpResponse> {
     let peer_id = path.into_inner();
-    
+
     // Parse peer ID
     let peer_id_parsed = match uuid::Uuid::parse_str(&peer_id) {
         Ok(id) => PeerId(id),
@@ -213,7 +230,11 @@ pub async fn unblacklist_peer(
     };
 
     // Send unblacklist command
-    if state.network_command_tx.send(NetworkCommand::UnblacklistPeer(peer_id_parsed)).is_err() {
+    if state
+        .network_command_tx
+        .send(NetworkCommand::UnblacklistPeer(peer_id_parsed))
+        .is_err()
+    {
         return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to communicate with network node"
         })));

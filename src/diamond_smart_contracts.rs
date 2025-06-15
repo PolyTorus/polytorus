@@ -333,8 +333,7 @@ impl DiamondContractEngine {
                 Ok(inputs.to_vec())
             }
         }
-    }
-
+    }    
     /// Calculate gas usage based on execution parameters
     fn calculate_gas_usage(
         &self,

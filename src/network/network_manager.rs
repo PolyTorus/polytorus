@@ -1,5 +1,5 @@
 //! Network Management Module
-//! 
+//!
 //! Provides comprehensive network management features including node health monitoring,
 //! connection management, and network topology optimization.
 
@@ -126,7 +126,7 @@ impl NetworkManager {
     /// Create a new network manager
     pub fn new(config: NetworkManagerConfig, bootstrap_nodes: Vec<SocketAddr>) -> Self {
         let (event_sender, event_receiver) = mpsc::unbounded_channel();
-        
+
         Self {
             config,
             peers: Arc::new(RwLock::new(HashMap::new())),
@@ -150,16 +150,18 @@ impl NetworkManager {
         // Start health monitoring task
         tokio::spawn(async move {
             let mut interval = interval(config.health_check_interval);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 if let Err(e) = Self::perform_health_check(
                     &peers_clone,
                     &blacklisted_clone,
                     &config,
                     &event_sender,
-                ).await {
+                )
+                .await
+                {
                     log::error!("Health check failed: {}", e);
                 }
             }
@@ -173,15 +175,13 @@ impl NetworkManager {
 
             tokio::spawn(async move {
                 let mut interval = interval(Duration::from_secs(300)); // Every 5 minutes
-                
+
                 loop {
                     interval.tick().await;
-                    
-                    if let Err(e) = Self::optimize_topology(
-                        &peers_clone,
-                        &config,
-                        &event_sender,
-                    ).await {
+
+                    if let Err(e) =
+                        Self::optimize_topology(&peers_clone, &config, &event_sender).await
+                    {
                         log::error!("Topology optimization failed: {}", e);
                     }
                 }
@@ -230,8 +230,10 @@ impl NetworkManager {
     pub async fn blacklist_peer(&self, peer_id: PeerId, reason: String) -> Result<()> {
         let mut blacklisted = self.blacklisted_peers.write().await;
         blacklisted.insert(peer_id.clone());
-        
-        let _ = self.event_sender.send(NetworkManagerEvent::PeerBlacklisted(peer_id, reason));
+
+        let _ = self
+            .event_sender
+            .send(NetworkManagerEvent::PeerBlacklisted(peer_id, reason));
         Ok(())
     }
 
@@ -252,13 +254,25 @@ impl NetworkManager {
     /// Get network topology information
     pub async fn get_network_topology(&self) -> NetworkTopology {
         let peers = self.peers.read().await;
-        
+
         let total_nodes = peers.len();
-        let connected_peers = peers.values().filter(|p| p.health != NodeHealth::Disconnected).count();
-        let healthy_peers = peers.values().filter(|p| p.health == NodeHealth::Healthy).count();
-        let degraded_peers = peers.values().filter(|p| p.health == NodeHealth::Degraded).count();
-        let unhealthy_peers = peers.values().filter(|p| p.health == NodeHealth::Unhealthy).count();
-        
+        let connected_peers = peers
+            .values()
+            .filter(|p| p.health != NodeHealth::Disconnected)
+            .count();
+        let healthy_peers = peers
+            .values()
+            .filter(|p| p.health == NodeHealth::Healthy)
+            .count();
+        let degraded_peers = peers
+            .values()
+            .filter(|p| p.health == NodeHealth::Degraded)
+            .count();
+        let unhealthy_peers = peers
+            .values()
+            .filter(|p| p.health == NodeHealth::Unhealthy)
+            .count();
+
         let average_latency = if connected_peers > 0 {
             let total_latency: Duration = peers
                 .values()
@@ -290,11 +304,11 @@ impl NetworkManager {
     ) -> Result<()> {
         let mut peers_guard = peers.write().await;
         let now = SystemTime::now();
-        
+
         for (peer_id, peer_info) in peers_guard.iter_mut() {
             if let Ok(duration) = now.duration_since(peer_info.last_seen) {
                 let old_health = peer_info.health.clone();
-                
+
                 if duration > config.peer_timeout {
                     peer_info.health = NodeHealth::Disconnected;
                 } else if duration > config.peer_timeout / 2 {
@@ -304,7 +318,7 @@ impl NetworkManager {
                 } else {
                     peer_info.health = NodeHealth::Healthy;
                 }
-                
+
                 // Notify if health changed
                 if old_health != peer_info.health {
                     let _ = event_sender.send(NetworkManagerEvent::PeerHealthChanged(
@@ -312,10 +326,11 @@ impl NetworkManager {
                         peer_info.health.clone(),
                     ));
                 }
-                
+
                 // Auto-blacklist persistently unhealthy peers
-                if peer_info.health == NodeHealth::Unhealthy && 
-                   peer_info.failed_connections > config.max_failed_connections * 2 {
+                if peer_info.health == NodeHealth::Unhealthy
+                    && peer_info.failed_connections > config.max_failed_connections * 2
+                {
                     let mut blacklisted_guard = blacklisted.write().await;
                     blacklisted_guard.insert(peer_id.clone());
                     let _ = event_sender.send(NetworkManagerEvent::PeerBlacklisted(
@@ -325,7 +340,7 @@ impl NetworkManager {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -340,13 +355,14 @@ impl NetworkManager {
             .values()
             .filter(|p| p.health == NodeHealth::Healthy)
             .count();
-        
+
         if healthy_count < config.target_peer_count {
-            let _ = event_sender.send(NetworkManagerEvent::AutoHealingTriggered(
-                format!("Low peer count: {} < {}", healthy_count, config.target_peer_count)
-            ));
+            let _ = event_sender.send(NetworkManagerEvent::AutoHealingTriggered(format!(
+                "Low peer count: {} < {}",
+                healthy_count, config.target_peer_count
+            )));
         }
-        
+
         let _ = event_sender.send(NetworkManagerEvent::TopologyOptimized(healthy_count));
         Ok(())
     }
@@ -367,20 +383,23 @@ impl NetworkManager {
     pub async fn get_network_stats(&self) -> HashMap<String, u64> {
         let peers = self.peers.read().await;
         let blacklisted = self.blacklisted_peers.read().await;
-        
+
         let total_messages_sent: u64 = peers.values().map(|p| p.messages_sent).sum();
         let total_messages_received: u64 = peers.values().map(|p| p.messages_received).sum();
         let total_bytes_sent: u64 = peers.values().map(|p| p.bytes_sent).sum();
         let total_bytes_received: u64 = peers.values().map(|p| p.bytes_received).sum();
-        
+
         let mut stats = HashMap::new();
         stats.insert("total_peers".to_string(), peers.len() as u64);
         stats.insert("blacklisted_peers".to_string(), blacklisted.len() as u64);
         stats.insert("total_messages_sent".to_string(), total_messages_sent);
-        stats.insert("total_messages_received".to_string(), total_messages_received);
+        stats.insert(
+            "total_messages_received".to_string(),
+            total_messages_received,
+        );
         stats.insert("total_bytes_sent".to_string(), total_bytes_sent);
         stats.insert("total_bytes_received".to_string(), total_bytes_received);
-        
+
         stats
     }
 
@@ -397,18 +416,24 @@ impl NetworkManager {
     /// Connect to bootstrap nodes if peer count is below target
     pub async fn connect_to_bootstrap_if_needed(&self) -> crate::Result<()> {
         let peer_count = self.peers.read().await.len();
-        
+
         if peer_count < self.config.target_peer_count {
-            log::info!("Peer count ({}) below target ({}), connecting to bootstrap nodes", 
-                      peer_count, self.config.target_peer_count);
-            
+            log::info!(
+                "Peer count ({}) below target ({}), connecting to bootstrap nodes",
+                peer_count,
+                self.config.target_peer_count
+            );
+
             for bootstrap_addr in &self.bootstrap_nodes {
-                log::debug!("Attempting to connect to bootstrap node: {}", bootstrap_addr);
+                log::debug!(
+                    "Attempting to connect to bootstrap node: {}",
+                    bootstrap_addr
+                );
                 // In a real implementation, this would trigger actual connections
                 // For now, we just log the attempt
             }
         }
-        
+
         Ok(())
     }
 }
@@ -422,7 +447,7 @@ mod tests {
         let config = NetworkManagerConfig::default();
         let bootstrap_nodes = vec!["127.0.0.1:8000".parse().unwrap()];
         let manager = NetworkManager::new(config, bootstrap_nodes);
-        
+
         assert_eq!(manager.peers.read().await.len(), 0);
     }
 
@@ -430,19 +455,19 @@ mod tests {
     async fn test_peer_management() {
         let config = NetworkManagerConfig::default();
         let manager = NetworkManager::new(config, vec![]);
-        
+
         let peer_info = PeerInfo {
             peer_id: PeerId::random(),
             ..Default::default()
         };
         let peer_id = peer_info.peer_id.clone();
-        
+
         manager.update_peer(peer_info.clone()).await.unwrap();
-        
+
         let retrieved = manager.get_peer(&peer_id).await;
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().peer_id, peer_id);
-        
+
         manager.remove_peer(&peer_id).await.unwrap();
         assert!(manager.get_peer(&peer_id).await.is_none());
     }
@@ -451,13 +476,16 @@ mod tests {
     async fn test_blacklist_functionality() {
         let config = NetworkManagerConfig::default();
         let manager = NetworkManager::new(config, vec![]);
-        
+
         let peer_id = PeerId::random();
         assert!(!manager.is_blacklisted(&peer_id).await);
-        
-        manager.blacklist_peer(peer_id.clone(), "Test reason".to_string()).await.unwrap();
+
+        manager
+            .blacklist_peer(peer_id.clone(), "Test reason".to_string())
+            .await
+            .unwrap();
         assert!(manager.is_blacklisted(&peer_id).await);
-        
+
         manager.unblacklist_peer(peer_id.clone()).await.unwrap();
         assert!(!manager.is_blacklisted(&peer_id).await);
     }
@@ -466,17 +494,21 @@ mod tests {
     async fn test_network_topology() {
         let config = NetworkManagerConfig::default();
         let manager = NetworkManager::new(config, vec![]);
-        
+
         // Add some test peers
         for i in 0..5 {
             let peer_info = PeerInfo {
                 peer_id: PeerId::random(),
-                health: if i < 3 { NodeHealth::Healthy } else { NodeHealth::Degraded },
+                health: if i < 3 {
+                    NodeHealth::Healthy
+                } else {
+                    NodeHealth::Degraded
+                },
                 ..Default::default()
             };
             manager.update_peer(peer_info).await.unwrap();
         }
-        
+
         let topology = manager.get_network_topology().await;
         assert_eq!(topology.total_nodes, 5);
         assert_eq!(topology.healthy_peers, 3);

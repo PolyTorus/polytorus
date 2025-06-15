@@ -7,8 +7,8 @@
 use crate::blockchain::block::{Block, FinalizedBlock};
 use crate::crypto::transaction::Transaction;
 use crate::network::{
+    message_priority::{MessagePriority, PrioritizedMessage, PriorityMessageQueue},
     network_manager::{NetworkManager, NetworkManagerConfig, PeerInfo as NetPeerInfo},
-    message_priority::{PriorityMessageQueue, MessagePriority, PrioritizedMessage},
 };
 use crate::Result;
 
@@ -298,15 +298,11 @@ impl EnhancedP2PNode {
         }
 
         // Initialize network manager
-        let network_manager = NetworkManager::new(
-            NetworkManagerConfig::default(),
-            bootstrap_peers,
-        );
-        
+        let network_manager = NetworkManager::new(NetworkManagerConfig::default(), bootstrap_peers);
+
         // Initialize priority message queue
-        let message_queue = PriorityMessageQueue::new(
-            crate::network::message_priority::RateLimitConfig::default(),
-        );
+        let message_queue =
+            PriorityMessageQueue::new(crate::network::message_priority::RateLimitConfig::default());
 
         log::info!("Created enhanced P2P node with peer ID: {}", peer_id);
 
@@ -380,7 +376,7 @@ impl EnhancedP2PNode {
     async fn start_background_tasks(&self) {
         // Start network manager (simplified approach - no background task for now)
         // In a production system, this would need a proper async approach
-        
+
         // Start message queue processing (simplified)
         let message_queue_clone = self.message_queue.clone();
         let peers_clone = self.peers.clone();
@@ -388,7 +384,7 @@ impl EnhancedP2PNode {
             let mut interval = interval(Duration::from_millis(100));
             loop {
                 interval.tick().await;
-                
+
                 // Try to process one message at a time to avoid holding locks across await
                 let message_opt = {
                     if let Ok(mut queue) = message_queue_clone.try_lock() {
@@ -397,15 +393,18 @@ impl EnhancedP2PNode {
                         None
                     }
                 };
-                
+
                 if let Some(mut message) = message_opt {
                     // Process the message outside the lock
                     if let Ok(peers) = peers_clone.try_lock() {
                         if let Some(target_peer) = message.target_peer {
                             if let Some(connection) = peers.get(&target_peer) {
                                 if connection.is_active {
-                                    log::debug!("Sending priority message {} to peer {}", 
-                                               message.id, target_peer);
+                                    log::debug!(
+                                        "Sending priority message {} to peer {}",
+                                        message.id,
+                                        target_peer
+                                    );
                                 }
                             }
                         }
@@ -1001,25 +1000,26 @@ impl EnhancedP2PNode {
                 self.broadcast_priority_message(message, priority).await?;
             }
             NetworkCommand::SendPriorityMessage(peer_id, message, priority) => {
-                self.send_priority_message(message, priority, Some(peer_id)).await?;
+                self.send_priority_message(message, priority, Some(peer_id))
+                    .await?;
             }
-            NetworkCommand::GetNetworkHealth => {
-                match self.get_network_health().await {
-                    Ok(health) => {
-                        let _ = self.event_tx.send(NetworkEvent::NetworkHealthUpdate(health));
-                    }
-                    Err(e) => log::error!("Failed to get network health: {}", e),
+            NetworkCommand::GetNetworkHealth => match self.get_network_health().await {
+                Ok(health) => {
+                    let _ = self
+                        .event_tx
+                        .send(NetworkEvent::NetworkHealthUpdate(health));
                 }
-            }
-            NetworkCommand::GetPeerInfo(peer_id) => {
-                match self.get_peer_info(peer_id).await {
-                    Ok(Some(info)) => {
-                        let _ = self.event_tx.send(NetworkEvent::PeerHealthChanged(peer_id, info.health));
-                    }
-                    Ok(None) => log::debug!("Peer {} not found", peer_id),
-                    Err(e) => log::error!("Failed to get peer info for {}: {}", peer_id, e),
+                Err(e) => log::error!("Failed to get network health: {}", e),
+            },
+            NetworkCommand::GetPeerInfo(peer_id) => match self.get_peer_info(peer_id).await {
+                Ok(Some(info)) => {
+                    let _ = self
+                        .event_tx
+                        .send(NetworkEvent::PeerHealthChanged(peer_id, info.health));
                 }
-            }
+                Ok(None) => log::debug!("Peer {} not found", peer_id),
+                Err(e) => log::error!("Failed to get peer info for {}: {}", peer_id, e),
+            },
             NetworkCommand::BlacklistPeer(peer_id, reason) => {
                 if let Err(e) = self.blacklist_peer(peer_id, reason).await {
                     log::error!("Failed to blacklist peer {}: {}", peer_id, e);
@@ -1030,14 +1030,12 @@ impl EnhancedP2PNode {
                     log::error!("Failed to unblacklist peer {}: {}", peer_id, e);
                 }
             }
-            NetworkCommand::GetMessageQueueStats => {
-                match self.get_message_queue_stats().await {
-                    Ok(stats) => {
-                        let _ = self.event_tx.send(NetworkEvent::MessageQueueStats(stats));
-                    }
-                    Err(e) => log::error!("Failed to get message queue stats: {}", e),
+            NetworkCommand::GetMessageQueueStats => match self.get_message_queue_stats().await {
+                Ok(stats) => {
+                    let _ = self.event_tx.send(NetworkEvent::MessageQueueStats(stats));
                 }
-            }
+                Err(e) => log::error!("Failed to get message queue stats: {}", e),
+            },
         }
 
         Ok(())
@@ -1247,18 +1245,18 @@ impl EnhancedP2PNode {
         // Serialize message to bytes
         let message_data = bincode::serialize(&message)
             .map_err(|e| format_err!("Failed to serialize message: {}", e))?;
-        
-        let message_id = format!("{:?}_{}", message, SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos());
-        
-        let prioritized_message = PrioritizedMessage::new(
-            message_id,
-            priority,
-            message_data,
-            target_peer,
+
+        let message_id = format!(
+            "{:?}_{}",
+            message,
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
         );
+
+        let prioritized_message =
+            PrioritizedMessage::new(message_id, priority, message_data, target_peer);
 
         if let Ok(mut queue) = self.message_queue.lock() {
             queue.enqueue(prioritized_message)?;
@@ -1277,18 +1275,23 @@ impl EnhancedP2PNode {
             let peers = self.peers.lock().unwrap();
             peers.keys().cloned().collect()
         };
-        
+
         for peer_id in peer_ids {
-            self.send_priority_message(message.clone(), priority, Some(peer_id)).await?;
+            self.send_priority_message(message.clone(), priority, Some(peer_id))
+                .await?;
         }
         Ok(())
     }
 
     /// Get network health information
     #[allow(clippy::await_holding_lock)]
-    pub async fn get_network_health(&self) -> Result<crate::network::network_manager::NetworkTopology> {
+    pub async fn get_network_health(
+        &self,
+    ) -> Result<crate::network::network_manager::NetworkTopology> {
         let topology = {
-            let manager = self.network_manager.lock()
+            let manager = self
+                .network_manager
+                .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.get_network_topology().await
         };
@@ -1299,7 +1302,9 @@ impl EnhancedP2PNode {
     #[allow(clippy::await_holding_lock)]
     pub async fn get_peer_info(&self, peer_id: PeerId) -> Result<Option<NetPeerInfo>> {
         let result = {
-            let manager = self.network_manager.lock()
+            let manager = self
+                .network_manager
+                .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.get_peer_info(peer_id).await
         };
@@ -1310,7 +1315,9 @@ impl EnhancedP2PNode {
     #[allow(clippy::await_holding_lock)]
     pub async fn blacklist_peer(&self, peer_id: PeerId, reason: String) -> Result<()> {
         let result = {
-            let manager = self.network_manager.lock()
+            let manager = self
+                .network_manager
+                .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.blacklist_peer(peer_id, reason).await
         };
@@ -1321,7 +1328,9 @@ impl EnhancedP2PNode {
     #[allow(clippy::await_holding_lock)]
     pub async fn unblacklist_peer(&self, peer_id: PeerId) -> Result<()> {
         let result = {
-            let manager = self.network_manager.lock()
+            let manager = self
+                .network_manager
+                .lock()
                 .map_err(|_| format_err!("Failed to access network manager"))?;
             manager.unblacklist_peer(peer_id).await
         };
@@ -1330,9 +1339,13 @@ impl EnhancedP2PNode {
 
     /// Get message queue statistics
     #[allow(clippy::await_holding_lock)]
-    pub async fn get_message_queue_stats(&self) -> Result<crate::network::message_priority::QueueStats> {
+    pub async fn get_message_queue_stats(
+        &self,
+    ) -> Result<crate::network::message_priority::QueueStats> {
         let stats = {
-            let queue = self.message_queue.lock()
+            let queue = self
+                .message_queue
+                .lock()
                 .map_err(|_| format_err!("Failed to access message queue"))?;
             queue.get_stats().await
         };
