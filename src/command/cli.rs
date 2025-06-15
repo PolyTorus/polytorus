@@ -128,6 +128,25 @@ impl ModernCli {
                     .help("Start modular blockchain with P2P network")
                     .takes_value(false),
             )
+            .arg(
+                Arg::with_name("network-health")
+                    .long("network-health")
+                    .help("Show network health information")
+                    .takes_value(false),
+            )
+            .arg(
+                Arg::with_name("network-blacklist")
+                    .long("network-blacklist")
+                    .help("Blacklist a peer")
+                    .takes_value(true)
+                    .value_name("PEER_ID"),
+            )
+            .arg(
+                Arg::with_name("network-queue-stats")
+                    .long("network-queue-stats")
+                    .help("Show message queue statistics")
+                    .takes_value(false),
+            )
             .get_matches();
 
         if matches.is_present("createwallet") {
@@ -162,6 +181,12 @@ impl ModernCli {
             self.cmd_network_peers().await?;
         } else if matches.is_present("network-sync") {
             self.cmd_network_sync().await?;
+        } else if matches.is_present("network-health") {
+            self.cmd_network_health().await?;
+        } else if let Some(peer_id) = matches.value_of("network-blacklist") {
+            self.cmd_network_blacklist(peer_id).await?;
+        } else if matches.is_present("network-queue-stats") {
+            self.cmd_network_queue_stats().await?;
         } else {
             println!("Use --help for usage information");
         }
@@ -376,6 +401,73 @@ impl ModernCli {
         println!("Sync functionality requires a running network node");
         println!("Start the network first with: --network-start");
 
+        Ok(())
+    }
+
+    async fn cmd_network_health(&self) -> Result<()> {
+        println!("=== Network Health Information ===");
+        
+        // In a real implementation, this would connect to the running network node
+        // and request actual health information through the NetworkCommand channel
+        
+        println!("Implementation Note: This command requires integration with");
+        println!("a running NetworkedBlockchainNode to provide real-time data.");
+        println!("Current implementation shows simulated data:");
+        println!();
+        println!("Network Status: Healthy");
+        println!("Total Nodes: 10");
+        println!("Healthy Peers: 8");
+        println!("Degraded Peers: 2");
+        println!("Unhealthy Peers: 0");
+        println!("Average Latency: 45ms");
+        println!("Network Diameter: 3 hops");
+        
+        println!();
+        println!("To get real data, ensure the node is running with:");
+        println!("  --modular-start");
+        
+        Ok(())
+    }
+
+    async fn cmd_network_blacklist(&self, peer_id: &str) -> Result<()> {
+        println!("=== Blacklist Peer ===");
+        println!("Attempting to blacklist peer: {}", peer_id);
+        
+        // In a real implementation, this would send a NetworkCommand::BlacklistPeer
+        // to the running network node
+        
+        println!("Implementation Note: This command requires a running network node.");
+        println!("The peer would be added to the blacklist and disconnected.");
+        println!("Current status: Command prepared (network node required)");
+        
+        Ok(())
+    }
+
+    async fn cmd_network_queue_stats(&self) -> Result<()> {
+        println!("=== Message Queue Statistics ===");
+        
+        // In a real implementation, this would send a NetworkCommand::GetMessageQueueStats
+        // and receive actual statistics from the running network node
+        
+        println!("Implementation Note: This shows simulated data.");
+        println!("Real data requires a running network node.");
+        println!();
+        println!("Priority Queues:");
+        println!("  Critical: 0 messages");
+        println!("  High: 5 messages");  
+        println!("  Normal: 23 messages");
+        println!("  Low: 12 messages");
+        println!();
+        println!("Processing Stats:");
+        println!("  Total Processed: 1,247 messages");
+        println!("  Total Dropped: 3 messages");
+        println!("  Average Processing Time: 2.3ms");
+        println!("  Bandwidth Usage: 1.2 MB/s");
+        
+        println!();
+        println!("To get real statistics, start the node with:");
+        println!("  --modular-start");
+        
         Ok(())
     }
 

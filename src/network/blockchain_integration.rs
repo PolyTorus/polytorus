@@ -315,6 +315,22 @@ impl NetworkedBlockchainNode {
                     let _ = network_commands.send(NetworkCommand::ConnectPeer(peer_info.address));
                 }
             }
+
+            // Handle new network management events
+            NetworkEvent::NetworkHealthUpdate(topology) => {
+                log::info!("Network health update: {} total nodes, {} healthy peers", 
+                          topology.total_nodes, topology.healthy_peers);
+            }
+
+            NetworkEvent::PeerHealthChanged(peer_id, health) => {
+                log::debug!("Peer {} health changed to {:?}", peer_id, health);
+            }
+
+            NetworkEvent::MessageQueueStats(stats) => {
+                log::debug!("Message queue stats: {} total messages in queues", 
+                          stats.critical_queue_size + stats.high_queue_size + 
+                          stats.normal_queue_size + stats.low_queue_size);
+            }
         }
 
         Ok(())
