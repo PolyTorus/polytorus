@@ -1,0 +1,184 @@
+# Multi-Node PolyTorus Simulation with Docker Compose
+version: '3.8'
+
+services:
+  # Node 0 - Bootstrap node
+  node-0:
+    build: .
+    container_name: polytorus-node-0
+    ports:
+      - "9000:9000"  # HTTP API
+      - "8000:8000"  # P2P
+    environment:
+      - POLYTORUS_NODE_ID=node-0
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=
+    volumes:
+      - ./data/simulation/node-0:/data
+      - ./config:/config
+    networks:
+      - polytorus-network
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        polytorus --config /config/docker-node.toml modular start
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Node 1
+  node-1:
+    build: .
+    container_name: polytorus-node-1
+    ports:
+      - "9001:9000"  # HTTP API
+      - "8001:8000"  # P2P
+    environment:
+      - POLYTORUS_NODE_ID=node-1
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=node-0:8000
+    volumes:
+      - ./data/simulation/node-1:/data
+      - ./config:/config
+    networks:
+      - polytorus-network
+    depends_on:
+      - node-0
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        sleep 10 &&
+        polytorus --config /config/docker-node.toml modular start
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Node 2
+  node-2:
+    build: .
+    container_name: polytorus-node-2
+    ports:
+      - "9002:9000"  # HTTP API
+      - "8002:8000"  # P2P
+    environment:
+      - POLYTORUS_NODE_ID=node-2
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=node-0:8000,node-1:8000
+    volumes:
+      - ./data/simulation/node-2:/data
+      - ./config:/config
+    networks:
+      - polytorus-network
+    depends_on:
+      - node-0
+      - node-1
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        sleep 15 &&
+        polytorus --config /config/docker-node.toml modular start
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Node 3
+  node-3:
+    build: .
+    container_name: polytorus-node-3
+    ports:
+      - "9003:9000"  # HTTP API
+      - "8003:8000"  # P2P
+    environment:
+      - POLYTORUS_NODE_ID=node-3
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=node-0:8000,node-1:8000,node-2:8000
+    volumes:
+      - ./data/simulation/node-3:/data
+      - ./config:/config
+    networks:
+      - polytorus-network
+    depends_on:
+      - node-0
+      - node-1
+      - node-2
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        sleep 20 &&
+        polytorus --config /config/docker-node.toml modular start
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Transaction simulator
+  transaction-simulator:
+    build: .
+    container_name: polytorus-tx-simulator
+    environment:
+      - SIMULATION_NODES=4
+      - SIMULATION_DURATION=300
+      - TRANSACTION_INTERVAL=5
+      - BASE_PORT=9000
+    networks:
+      - polytorus-network
+    depends_on:
+      - node-0
+      - node-1
+      - node-2
+      - node-3
+    command: >
+      sh -c "
+        sleep 60 &&
+        cargo run --example multi_node_simulation -- --nodes 4 --duration 300 --interval 5000
+      "
+
+  # Monitoring dashboard (optional)
+  monitor:
+    image: grafana/grafana:latest
+    container_name: polytorus-monitor
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - polytorus-network
+
+networks:
+  polytorus-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  grafana-storage:

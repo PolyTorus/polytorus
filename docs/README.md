@@ -26,8 +26,20 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 ### Technical Features
 - **[Smart Contracts](SMART_CONTRACTS.md)** - WASM smart contract development and deployment
 - **[Diamond IO Contracts](DIAMOND_IO_CONTRACTS.md)** - ⭐ **NEW** Diamond IO vs traditional contracts comparison and usage guide
+- **[Multi-Node Simulation](MULTI_NODE_SIMULATION.md)** - ⭐ **LATEST** Complete multi-node simulation environment with transaction propagation
 - **[Difficulty Adjustment](DIFFICULTY_ADJUSTMENT.md)** - Mining difficulty and network adaptation
 - **[TPS Analysis](TPS_IMPLEMENTATION_SUMMARY.md)** - Transaction throughput analysis and benchmarks
+- **[eUTXO Integration](EUTXO_INTEGRATION.md)** - Extended UTXO model implementation
+
+## 🆕 Latest Updates (June 16, 2025)
+
+### ✅ Multi-Node Simulation Environment
+- **Complete Transaction Propagation** - End-to-end transaction tracking with both send and receive recording
+- **Real-time Monitoring** - Live statistics and health checks for all simulation nodes
+- **Automated Testing** - Comprehensive scripts for propagation verification and performance testing
+- **Docker Integration** - Container-based simulation environment for isolated testing
+- **API Enhancement** - Dedicated endpoints for transaction send/receive recording
+- **Performance Metrics** - Throughput and latency analysis tools
 
 ## 🆕 Recent Updates (December 2024)
 
@@ -50,15 +62,22 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 ## 🎯 Quick Reference by Role
 
 ### For New Users
-1. [Getting Started Guide](GETTING_STARTED.md)
-2. [CLI Commands](CLI_COMMANDS.md)
+1. [Getting Started Guide](GETTING_STARTED.md) - ⭐ **UPDATED** Now includes multi-node simulation setup
+2. [CLI Commands](CLI_COMMANDS.md) - ⭐ **UPDATED** Multi-node simulation commands added
 3. [Configuration](CONFIGURATION.md)
+4. [Multi-Node Simulation](MULTI_NODE_SIMULATION.md) - ⭐ **NEW** Complete simulation environment guide
 
 ### For Developers
 1. [Development Guide](DEVELOPMENT.md) - Start here for development setup
 2. [Modular Architecture](MODULAR_ARCHITECTURE.md) - Understand the core design
-3. [API Reference](API_REFERENCE.md) - Complete API documentation
-4. [Execution Layer Enhancement](EXECUTION_LAYER_ENHANCEMENT.md) - Latest execution layer features
+3. [API Reference](API_REFERENCE.md) - ⭐ **UPDATED** Multi-node simulation APIs added
+4. [Multi-Node Simulation](MULTI_NODE_SIMULATION.md) - Testing and simulation environment
+5. [Execution Layer Enhancement](EXECUTION_LAYER_ENHANCEMENT.md) - Latest execution layer features
+
+### For Testing & QA
+1. [Multi-Node Simulation](MULTI_NODE_SIMULATION.md) - Complete testing environment
+2. [Code Quality](CODE_QUALITY.md) - Quality assurance standards
+3. [Development Guide](DEVELOPMENT.md) - Testing and quality guidelines
 
 ### For System Architects
 1. [Modular Architecture](MODULAR_ARCHITECTURE.md) - Design principles and layer separation

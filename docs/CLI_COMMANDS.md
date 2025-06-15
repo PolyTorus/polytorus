@@ -1,9 +1,9 @@
-# Modular Blockchain CLI Commands
+# PolyTorus CLI Commands
 
 ## Overview
-Provides CLI commands for operating the modular architecture of PolyTorus.
+Comprehensive CLI commands for operating PolyTorus blockchain, including modular architecture management and multi-node simulation capabilities.
 
-## New Commands
+## Core Commands
 
 ### `modular`
 Modular blockchain management commands
@@ -46,6 +46,65 @@ polytorus layers data-availability store --data-file data.bin
 
 # Retrieve data
 polytorus layers data-availability retrieve --hash <HASH>
+```
+
+## Multi-Node Simulation Commands
+
+### Global Options for Multi-Node Operations
+```bash
+polytorus [GLOBAL_OPTIONS] <COMMAND> [COMMAND_OPTIONS]
+
+Global Options:
+  --config, -c <FILE>      Configuration file path
+  --data-dir <DIR>         Data directory path
+  --http-port <PORT>       HTTP API server port
+  --p2p-port <PORT>        P2P network port
+  --verbose, -v            Enable verbose logging
+  --help, -h               Show help information
+```
+
+### Node Management
+```bash
+# Start node with custom configuration
+polytorus --config ./data/simulation/node-0/config.toml \
+          --data-dir ./data/simulation/node-0 \
+          --http-port 9000 \
+          --modular-start
+
+# Start multiple nodes for simulation
+for i in {0..3}; do
+  polytorus --config ./data/simulation/node-$i/config.toml \
+            --data-dir ./data/simulation/node-$i \
+            --http-port $((9000+i)) \
+            --modular-start &
+done
+```
+
+### Simulation Scripts
+```bash
+# Start multi-node simulation (via script)
+./scripts/simulate.sh local --nodes 4 --duration 300
+
+# Test complete transaction propagation
+./scripts/test_complete_propagation.sh
+
+# Monitor simulation status
+./scripts/simulate.sh status
+
+# Stop simulation
+./scripts/simulate.sh stop
+
+# Clean up simulation environment
+./scripts/simulate.sh clean
+```
+
+### Transaction Monitoring
+```bash
+# Real-time transaction monitoring tool
+cargo run --example transaction_monitor
+
+# Multi-node statistics script
+cargo run --example multi_node_simulation
 ```
 
 ### `config`

@@ -93,6 +93,190 @@ nano config.toml
 ./target/release/polytorus mining start --address YOUR_WALLET_ADDRESS
 ```
 
+## Multi-Node Development Environment
+
+For testing and development, PolyTorus provides a comprehensive multi-node simulation environment:
+
+### Quick Multi-Node Setup
+```bash
+# 1. Build the project first
+cargo build --release
+
+# 2. Start 4-node simulation environment (recommended)
+./scripts/simulate.sh local --nodes 4 --duration 300
+
+# 3. Test complete transaction propagation
+./scripts/test_complete_propagation.sh
+
+# 4. Monitor nodes in real-time
+cargo run --example transaction_monitor
+```
+
+### Detailed Step-by-Step Guide
+
+#### Step 1: Prepare Environment
+```bash
+# Build the project
+cargo build --release
+
+# Check available scripts
+ls -la scripts/
+
+# View simulation help
+./scripts/simulate.sh --help
+```
+
+#### Step 2: Start Multi-Node Simulation
+```bash
+# Basic 4-node simulation (5 minutes)
+./scripts/simulate.sh local
+
+# Custom configuration example
+./scripts/simulate.sh local --nodes 6 --duration 600 --interval 3000
+
+# Check simulation status
+./scripts/simulate.sh status
+```
+
+#### Step 3: Test Transaction Propagation
+```bash
+# Run complete propagation test
+./scripts/test_complete_propagation.sh
+
+# Expected output:
+# ✅ Complete propagation tests completed!
+# Node 0: transactions_sent > 0, transactions_received > 0
+# Node 1: transactions_sent > 0, transactions_received > 0
+# etc.
+```
+
+#### Step 4: Monitor and Verify
+```bash
+# Real-time monitoring
+cargo run --example transaction_monitor
+
+# Manual verification
+for port in 9000 9001 9002 9003; do
+  echo "Node port $port:"
+  curl -s "http://127.0.0.1:$port/stats" | jq
+done
+```
+
+#### Step 5: Cleanup
+```bash
+# Stop simulation
+./scripts/simulate.sh stop
+
+# Clean up data
+./scripts/simulate.sh clean
+```
+
+### Manual Multi-Node Setup (Advanced)
+```bash
+# Build the project first
+cargo build --release
+
+# Create simulation directories
+mkdir -p data/simulation/{node-0,node-1,node-2,node-3}
+
+# Start multiple nodes manually on different ports
+./target/release/polytorus --config ./data/simulation/node-0/config.toml --data-dir ./data/simulation/node-0 --http-port 9000 --modular-start &
+./target/release/polytorus --config ./data/simulation/node-1/config.toml --data-dir ./data/simulation/node-1 --http-port 9001 --modular-start &
+./target/release/polytorus --config ./data/simulation/node-2/config.toml --data-dir ./data/simulation/node-2 --http-port 9002 --modular-start &
+./target/release/polytorus --config ./data/simulation/node-3/config.toml --data-dir ./data/simulation/node-3 --http-port 9003 --modular-start &
+
+# Wait for nodes to start
+sleep 10
+
+# Verify nodes are running
+for port in 9000 9001 9002 9003; do
+  echo "Testing node on port $port:"
+  curl -s "http://127.0.0.1:$port/health" || echo "Node not ready"
+done
+```
+
+### Test Transaction Propagation (Manual)
+```bash
+# Test 1: Send transaction from Node 0 to Node 1
+echo "Testing Node 0 -> Node 1 transaction..."
+
+# Step 1: Record send at sender (Node 0)
+curl -X POST http://127.0.0.1:9000/send \
+  -H "Content-Type: application/json" \
+  -d '{"from":"wallet_node-0","to":"wallet_node-1","amount":100,"nonce":1001}'
+
+# Step 2: Record reception at receiver (Node 1)
+curl -X POST http://127.0.0.1:9001/transaction \
+  -H "Content-Type: application/json" \
+  -d '{"from":"wallet_node-0","to":"wallet_node-1","amount":100,"nonce":1001}'
+
+# Step 3: Verify statistics
+echo "Node 0 stats (should show transactions_sent: 1):"
+curl -s http://127.0.0.1:9000/stats | jq '.transactions_sent'
+
+echo "Node 1 stats (should show transactions_received: 1):"
+curl -s http://127.0.0.1:9001/stats | jq '.transactions_received'
+```
+
+### Docker-based Multi-Node Environment
+```bash
+# Start all nodes with Docker Compose
+docker-compose up -d
+
+# Check container status
+docker-compose ps
+
+# Expected output:
+# NAME        IMAGE     COMMAND     SERVICE   CREATED    STATUS     PORTS
+# node-0      ...       ...         node-0    ...        Up         0.0.0.0:9000->9000/tcp
+# node-1      ...       ...         node-1    ...        Up         0.0.0.0:9001->9001/tcp
+
+# View logs from specific node
+docker-compose logs -f node-0
+
+# Test Docker environment
+curl http://localhost:9000/health
+curl http://localhost:9001/health
+
+# Stop all containers
+docker-compose down
+```
+
+### Troubleshooting Common Issues
+
+#### Port Already in Use
+```bash
+# Check what's using the ports
+netstat -tulpn | grep :900[0-3]
+
+# Kill conflicting processes
+pkill -f polytorus
+
+# Clean up zombie processes
+./scripts/simulate.sh clean
+```
+
+#### Configuration Issues
+```bash
+# Verify configuration files exist
+ls -la data/simulation/*/config.toml
+
+# Check configuration syntax
+./target/release/polytorus --config ./data/simulation/node-0/config.toml --help
+```
+
+#### Build Issues
+```bash
+# Clean build
+cargo clean
+cargo build --release
+
+# Check Rust version
+rustc --version  # Should be 1.70+
+```
+
+📚 **Detailed Guide**: [Multi-Node Simulation Documentation](MULTI_NODE_SIMULATION.md)
+
 ## Basic Operations
 
 ### Wallet Management
