@@ -1,0 +1,63 @@
+# PolyTorus Unified Configuration
+# Complete configuration for the PolyTorus modular blockchain
+
+[execution]
+gas_limit = 8000000
+gas_price = 1
+
+[execution.wasm_config]
+max_memory_pages = 256
+max_stack_size = 65536
+gas_metering = true
+
+[settlement]
+challenge_period = 100
+batch_size = 100
+min_validator_stake = 1000
+
+[consensus]
+block_time = 10000          # milliseconds (10 seconds)
+difficulty = 4
+max_block_size = 1048576    # 1MB
+
+[data_availability]
+retention_period = 604800   # seconds (7 days)
+max_data_size = 1048576     # 1MB
+
+[data_availability.network_config]
+listen_addr = "0.0.0.0:7000"
+bootstrap_peers = []
+max_peers = 50
+
+# Enhanced P2P Network Configuration
+[network]
+listen_addr = "0.0.0.0:8000"
+bootstrap_peers = [
+    # Add bootstrap peers here
+    # "127.0.0.1:8001",
+    # "127.0.0.1:8002",
+]
+max_peers = 50
+connection_timeout = 10     # seconds
+ping_interval = 30          # seconds
+peer_timeout = 120          # seconds
+enable_discovery = true
+discovery_interval = 300    # seconds (5 minutes)
+max_message_size = 10485760 # 10MB
+bandwidth_limit = null      # null = unlimited
+
+# Logging Configuration
+[logging]
+level = "INFO"              # DEBUG, INFO, WARN, ERROR
+output = "console"          # console, file, both
+file_path = null            # null = no file logging
+max_file_size = 104857600   # 100MB
+rotation_count = 5
+
+# Storage Configuration  
+[storage]
+data_dir = "./data"
+max_cache_size = 1073741824 # 1GB
+sync_interval = 60          # seconds
+compression = true
+backup_interval = 3600      # seconds (1 hour)

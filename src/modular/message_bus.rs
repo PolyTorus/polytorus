@@ -394,3 +394,38 @@ impl Default for MessageBuilder {
         Self::new()
     }
 }
+
+/// Simple message bus for layer communication
+pub struct MessageBus {
+    sender: broadcast::Sender<MessageBusMessage>,
+}
+
+impl Default for MessageBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MessageBus {
+    pub fn new() -> Self {
+        let (sender, _) = broadcast::channel(1000);
+        Self { sender }
+    }
+
+    pub async fn send(&self, message: MessageBusMessage) -> Result<()> {
+        let _ = self.sender.send(message);
+        Ok(())
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<MessageBusMessage> {
+        self.sender.subscribe()
+    }
+}
+
+/// Simple message structure for layer communication
+#[derive(Debug, Clone)]
+pub struct MessageBusMessage {
+    pub layer_type: String,
+    pub message: serde_json::Value,
+    pub timestamp: std::time::SystemTime,
+}

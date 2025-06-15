@@ -1,392 +1,294 @@
-use crate::diamond_io_integration::DiamondIOConfig;
-use crate::diamond_smart_contracts::{ContractExecution, DiamondContract, DiamondContractEngine};
+//! Diamond IO Layer Implementation
+//!
+//! This layer provides Diamond IO cryptographic operations integration.
+
+use crate::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
+use crate::modular::traits::{Layer, LayerMessage};
+use crate::modular::message_bus::MessageBus;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{info, warn, error};
 
+/// Diamond IO Layer message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DiamondIOMessage {
-    ContractDeployment {
-        contract_id: String,
-        owner: String,
-        circuit_description: String,
+    CircuitCreation {
+        circuit_id: String,
+        description: String,
     },
-    ContractExecution {
-        contract_id: String,
-        inputs: Vec<bool>,
-        executor: String,
-    },
-    ObfuscationRequest {
-        contract_id: String,
-    },
-    EncryptionRequest {
+    DataEncryption {
         data: Vec<bool>,
         requester: String,
     },
+    DataDecryption {
+        encrypted_data: Vec<u8>,
+        requester: String,
+    },
+    ConfigUpdate {
+        config: DiamondIOConfig,
+    },
 }
 
+impl LayerMessage for DiamondIOMessage {
+    fn message_type(&self) -> String {
+        match self {
+            DiamondIOMessage::CircuitCreation { .. } => "CircuitCreation".to_string(),
+            DiamondIOMessage::DataEncryption { .. } => "DataEncryption".to_string(),
+            DiamondIOMessage::DataDecryption { .. } => "DataDecryption".to_string(),
+            DiamondIOMessage::ConfigUpdate { .. } => "ConfigUpdate".to_string(),
+        }
+    }
+}
+
+/// Diamond IO Layer configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondIOLayerConfig {
     pub diamond_config: DiamondIOConfig,
-    pub max_concurrent_executions: usize,
-    pub obfuscation_enabled: bool,
-    pub encryption_enabled: bool,
-    pub gas_limit_per_execution: u64,
+    pub max_concurrent_operations: usize,
+    pub enable_encryption: bool,
+    pub enable_decryption: bool,
 }
 
 impl Default for DiamondIOLayerConfig {
     fn default() -> Self {
         Self {
-            diamond_config: DiamondIOConfig::default(),
-            max_concurrent_executions: 10,
-            obfuscation_enabled: true,
-            encryption_enabled: true,
-            gas_limit_per_execution: 1_000_000,
+            diamond_config: DiamondIOConfig::testing(),
+            max_concurrent_operations: 10,
+            enable_encryption: true,
+            enable_decryption: true,
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiamondIOLayerStats {
-    pub total_contracts: usize,
-    pub obfuscated_contracts: usize,
-    pub total_executions: u64,
-    pub successful_executions: u64,
-    pub failed_executions: u64,
-    pub total_gas_used: u64,
-    pub average_execution_time_ms: u64,
-    pub active_executions: usize,
+/// Statistics for Diamond IO operations
+#[derive(Debug, Clone, Default)]
+pub struct DiamondIOStats {
+    pub circuits_created: u64,
+    pub data_encrypted: u64,
+    pub data_decrypted: u64,
+    pub total_operations: u64,
+    pub failed_operations: u64,
 }
 
-impl Default for DiamondIOLayerStats {
-    fn default() -> Self {
-        Self {
-            total_contracts: 0,
-            obfuscated_contracts: 0,
-            total_executions: 0,
-            successful_executions: 0,
-            failed_executions: 0,
-            total_gas_used: 0,
-            average_execution_time_ms: 0,
-            active_executions: 0,
-        }
-    }
-}
-
-pub struct PolyTorusDiamondIOLayer {
+/// Diamond IO Layer implementation
+pub struct DiamondIOLayer {
     config: DiamondIOLayerConfig,
-    contract_engine: RwLock<DiamondContractEngine>,
-    stats: RwLock<DiamondIOLayerStats>,
-    message_handlers: HashMap<String, Box<dyn Fn(&DiamondIOMessage) -> Result<()> + Send + Sync>>,
+    integration: Arc<RwLock<Option<DiamondIOIntegration>>>,
+    message_bus: Arc<MessageBus>,
+    stats: Arc<RwLock<DiamondIOStats>>,
+    active_operations: Arc<RwLock<HashMap<String, tokio::task::JoinHandle<()>>>>,
 }
 
-impl std::fmt::Debug for PolyTorusDiamondIOLayer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PolyTorusDiamondIOLayer")
-            .field("config", &self.config)
-            .field("contract_engine", &"<RwLock<DiamondContractEngine>>")
-            .field("stats", &self.stats)
-            .field(
-                "message_handlers",
-                &format!("{} handlers", self.message_handlers.len()),
-            )
-            .finish()
-    }
-}
-
-impl PolyTorusDiamondIOLayer {
-    pub fn new(config: DiamondIOLayerConfig) -> Result<Self> {
-        let contract_engine = DiamondContractEngine::new(config.diamond_config.clone())?;
-
-        Ok(Self {
+impl DiamondIOLayer {
+    /// Create a new Diamond IO layer
+    pub fn new(config: DiamondIOLayerConfig, message_bus: Arc<MessageBus>) -> Self {
+        Self {
             config,
-            contract_engine: RwLock::new(contract_engine),
-            stats: RwLock::new(DiamondIOLayerStats::default()),
-            message_handlers: HashMap::new(),
-        })
+            integration: Arc::new(RwLock::new(None)),
+            message_bus,
+            stats: Arc::new(RwLock::new(DiamondIOStats::default())),
+            active_operations: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
-    pub async fn deploy_contract(
-        &self,
-        contract_id: String,
-        name: String,
-        description: String,
-        owner: String,
-        circuit_description: &str,
-    ) -> Result<String> {
-        info!("Deploying Diamond contract: {} by {}", name, owner);
+    /// Initialize the Diamond IO integration
+    pub async fn initialize(&self) -> Result<()> {
+        let integration = DiamondIOIntegration::new(self.config.diamond_config.clone())?;
+        let mut integration_guard = self.integration.write().await;
+        *integration_guard = Some(integration);
+        info!("Diamond IO Layer initialized");
+        Ok(())
+    }
 
-        let mut engine = self.contract_engine.write().await;
-        let result = engine
-            .deploy_contract(
-                contract_id.clone(),
-                name,
-                description,
-                owner,
-                circuit_description,
-            )
-            .await;
-
-        if result.is_ok() {
+    /// Create a demo circuit
+    pub async fn create_demo_circuit(&self, circuit_id: String, description: String) -> Result<()> {
+        let integration_guard = self.integration.read().await;
+        if let Some(ref integration) = *integration_guard {
+            let _circuit = integration.create_demo_circuit();
+            
+            // Update stats
             let mut stats = self.stats.write().await;
-            stats.total_contracts += 1;
+            stats.circuits_created += 1;
+            stats.total_operations += 1;
+
+            info!("Created demo circuit: {} - {}", circuit_id, description);
+            Ok(())
+        } else {
+            error!("Diamond IO integration not initialized");
+            Err(anyhow::anyhow!("Diamond IO integration not initialized"))
         }
-
-        result
     }
 
-    pub async fn obfuscate_contract(&self, contract_id: &str) -> Result<()> {
-        info!("Obfuscating contract: {}", contract_id);
-
-        if !self.config.obfuscation_enabled {
-            return Err(anyhow::anyhow!("Obfuscation is disabled"));
-        }
-
-        let mut engine = self.contract_engine.write().await;
-        let result = engine.obfuscate_contract(contract_id).await;
-
-        if result.is_ok() {
-            let mut stats = self.stats.write().await;
-            stats.obfuscated_contracts += 1;
-        }
-
-        result
-    }
-
-    pub async fn execute_contract(
-        &self,
-        contract_id: &str,
-        inputs: Vec<bool>,
-        executor: String,
-    ) -> Result<Vec<bool>> {
-        info!("Executing contract: {} by {}", contract_id, executor);
-
-        // Check concurrent execution limit
-        {
-            let stats = self.stats.read().await;
-            if stats.active_executions >= self.config.max_concurrent_executions {
-                return Err(anyhow::anyhow!("Maximum concurrent executions reached"));
-            }
-        }
-
-        // Increment active executions
-        {
-            let mut stats = self.stats.write().await;
-            stats.active_executions += 1;
-            stats.total_executions += 1;
-        }
-
-        let start_time = std::time::Instant::now();
-        let mut engine = self.contract_engine.write().await;
-        let result = engine.execute_contract(contract_id, inputs, executor).await;
-        let execution_time = start_time.elapsed().as_millis() as u64;
-
-        // Update stats
-        {
-            let mut stats = self.stats.write().await;
-            stats.active_executions -= 1;
-
-            match &result {
-                Ok(_) => {
-                    stats.successful_executions += 1;
-                    // Update average execution time
-                    let total_time = stats.average_execution_time_ms
-                        * (stats.successful_executions - 1)
-                        + execution_time;
-                    stats.average_execution_time_ms = total_time / stats.successful_executions;
-                }
-                Err(_) => {
-                    stats.failed_executions += 1;
-                }
-            }
-        }
-
-        result
-    }
-
-    pub async fn get_contract(&self, contract_id: &str) -> Option<DiamondContract> {
-        let engine = self.contract_engine.read().await;
-        engine.get_contract(contract_id).cloned()
-    }
-
-    pub async fn list_contracts(&self) -> Vec<DiamondContract> {
-        let engine = self.contract_engine.read().await;
-        engine.list_contracts().into_iter().cloned().collect()
-    }
-
-    pub async fn get_execution_history(&self, contract_id: &str) -> Vec<ContractExecution> {
-        let engine = self.contract_engine.read().await;
-        engine
-            .get_execution_history(contract_id)
-            .into_iter()
-            .cloned()
-            .collect()
-    }
-
-    pub async fn get_stats(&self) -> DiamondIOLayerStats {
-        self.stats.read().await.clone()
-    }
-
-    pub async fn encrypt_data(&self, data: Vec<bool>) -> Result<String> {
-        if !self.config.encryption_enabled {
+    /// Encrypt data
+    pub async fn encrypt_data(&self, data: Vec<bool>, _requester: String) -> Result<Vec<u8>> {
+        if !self.config.enable_encryption {
             return Err(anyhow::anyhow!("Encryption is disabled"));
         }
 
-        let engine = self.contract_engine.read().await;
-        let encrypted = engine.encrypt_data(&data)?;
+        let integration_guard = self.integration.read().await;
+        if let Some(ref integration) = *integration_guard {
+            match integration.encrypt_data(&data) {
+                Ok(encrypted) => {
+                    // Update stats
+                    let mut stats = self.stats.write().await;
+                    stats.data_encrypted += 1;
+                    stats.total_operations += 1;
 
-        Ok(encrypted)
-    }
-}
-
-// Simple trait definitions for Diamond IO Layer
-pub trait DiamondLayerTrait {
-    fn start_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
-    fn stop_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
-    fn health_check(&self) -> impl std::future::Future<Output = Result<bool>> + Send;
-    fn layer_type(&self) -> &'static str;
-}
-
-impl DiamondLayerTrait for PolyTorusDiamondIOLayer {
-    fn start_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            info!("Starting Diamond IO Layer");
-            info!("Diamond IO Layer started successfully");
-            Ok(())
+                    info!("Encrypted data of size: {}", data.len());
+                    Ok(encrypted)
+                }
+                Err(e) => {
+                    let mut stats = self.stats.write().await;
+                    stats.failed_operations += 1;
+                    error!("Failed to encrypt data: {}", e);
+                    Err(e)
+                }
+            }
+        } else {
+            error!("Diamond IO integration not initialized");
+            Err(anyhow::anyhow!("Diamond IO integration not initialized"))
         }
     }
 
-    fn stop_layer(&mut self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            info!("Stopping Diamond IO Layer");
-            info!("Diamond IO Layer stopped");
-            Ok(())
-        }
+    /// Update configuration
+    pub async fn update_config(&mut self, config: DiamondIOConfig) -> Result<()> {
+        self.config.diamond_config = config.clone();
+        
+        // Reinitialize the integration with new config
+        let integration = DiamondIOIntegration::new(config)?;
+        let mut integration_guard = self.integration.write().await;
+        *integration_guard = Some(integration);
+        
+        info!("Updated Diamond IO configuration");
+        Ok(())
     }
 
-    fn health_check(&self) -> impl std::future::Future<Output = Result<bool>> + Send {
-        async move {
-            let stats = self.get_stats().await;
-            let failure_rate = if stats.total_executions > 0 {
-                stats.failed_executions as f64 / stats.total_executions as f64
-            } else {
-                0.0
-            };
-            Ok(failure_rate < 0.5)
-        }
+    /// Get layer statistics
+    pub async fn get_stats(&self) -> DiamondIOStats {
+        let stats = self.stats.read().await;
+        stats.clone()
     }
 
-    fn layer_type(&self) -> &'static str {
-        "diamond_io"
+    /// Handle Diamond IO messages
+    async fn handle_message(&self, message: DiamondIOMessage) -> Result<()> {
+        match message {
+            DiamondIOMessage::CircuitCreation { circuit_id, description } => {
+                self.create_demo_circuit(circuit_id, description).await?;
+            }
+            DiamondIOMessage::DataEncryption { data, requester } => {
+                let _ = self.encrypt_data(data, requester).await?;
+            }
+            DiamondIOMessage::DataDecryption { encrypted_data: _, requester: _ } => {
+                // Decryption not implemented in current integration
+                warn!("Decryption not yet implemented");
+            }
+            DiamondIOMessage::ConfigUpdate { config } => {
+                // Note: This would require &mut self, so we'll log it for now
+                info!("Config update requested: {:?}", config);
+            }
+        }
+        Ok(())
+    }
+
+    /// Get current configuration
+    pub fn get_config(&self) -> &DiamondIOLayerConfig {
+        &self.config
+    }
+
+    /// Clean up completed operations
+    pub async fn cleanup_operations(&self) {
+        let mut operations = self.active_operations.write().await;
+        operations.retain(|_, handle| !handle.is_finished());
     }
 }
 
-// Builder pattern for Diamond IO Layer
-#[derive(Debug)]
-pub struct DiamondIOLayerBuilder {
-    config: DiamondIOLayerConfig,
+#[async_trait::async_trait]
+impl Layer for DiamondIOLayer {
+    type Config = DiamondIOLayerConfig;
+    type Message = DiamondIOMessage;
+
+    async fn start(&mut self) -> Result<()> {
+        info!("Starting Diamond IO Layer");
+        
+        // Initialize the integration
+        self.initialize().await?;
+        
+        info!("Diamond IO Layer started successfully");
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<()> {
+        info!("Stopping Diamond IO Layer");
+
+        // Cancel all active operations
+        let mut operations = self.active_operations.write().await;
+        for (_, handle) in operations.drain() {
+            handle.abort();
+        }
+
+        // Clear integration
+        let mut integration_guard = self.integration.write().await;
+        *integration_guard = None;
+
+        info!("Diamond IO Layer stopped");
+        Ok(())
+    }
+
+    async fn process_message(&mut self, message: Self::Message) -> Result<()> {
+        self.handle_message(message).await
+    }
+
+    fn get_layer_type(&self) -> String {
+        "diamond_io".to_string()
+    }
 }
 
-impl DiamondIOLayerBuilder {
-    pub fn new() -> Self {
+// Need to implement Clone for the Layer trait
+impl Clone for DiamondIOLayer {
+    fn clone(&self) -> Self {
         Self {
-            config: DiamondIOLayerConfig::default(),
+            config: self.config.clone(),
+            integration: self.integration.clone(),
+            message_bus: self.message_bus.clone(),
+            stats: self.stats.clone(),
+            active_operations: self.active_operations.clone(),
         }
-    }
-
-    pub fn with_diamond_config(mut self, config: DiamondIOConfig) -> Self {
-        self.config.diamond_config = config;
-        self
-    }
-
-    pub fn with_max_concurrent_executions(mut self, max: usize) -> Self {
-        self.config.max_concurrent_executions = max;
-        self
-    }
-
-    pub fn with_obfuscation_enabled(mut self, enabled: bool) -> Self {
-        self.config.obfuscation_enabled = enabled;
-        self
-    }
-
-    pub fn with_encryption_enabled(mut self, enabled: bool) -> Self {
-        self.config.encryption_enabled = enabled;
-        self
-    }
-
-    pub fn with_gas_limit(mut self, limit: u64) -> Self {
-        self.config.gas_limit_per_execution = limit;
-        self
-    }
-
-    pub fn build(self) -> Result<PolyTorusDiamondIOLayer> {
-        PolyTorusDiamondIOLayer::new(self.config)
     }
 }
 
-impl Default for DiamondIOLayerBuilder {
-    fn default() -> Self {
-        Self::new()
+/// Diamond IO Layer factory
+pub struct DiamondIOLayerFactory;
+
+impl DiamondIOLayerFactory {
+    pub fn create(config: DiamondIOLayerConfig, message_bus: Arc<MessageBus>) -> DiamondIOLayer {
+        DiamondIOLayer::new(config, message_bus)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio;
 
     #[tokio::test]
     async fn test_diamond_io_layer_creation() {
-        let layer = DiamondIOLayerBuilder::new()
-            .with_max_concurrent_executions(5)
-            .build()
-            .unwrap();
-
-        assert_eq!(layer.config.max_concurrent_executions, 5);
+        let config = DiamondIOLayerConfig::default();
+        let message_bus = Arc::new(MessageBus::new());
+        let layer = DiamondIOLayer::new(config, message_bus);
+        
+        assert_eq!(layer.get_layer_type(), "diamond_io");
     }
 
     #[tokio::test]
-    async fn test_contract_deployment_and_execution() {
-        // Create a test configuration with appropriate input size
-        let mut test_config = DiamondIOConfig::dummy();
-        test_config.input_size = 2; // Set input size to 2 for this test
+    async fn test_layer_initialization() {
+        let config = DiamondIOLayerConfig::default();
+        let message_bus = Arc::new(MessageBus::new());
+        let layer = DiamondIOLayer::new(config, message_bus);
 
-        let layer = DiamondIOLayerBuilder::new()
-            .with_diamond_config(test_config)
-            .build()
-            .unwrap();
-
-        // Deploy a contract
-        let contract_id = layer
-            .deploy_contract(
-                "test_and".to_string(),
-                "Test AND Gate".to_string(),
-                "and_gate".to_string(),
-                "alice".to_string(),
-                "and_gate",
-            )
-            .await
-            .unwrap();
-
-        // Execute the contract with 2 inputs as configured
-        let result = layer
-            .execute_contract(&contract_id, vec![true, false], "bob".to_string())
-            .await
-            .unwrap();
-
-        assert_eq!(result, vec![false]);
-
-        // Check stats
-        let stats = layer.get_stats().await;
-        assert_eq!(stats.total_contracts, 1);
-        assert_eq!(stats.successful_executions, 1);
-    }
-
-    #[tokio::test]
-    async fn test_health_check() {
-        let layer = DiamondIOLayerBuilder::new().build().unwrap();
-        let is_healthy = layer.health_check().await.unwrap();
-        assert!(is_healthy);
+        let result = layer.initialize().await;
+        assert!(result.is_ok());
     }
 }

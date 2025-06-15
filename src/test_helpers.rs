@@ -9,7 +9,7 @@ pub fn create_test_context() -> DataContext {
 }
 
 pub fn cleanup_test_context(context: &DataContext) {
-    std::fs::remove_dir_all(&context.base_dir).ok();
+    std::fs::remove_dir_all(&context.data_dir).ok();
 }
 
 // RAII guard for automatic cleanup
@@ -35,12 +35,10 @@ impl Drop for TestContextGuard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
+    use super::*;    #[test]
     fn test_context_creation() {
         let context = create_test_context();
-        assert!(context.base_dir.to_string_lossy().starts_with("test_data_"));
+        assert!(context.data_dir.to_string_lossy().contains("test_data"));
         cleanup_test_context(&context);
     }
 }

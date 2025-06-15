@@ -32,8 +32,8 @@ pub mod unified_orchestrator;
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
 pub use diamond_io_layer::{
-    DiamondIOLayerBuilder, DiamondIOLayerConfig, DiamondIOLayerStats, DiamondIOMessage,
-    DiamondLayerTrait, PolyTorusDiamondIOLayer,
+    DiamondIOLayer, DiamondIOLayerConfig, DiamondIOLayerFactory, DiamondIOMessage,
+    DiamondIOStats,
 };
 pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
 pub use execution::PolyTorusExecutionLayer;
