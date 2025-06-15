@@ -1,7 +1,7 @@
 //! Modern CLI - Unified Modular Architecture Only
 
-use crate::config::DataContext;
 use crate::config::ConfigManager;
+use crate::config::DataContext;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
 use crate::modular::{default_modular_config, UnifiedModularOrchestrator};
@@ -135,7 +135,8 @@ impl ModernCli {
         } else if matches.is_present("listaddresses") {
             self.cmd_list_addresses().await?;
         } else if let Some(address) = matches.value_of("getbalance") {
-            self.cmd_get_balance(address).await?;        } else if matches.is_present("modular-init") {
+            self.cmd_get_balance(address).await?;
+        } else if matches.is_present("modular-init") {
             self.cmd_modular_init().await?;
         } else if matches.is_present("modular-start") {
             self.cmd_modular_start().await?;
@@ -158,7 +159,8 @@ impl ModernCli {
         } else if let Some(address) = matches.value_of("network-connect") {
             self.cmd_network_connect(address).await?;
         } else if matches.is_present("network-peers") {
-            self.cmd_network_peers().await?;        } else if matches.is_present("network-sync") {
+            self.cmd_network_peers().await?;
+        } else if matches.is_present("network-sync") {
             self.cmd_network_sync().await?;
         } else {
             println!("Use --help for usage information");
@@ -302,7 +304,7 @@ impl ModernCli {
 
         // Read network configuration
         let config = self.read_network_config().await?;
-        
+
         println!("Listening on: {}", config.listen_addr);
         println!("Bootstrap peers: {:?}", config.bootstrap_peers);
 
@@ -310,7 +312,8 @@ impl ModernCli {
         let mut network_node = crate::network::NetworkedBlockchainNode::new(
             config.listen_addr,
             config.bootstrap_peers,
-        ).await?;
+        )
+        .await?;
 
         // Start the network node (this would typically run in background)
         network_node.start().await?;
@@ -325,7 +328,7 @@ impl ModernCli {
         println!("=== Network Status ===");
         println!("Implementation: Enhanced P2P with blockchain integration");
         println!("Status: Active (simulated - requires running network node)");
-        
+
         // In a real implementation, this would connect to the running network node
         // and get actual status information
         println!("Connected peers: 0 (no active node)");
@@ -340,9 +343,10 @@ impl ModernCli {
 
     async fn cmd_network_connect(&self, address: &str) -> Result<()> {
         println!("Connecting to peer: {}", address);
-        
+
         // Parse the address
-        let socket_addr: std::net::SocketAddr = address.parse()
+        let socket_addr: std::net::SocketAddr = address
+            .parse()
             .map_err(|e| failure::format_err!("Invalid address format: {}", e))?;
 
         println!("Parsed address: {}", socket_addr);
@@ -356,10 +360,10 @@ impl ModernCli {
         println!("=== Connected Peers ===");
         println!("No active network node running");
         println!("Start the network first with: --network-start");
-        
+
         // In a real implementation, this would show:
         // - Peer IDs
-        // - IP addresses and ports  
+        // - IP addresses and ports
         // - Connection duration
         // - Blockchain heights
         // - Data transfer statistics
@@ -377,9 +381,9 @@ impl ModernCli {
 
     async fn read_network_config(&self) -> Result<NetworkConfig> {
         // Try to load from configuration file
-        let config_manager = ConfigManager::new("config/polytorus.toml".to_string())
-            .unwrap_or_default();
-        
+        let config_manager =
+            ConfigManager::new("config/polytorus.toml".to_string()).unwrap_or_default();
+
         let config = config_manager.get_config();
         let (listen_addr, bootstrap_peers) = config_manager.get_network_addresses()?;
 
@@ -391,7 +395,8 @@ impl ModernCli {
         };
 
         Ok(network_config)
-    }    async fn cmd_modular_start(&self) -> Result<()> {
+    }
+    async fn cmd_modular_start(&self) -> Result<()> {
         println!("Starting modular blockchain with P2P network...");
 
         // Load network configuration
@@ -401,17 +406,21 @@ impl ModernCli {
         println!("  Listen address: {}", network_config.listen_addr);
         println!("  Bootstrap peers: {:?}", network_config.bootstrap_peers);
         println!("  Max peers: {}", network_config.max_peers);
-        println!("  Connection timeout: {}s", network_config.connection_timeout);
+        println!(
+            "  Connection timeout: {}s",
+            network_config.connection_timeout
+        );
 
         // Create orchestrator configuration
         let modular_config = default_modular_config();
         let data_context = DataContext::default();
-        
+
         // Create orchestrator with network integration
         let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
-            modular_config, 
-            data_context
-        ).await?;
+            modular_config,
+            data_context,
+        )
+        .await?;
 
         println!("Modular blockchain started successfully");
         println!("Network layer: Integrated");

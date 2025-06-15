@@ -163,7 +163,11 @@ struct PeerConnection {
 }
 
 impl PeerConnection {
-    fn new(peer_id: PeerId, address: SocketAddr, message_tx: mpsc::UnboundedSender<P2PMessage>) -> Self {
+    fn new(
+        peer_id: PeerId,
+        address: SocketAddr,
+        message_tx: mpsc::UnboundedSender<P2PMessage>,
+    ) -> Self {
         let now = Instant::now();
         Self {
             peer_id,
@@ -182,13 +186,18 @@ impl PeerConnection {
     fn is_stale(&self) -> bool {
         let is_stale = self.last_pong.elapsed() > Duration::from_secs(PEER_TIMEOUT);
         if is_stale {
-            log::debug!("Peer {} is stale (last pong: {:?} ago)", self.peer_id, self.last_pong.elapsed());
+            log::debug!(
+                "Peer {} is stale (last pong: {:?} ago)",
+                self.peer_id,
+                self.last_pong.elapsed()
+            );
         }
         is_stale
     }
 
     fn queue_message(&mut self, message: P2PMessage) {
-        if self.message_queue.len() < 1000 { // Prevent memory overflow
+        if self.message_queue.len() < 1000 {
+            // Prevent memory overflow
             self.message_queue.push_back(message);
         }
     }
@@ -336,9 +345,11 @@ impl EnhancedP2PNode {
                 interval.tick().await;
                 let mut peers_guard = peers_ping.lock().unwrap();
                 let mut to_ping = Vec::new();
-                
+
                 for (peer_id, connection) in peers_guard.iter_mut() {
-                    if connection.is_active && connection.last_ping.elapsed() > Duration::from_secs(PING_INTERVAL) {
+                    if connection.is_active
+                        && connection.last_ping.elapsed() > Duration::from_secs(PING_INTERVAL)
+                    {
                         let nonce = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .unwrap()
@@ -408,7 +419,7 @@ impl EnhancedP2PNode {
             let mut interval = interval(Duration::from_secs(300)); // Every 5 minutes
             loop {
                 interval.tick().await;
-                
+
                 // Try to connect to new peers from known peers list
                 let known_addrs: Vec<SocketAddr> = {
                     let known = known_peers_discovery.lock().unwrap();
@@ -417,7 +428,8 @@ impl EnhancedP2PNode {
 
                 let current_peer_count = peers_discovery.lock().unwrap().len();
                 if current_peer_count < MAX_PEERS / 2 {
-                    for addr in known_addrs.iter().take(3) { // Try 3 new connections at a time
+                    for addr in known_addrs.iter().take(3) {
+                        // Try 3 new connections at a time
                         let peers_clone = peers_discovery.clone();
                         let event_tx_clone = event_tx_discovery.clone();
                         let addr_clone = *addr;
@@ -426,13 +438,19 @@ impl EnhancedP2PNode {
 
                         tokio::spawn(async move {
                             if let Err(e) = Self::connect_to_peer(
-                                addr_clone, 
-                                peers_clone, 
-                                event_tx_clone, 
-                                peer_id_clone, 
-                                best_height_clone
-                            ).await {
-                                log::debug!("Failed to connect to discovered peer {}: {}", addr_clone, e);
+                                addr_clone,
+                                peers_clone,
+                                event_tx_clone,
+                                peer_id_clone,
+                                best_height_clone,
+                            )
+                            .await
+                            {
+                                log::debug!(
+                                    "Failed to connect to discovered peer {}: {}",
+                                    addr_clone,
+                                    e
+                                );
                             }
                         });
                     }
@@ -447,7 +465,7 @@ impl EnhancedP2PNode {
             loop {
                 interval.tick().await;
                 let mut peers_to_process = Vec::new();
-                
+
                 // Collect peers that have queued messages
                 {
                     let peers_guard = peers_queue.lock().unwrap();
@@ -457,12 +475,16 @@ impl EnhancedP2PNode {
                         }
                     }
                 }
-                
+
                 // Process queued messages for each peer
                 for peer_id in peers_to_process {
                     if let Some(connection) = peers_queue.lock().unwrap().get_mut(&peer_id) {
                         if let Err(e) = connection.send_queued_messages() {
-                            log::debug!("Failed to send queued messages for peer {}: {}", peer_id, e);
+                            log::debug!(
+                                "Failed to send queued messages for peer {}: {}",
+                                peer_id,
+                                e
+                            );
                         }
                     }
                 }
@@ -474,7 +496,7 @@ impl EnhancedP2PNode {
     async fn connect_to_bootstrap_peers(&self) {
         let known_peers = self.known_peers.lock().unwrap().clone();
         log::info!("Connecting to {} bootstrap peers", known_peers.len());
-        
+
         for addr in known_peers {
             let peers = self.peers.clone();
             let event_tx = self.event_tx.clone();
@@ -482,7 +504,9 @@ impl EnhancedP2PNode {
             let best_height = self.best_height.clone();
 
             tokio::spawn(async move {
-                if let Err(e) = Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await {
+                if let Err(e) =
+                    Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await
+                {
                     log::warn!("Failed to connect to bootstrap peer {}: {}", addr, e);
                 } else {
                     log::info!("Successfully connected to bootstrap peer {}", addr);
@@ -526,7 +550,8 @@ impl EnhancedP2PNode {
             node_type: "full_node".to_string(),
         };
 
-        Self::handle_peer_connection(stream, addr, peers, event_tx, our_peer_id, Some(handshake)).await
+        Self::handle_peer_connection(stream, addr, peers, event_tx, our_peer_id, Some(handshake))
+            .await
     }
 
     /// Handle incoming connection
@@ -538,10 +563,10 @@ impl EnhancedP2PNode {
 
         tokio::spawn(async move {
             stats.lock().unwrap().total_connections += 1;
-            
-            if let Err(e) = Self::handle_peer_connection(
-                stream, addr, peers, event_tx, our_peer_id, None
-            ).await {
+
+            if let Err(e) =
+                Self::handle_peer_connection(stream, addr, peers, event_tx, our_peer_id, None).await
+            {
                 log::error!("Error handling incoming connection from {}: {}", addr, e);
             }
         });
@@ -557,7 +582,7 @@ impl EnhancedP2PNode {
         initial_message: Option<P2PMessage>,
     ) -> Result<()> {
         let (message_tx, mut message_rx) = mpsc::unbounded_channel();
-        
+
         // Send initial message if provided (outgoing connection)
         if let Some(msg) = initial_message {
             Self::send_message(&mut stream, &msg).await?;
@@ -650,7 +675,10 @@ impl EnhancedP2PNode {
                         PROTOCOL_VERSION
                     );
                     let error = P2PMessage::Error {
-                        message: format!("Protocol version mismatch: expected {}, got {}", PROTOCOL_VERSION, protocol_version),
+                        message: format!(
+                            "Protocol version mismatch: expected {}, got {}",
+                            PROTOCOL_VERSION, protocol_version
+                        ),
                     };
                     Self::send_message(stream, &error).await?;
                     return Ok(false);
@@ -661,7 +689,7 @@ impl EnhancedP2PNode {
                     let peers_guard = peers.lock().unwrap();
                     peers_guard.contains_key(&peer_id)
                 };
-                
+
                 if already_connected {
                     log::debug!("Already connected to peer {}", peer_id);
                     let error = P2PMessage::Error {
@@ -690,7 +718,12 @@ impl EnhancedP2PNode {
                 let _ = event_tx.send(NetworkEvent::PeerInfo(peer_id, best_height));
 
                 *connection_established = true;
-                log::info!("Peer {} connected from {} (height: {})", peer_id, addr, best_height);
+                log::info!(
+                    "Peer {} connected from {} (height: {})",
+                    peer_id,
+                    addr,
+                    best_height
+                );
             }
             P2PMessage::HandshakeAck { peer_id, accepted } => {
                 if !accepted {
@@ -700,7 +733,10 @@ impl EnhancedP2PNode {
                 *connection_established = true;
                 log::debug!("Handshake accepted by {}", peer_id);
             }
-            P2PMessage::Ping { nonce, timestamp: _ } => {
+            P2PMessage::Ping {
+                nonce,
+                timestamp: _,
+            } => {
                 let pong = P2PMessage::Pong {
                     nonce,
                     timestamp: SystemTime::now()
@@ -710,7 +746,10 @@ impl EnhancedP2PNode {
                 };
                 Self::send_message(stream, &pong).await?;
             }
-            P2PMessage::Pong { nonce, timestamp: _ } => {
+            P2PMessage::Pong {
+                nonce,
+                timestamp: _,
+            } => {
                 if let Some(peer_id) = peer_id_opt {
                     if let Some(connection) = peers.lock().unwrap().get_mut(peer_id) {
                         // Verify nonce matches
@@ -738,7 +777,9 @@ impl EnhancedP2PNode {
                 if let Some(peer_id) = peer_id_opt {
                     // Also queue the request for potential retry
                     if let Some(connection) = peers.lock().unwrap().get_mut(peer_id) {
-                        connection.queue_message(P2PMessage::BlockRequest { block_hash: block_hash.clone() });
+                        connection.queue_message(P2PMessage::BlockRequest {
+                            block_hash: block_hash.clone(),
+                        });
                         log::debug!("Queued block request for peer {}", connection.peer_id);
                     }
                     let _ = event_tx.send(NetworkEvent::BlockRequest(block_hash, *peer_id));
@@ -748,7 +789,9 @@ impl EnhancedP2PNode {
                 if let Some(peer_id) = peer_id_opt {
                     // Also queue the request for potential retry
                     if let Some(connection) = peers.lock().unwrap().get_mut(peer_id) {
-                        connection.queue_message(P2PMessage::TransactionRequest { tx_hash: tx_hash.clone() });
+                        connection.queue_message(P2PMessage::TransactionRequest {
+                            tx_hash: tx_hash.clone(),
+                        });
                         log::debug!("Queued transaction request for peer {}", connection.peer_id);
                     }
                     let _ = event_tx.send(NetworkEvent::TransactionRequest(tx_hash, *peer_id));
@@ -781,8 +824,8 @@ impl EnhancedP2PNode {
 
     /// Send a message to a peer
     async fn send_message(stream: &mut TcpStream, message: &P2PMessage) -> Result<()> {
-        let data = bincode::serialize(message)
-            .map_err(|e| format_err!("Serialization failed: {}", e))?;
+        let data =
+            bincode::serialize(message).map_err(|e| format_err!("Serialization failed: {}", e))?;
         let len = data.len() as u32;
 
         if len > MAX_MESSAGE_SIZE as u32 {
@@ -847,7 +890,9 @@ impl EnhancedP2PNode {
                 let best_height = self.best_height.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) = Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await {
+                    if let Err(e) =
+                        Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await
+                    {
                         log::error!("Failed to connect to peer {}: {}", addr, e);
                     } else {
                         log::info!("Successfully connected to peer {}", addr);
@@ -891,7 +936,10 @@ impl EnhancedP2PNode {
         self.broadcast_message(announcement).await?;
 
         // Cache the block for potential requests
-        self.block_cache.lock().unwrap().insert(block_hash.clone(), *block.clone());
+        self.block_cache
+            .lock()
+            .unwrap()
+            .insert(block_hash.clone(), *block.clone());
 
         // Send full block data to select peers (flood control)
         let connected_peers: Vec<PeerId> = self.peers.lock().unwrap().keys().cloned().collect();
@@ -899,8 +947,8 @@ impl EnhancedP2PNode {
 
         for peer_id in connected_peers.into_iter().take(target_peers) {
             // Send block data directly
-            let block_data = P2PMessage::BlockData { 
-                block: block.clone()
+            let block_data = P2PMessage::BlockData {
+                block: block.clone(),
             };
             if let Err(e) = self.send_to_peer(peer_id, block_data).await {
                 log::debug!("Failed to send block to {}: {}", peer_id, e);
@@ -908,7 +956,11 @@ impl EnhancedP2PNode {
         }
 
         self.stats.lock().unwrap().blocks_propagated += 1;
-        log::info!("Broadcasted block {} (height: {}) to network", block_hash, block_height);
+        log::info!(
+            "Broadcasted block {} (height: {}) to network",
+            block_hash,
+            block_height
+        );
         Ok(())
     }
 
@@ -917,7 +969,10 @@ impl EnhancedP2PNode {
         let tx_hash = format!("{:?}", transaction.hash());
 
         // Cache transaction for potential requests
-        self.transaction_pool.lock().unwrap().insert(tx_hash.clone(), transaction.clone());
+        self.transaction_pool
+            .lock()
+            .unwrap()
+            .insert(tx_hash.clone(), transaction.clone());
 
         // Announce transaction
         let announcement = P2PMessage::TransactionAnnouncement {
@@ -994,7 +1049,9 @@ impl EnhancedP2PNode {
 
     /// Broadcast status update
     async fn broadcast_status_update(&self, height: i32) -> Result<()> {
-        let status = P2PMessage::StatusUpdate { best_height: height };
+        let status = P2PMessage::StatusUpdate {
+            best_height: height,
+        };
         self.broadcast_message(status).await?;
         log::debug!("Broadcasted status update: height {}", height);
         Ok(())
@@ -1004,7 +1061,7 @@ impl EnhancedP2PNode {
     async fn print_peer_info(&self) {
         let peers = self.peers.lock().unwrap();
         let stats = self.stats.lock().unwrap();
-        
+
         log::info!("=== P2P Network Status ===");
         log::info!("Connected peers: {}", peers.len());
         log::info!("Total connections: {}", stats.total_connections);
@@ -1012,7 +1069,7 @@ impl EnhancedP2PNode {
         log::info!("Messages received: {}", stats.messages_received);
         log::info!("Blocks propagated: {}", stats.blocks_propagated);
         log::info!("Transactions propagated: {}", stats.transactions_propagated);
-        
+
         for (peer_id, connection) in peers.iter() {
             log::info!(
                 "  {} at {} (height: {}, active: {}, connected: {:?})",

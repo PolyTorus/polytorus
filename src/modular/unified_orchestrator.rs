@@ -381,7 +381,8 @@ impl UnifiedModularOrchestrator {
         }
 
         Ok(())
-    }    /// Stop the orchestrator and network
+    }
+    /// Stop the orchestrator and network
     pub async fn stop_with_network(&self) -> Result<()> {
         // Stop the network first
         if let Some(_network_node) = &self.network_node {
@@ -1005,7 +1006,8 @@ impl UnifiedModularOrchestrator {
 
         orchestrator.start().await?;
         Ok(orchestrator)
-    }    /// Broadcast a block through the network
+    }
+    /// Broadcast a block through the network
     pub async fn broadcast_block_to_network(
         &self,
         block: crate::blockchain::block::FinalizedBlock,

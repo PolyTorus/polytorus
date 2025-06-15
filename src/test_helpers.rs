@@ -35,7 +35,8 @@ impl Drop for TestContextGuard {
 
 #[cfg(test)]
 mod tests {
-    use super::*;    #[test]
+    use super::*;
+    #[test]
     fn test_context_creation() {
         let context = create_test_context();
         assert!(context.data_dir.to_string_lossy().contains("test_data"));

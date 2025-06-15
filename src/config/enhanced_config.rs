@@ -211,24 +211,30 @@ impl ConfigManager {
             self.config.network.listen_addr = listen_addr;
         }
 
-        if let Ok(bootstrap_peers) = env::var(format!("{}NETWORK_BOOTSTRAP_PEERS", self.env_prefix)) {
-            self.config.network.bootstrap_peers = 
-                bootstrap_peers.split(',').map(|s| s.trim().to_string()).collect();
+        if let Ok(bootstrap_peers) = env::var(format!("{}NETWORK_BOOTSTRAP_PEERS", self.env_prefix))
+        {
+            self.config.network.bootstrap_peers = bootstrap_peers
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
         }
 
         if let Ok(max_peers) = env::var(format!("{}NETWORK_MAX_PEERS", self.env_prefix)) {
-            self.config.network.max_peers = max_peers.parse()
+            self.config.network.max_peers = max_peers
+                .parse()
                 .map_err(|e| format_err!("Invalid NETWORK_MAX_PEERS value: {}", e))?;
         }
 
         // Consensus configuration overrides
         if let Ok(block_time) = env::var(format!("{}CONSENSUS_BLOCK_TIME", self.env_prefix)) {
-            self.config.consensus.block_time = block_time.parse()
+            self.config.consensus.block_time = block_time
+                .parse()
                 .map_err(|e| format_err!("Invalid CONSENSUS_BLOCK_TIME value: {}", e))?;
         }
 
         if let Ok(difficulty) = env::var(format!("{}CONSENSUS_DIFFICULTY", self.env_prefix)) {
-            self.config.consensus.difficulty = difficulty.parse()
+            self.config.consensus.difficulty = difficulty
+                .parse()
                 .map_err(|e| format_err!("Invalid CONSENSUS_DIFFICULTY value: {}", e))?;
         }
 
@@ -264,8 +270,13 @@ impl ConfigManager {
         let toml_string = toml::to_string_pretty(&self.config)
             .map_err(|e| format_err!("Failed to serialize config: {}", e))?;
 
-        fs::write(&self.config_file_path, toml_string)
-            .map_err(|e| format_err!("Failed to write config file {}: {}", self.config_file_path, e))?;
+        fs::write(&self.config_file_path, toml_string).map_err(|e| {
+            format_err!(
+                "Failed to write config file {}: {}",
+                self.config_file_path,
+                e
+            )
+        })?;
 
         Ok(())
     }
@@ -285,11 +296,16 @@ impl ConfigManager {
     /// Validate configuration
     pub fn validate(&self) -> Result<()> {
         // Validate network configuration
-        let _listen_addr: SocketAddr = self.config.network.listen_addr.parse()
+        let _listen_addr: SocketAddr = self
+            .config
+            .network
+            .listen_addr
+            .parse()
             .map_err(|e| format_err!("Invalid listen address: {}", e))?;
 
         for peer_addr in &self.config.network.bootstrap_peers {
-            let _addr: SocketAddr = peer_addr.parse()
+            let _addr: SocketAddr = peer_addr
+                .parse()
                 .map_err(|e| format_err!("Invalid bootstrap peer address {}: {}", peer_addr, e))?;
         }
 
@@ -317,12 +333,17 @@ impl ConfigManager {
 
     /// Get network configuration as parsed socket addresses
     pub fn get_network_addresses(&self) -> Result<(SocketAddr, Vec<SocketAddr>)> {
-        let listen_addr = self.config.network.listen_addr.parse()
+        let listen_addr = self
+            .config
+            .network
+            .listen_addr
+            .parse()
             .map_err(|e| format_err!("Invalid listen address: {}", e))?;
 
         let mut bootstrap_addrs = Vec::new();
         for peer_addr in &self.config.network.bootstrap_peers {
-            let addr = peer_addr.parse()
+            let addr = peer_addr
+                .parse()
                 .map_err(|e| format_err!("Invalid bootstrap peer address {}: {}", peer_addr, e))?;
             bootstrap_addrs.push(addr);
         }
@@ -334,25 +355,42 @@ impl ConfigManager {
     pub fn get_summary(&self) -> HashMap<String, String> {
         let mut summary = HashMap::new();
 
-        summary.insert("network_listen_addr".to_string(), self.config.network.listen_addr.clone());
-        summary.insert("network_bootstrap_peers".to_string(), 
-            format!("{}", self.config.network.bootstrap_peers.len()));
-        summary.insert("network_max_peers".to_string(), 
-            self.config.network.max_peers.to_string());
-        
-        summary.insert("consensus_block_time".to_string(), 
-            self.config.consensus.block_time.to_string());
-        summary.insert("consensus_difficulty".to_string(), 
-            self.config.consensus.difficulty.to_string());
-        
-        summary.insert("execution_gas_limit".to_string(), 
-            self.config.execution.gas_limit.to_string());
-        
-        summary.insert("storage_data_dir".to_string(), 
-            self.config.storage.data_dir.clone());
-        
-        summary.insert("logging_level".to_string(), 
-            self.config.logging.level.clone());
+        summary.insert(
+            "network_listen_addr".to_string(),
+            self.config.network.listen_addr.clone(),
+        );
+        summary.insert(
+            "network_bootstrap_peers".to_string(),
+            format!("{}", self.config.network.bootstrap_peers.len()),
+        );
+        summary.insert(
+            "network_max_peers".to_string(),
+            self.config.network.max_peers.to_string(),
+        );
+
+        summary.insert(
+            "consensus_block_time".to_string(),
+            self.config.consensus.block_time.to_string(),
+        );
+        summary.insert(
+            "consensus_difficulty".to_string(),
+            self.config.consensus.difficulty.to_string(),
+        );
+
+        summary.insert(
+            "execution_gas_limit".to_string(),
+            self.config.execution.gas_limit.to_string(),
+        );
+
+        summary.insert(
+            "storage_data_dir".to_string(),
+            self.config.storage.data_dir.clone(),
+        );
+
+        summary.insert(
+            "logging_level".to_string(),
+            self.config.logging.level.clone(),
+        );
 
         summary
     }
@@ -379,12 +417,10 @@ impl ConfigManager {
 
 impl Default for ConfigManager {
     fn default() -> Self {
-        Self::new("config/polytorus.toml".to_string()).unwrap_or_else(|_| {
-            ConfigManager {
-                config: Self::default_config(),
-                config_file_path: "config/polytorus.toml".to_string(),
-                env_prefix: "POLYTORUS_".to_string(),
-            }
+        Self::new("config/polytorus.toml".to_string()).unwrap_or_else(|_| ConfigManager {
+            config: Self::default_config(),
+            config_file_path: "config/polytorus.toml".to_string(),
+            env_prefix: "POLYTORUS_".to_string(),
         })
     }
 }

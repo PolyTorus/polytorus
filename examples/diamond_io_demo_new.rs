@@ -63,7 +63,7 @@ async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyho
 
 async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
     println!("Testing End-to-End Obfuscation and Evaluation:");
-    
+
     let config = DiamondIOConfig::testing();
     let mut integration = DiamondIOIntegration::new(config)?;
     let circuit = integration.create_demo_circuit();
@@ -80,18 +80,24 @@ async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
         Ok(result) => {
             let obf_elapsed = obf_start.elapsed();
             println!("  Obfuscation successful in {:?}", obf_elapsed);
-            println!("  Obfuscation execution time: {}ms", result.execution_time_ms);
+            println!(
+                "  Obfuscation execution time: {}ms",
+                result.execution_time_ms
+            );
 
             // Test evaluation after obfuscation
             let inputs = vec![true, false, true, true];
             let eval_start = std::time::Instant::now();
-            
+
             match integration.evaluate_circuit(&inputs).await {
                 Ok(eval_result) => {
                     let eval_elapsed = eval_start.elapsed();
                     println!("  Evaluation successful in {:?}", eval_elapsed);
                     println!("  Evaluation outputs: {:?}", eval_result.outputs);
-                    println!("  Evaluation execution time: {}ms", eval_result.execution_time_ms);
+                    println!(
+                        "  Evaluation execution time: {}ms",
+                        eval_result.execution_time_ms
+                    );
                 }
                 Err(e) => {
                     println!("  Evaluation failed: {}", e);
@@ -120,7 +126,7 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
         let circuit = integration.create_demo_circuit();
 
         let start = std::time::Instant::now();
-        
+
         // Run multiple operations
         for _ in 0..3 {
             let _ = integration.obfuscate_circuit(circuit.clone()).await;
@@ -130,12 +136,12 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
         println!("  {} avg time: {:?}", name, elapsed / 3);
     }
 
-    // Test with different input sizes  
+    // Test with different input sizes
     println!("\nDifferent Input Size Performance:");
     for input_size in [2, 4, 8] {
         let config = DiamondIOConfig::testing();
         let mut integration = DiamondIOIntegration::new(config)?;
-        
+
         let inputs = vec![true; input_size];
         // Truncate inputs to match circuit size
         let circuit = integration.create_demo_circuit();
@@ -145,13 +151,18 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
         } else {
             &inputs
         };
-        
+
         let start = std::time::Instant::now();
-        
+
         match integration.evaluate_circuit(truncated_inputs).await {
             Ok(_) => {
                 let elapsed = start.elapsed();
-                println!("  {} inputs (using {}): {:?}", input_size, truncated_inputs.len(), elapsed);
+                println!(
+                    "  {} inputs (using {}): {:?}",
+                    input_size,
+                    truncated_inputs.len(),
+                    elapsed
+                );
             }
             Err(e) => {
                 println!("  {} inputs failed: {}", input_size, e);

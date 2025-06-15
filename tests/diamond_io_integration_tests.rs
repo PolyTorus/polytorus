@@ -15,7 +15,7 @@ async fn test_basic_integration() {
     assert!(circuit.num_output() > 0);
 }
 
-#[tokio::test] 
+#[tokio::test]
 async fn test_circuit_execution() {
     let config = DiamondIOConfig::testing();
     let mut integration = DiamondIOIntegration::new(config).unwrap();
@@ -23,7 +23,7 @@ async fn test_circuit_execution() {
 
     let result = integration.obfuscate_circuit(circuit).await;
     assert!(result.is_ok());
-    
+
     let result = result.unwrap();
     assert!(result.success);
     assert!(!result.outputs.is_empty());
@@ -37,7 +37,7 @@ async fn test_circuit_evaluation() {
     let inputs = vec![true, false, true, true];
     let outputs = integration.evaluate_circuit(&inputs).await;
     assert!(outputs.is_ok());
-    
+
     let outputs = outputs.unwrap();
     assert!(outputs.success);
     assert!(!outputs.outputs.is_empty());
@@ -58,7 +58,7 @@ async fn test_contract_obfuscation() {
 
     let result = obfuscation_result.unwrap();
     assert!(result.success);
-    
+
     let inputs = vec![true, false, true, false];
     let outputs = integration.evaluate_circuit(&inputs).await;
     assert!(outputs.is_ok());

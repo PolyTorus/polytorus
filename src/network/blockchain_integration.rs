@@ -5,7 +5,7 @@
 
 use crate::blockchain::block::FinalizedBlock;
 use crate::crypto::transaction::Transaction;
-use crate::network::p2p_enhanced::{EnhancedP2PNode, NetworkEvent, NetworkCommand, PeerId};
+use crate::network::p2p_enhanced::{EnhancedP2PNode, NetworkCommand, NetworkEvent, PeerId};
 use crate::Result;
 
 use failure::format_err;
@@ -78,10 +78,20 @@ pub type EventHandler = Box<dyn Fn(&NetworkEvent) -> Result<()> + Send + Sync>;
 /// Network synchronization events
 #[derive(Debug, Clone)]
 pub enum SyncEvent {
-    SyncStarted { target_height: i32, peer: PeerId },
-    SyncProgress { current_height: i32, target_height: i32 },
-    SyncCompleted { final_height: i32 },
-    SyncFailed { error: String },
+    SyncStarted {
+        target_height: i32,
+        peer: PeerId,
+    },
+    SyncProgress {
+        current_height: i32,
+        target_height: i32,
+    },
+    SyncCompleted {
+        final_height: i32,
+    },
+    SyncFailed {
+        error: String,
+    },
 }
 
 impl NetworkedBlockchainNode {
@@ -90,7 +100,7 @@ impl NetworkedBlockchainNode {
         listen_addr: std::net::SocketAddr,
         bootstrap_peers: Vec<std::net::SocketAddr>,
     ) -> Result<Self> {
-        let (p2p_node, network_events, network_commands) = 
+        let (p2p_node, network_events, network_commands) =
             EnhancedP2PNode::new(listen_addr, bootstrap_peers)?;
 
         let blockchain_state = BlockchainState {
@@ -98,14 +108,20 @@ impl NetworkedBlockchainNode {
             best_block_hash: None,
             pending_blocks: VecDeque::new(),
             is_syncing: false,
-            last_update: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            last_update: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
         };
 
         let mempool = TransactionPool {
             transactions: HashMap::new(),
             pending_count: 0,
             max_size: 10000,
-            last_cleanup: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            last_cleanup: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
         };
 
         let block_cache = BlockCache {
@@ -141,7 +157,7 @@ impl NetworkedBlockchainNode {
         // Start event processing
         self.start_event_processing().await;
 
-        // Start background tasks  
+        // Start background tasks
         self.start_background_tasks().await;
 
         log::info!("Networked blockchain node started successfully");
@@ -184,7 +200,9 @@ impl NetworkedBlockchainNode {
                         block_cache.clone(),
                         sync_state.clone(),
                         network_commands.clone(),
-                    ).await {
+                    )
+                    .await
+                    {
                         log::error!("Error processing network event: {}", e);
                     }
                 } else {
@@ -207,26 +225,30 @@ impl NetworkedBlockchainNode {
         match event {
             NetworkEvent::PeerConnected(peer_id) => {
                 log::info!("New peer connected: {}", peer_id);
-                
+
                 // Send our status to the new peer
                 let current_height = blockchain_state.read().await.current_height;
                 let _ = network_commands.send(NetworkCommand::UpdateHeight(current_height));
-            },
-            
+            }
+
             NetworkEvent::PeerDisconnected(peer_id) => {
                 log::info!("Peer disconnected: {}", peer_id);
-                
+
                 // If this was our sync peer, find a new one
                 let mut sync = sync_state.write().await;
                 if sync.sync_peer == Some(peer_id) {
                     sync.sync_peer = None;
                     sync.is_syncing = false;
                 }
-            },
-            
+            }
+
             NetworkEvent::BlockReceived(block, peer_id) => {
-                log::debug!("Received block from {}: height {}", peer_id, block.get_height());
-                
+                log::debug!(
+                    "Received block from {}: height {}",
+                    peer_id,
+                    block.get_height()
+                );
+
                 // Process the received block
                 Self::process_received_block(
                     *block,
@@ -235,62 +257,64 @@ impl NetworkedBlockchainNode {
                     block_cache.clone(),
                     sync_state.clone(),
                     network_commands.clone(),
-                ).await?;
-            },
-            
+                )
+                .await?;
+            }
+
             NetworkEvent::TransactionReceived(transaction, peer_id) => {
                 log::debug!("Received transaction from {}", peer_id);
-                
+
                 // Add to mempool if valid
-                Self::process_received_transaction(
-                    *transaction,
-                    mempool.clone(),
-                ).await?;
-            },
-            
+                Self::process_received_transaction(*transaction, mempool.clone()).await?;
+            }
+
             NetworkEvent::BlockRequest(block_hash, peer_id) => {
                 log::debug!("Block request from {}: {}", peer_id, block_hash);
-                
+
                 // Look for the block in cache and send it
                 let cache = block_cache.read().await;
                 if let Some(block) = cache.blocks.get(&block_hash) {
-                    let _ = network_commands.send(NetworkCommand::BroadcastBlock(
-                        Box::new(block.clone())
-                    ));
+                    let _ = network_commands
+                        .send(NetworkCommand::BroadcastBlock(Box::new(block.clone())));
                 }
-            },
-            
+            }
+
             NetworkEvent::TransactionRequest(tx_hash, peer_id) => {
                 log::debug!("Transaction request from {}: {}", peer_id, tx_hash);
-                
+
                 // Look for the transaction in mempool and send it
                 let pool = mempool.read().await;
                 if let Some(tx) = pool.transactions.get(&tx_hash) {
-                    let _ = network_commands.send(NetworkCommand::BroadcastTransaction(
-                        tx.clone()
-                    ));
+                    let _ = network_commands.send(NetworkCommand::BroadcastTransaction(tx.clone()));
                 }
-            },
-            
+            }
+
             NetworkEvent::PeerInfo(peer_id, height) => {
                 log::debug!("Peer {} info: height {}", peer_id, height);
-                
+
                 // Check if we need to sync
                 let current_height = blockchain_state.read().await.current_height;
                 if height > current_height + 1 {
                     log::info!("Peer {} is ahead ({}), starting sync", peer_id, height);
-                    Self::start_sync(peer_id, height, sync_state.clone(), network_commands.clone()).await?;
+                    Self::start_sync(
+                        peer_id,
+                        height,
+                        sync_state.clone(),
+                        network_commands.clone(),
+                    )
+                    .await?;
                 }
-            },
-            
+            }
+
             NetworkEvent::PeerDiscovery(peers) => {
                 log::debug!("Discovered {} peers", peers.len());
-                
+
                 // Connect to new peers if we don't have enough connections
-                for peer_info in peers.iter().take(3) { // Limit new connections
+                for peer_info in peers.iter().take(3) {
+                    // Limit new connections
                     let _ = network_commands.send(NetworkCommand::ConnectPeer(peer_info.address));
                 }
-            },
+            }
         }
 
         Ok(())
@@ -312,7 +336,7 @@ impl NetworkedBlockchainNode {
         {
             let mut cache = block_cache.write().await;
             cache.blocks.insert(block_hash.clone(), block.clone());
-            
+
             // Clean up cache if too large
             if cache.blocks.len() > cache.max_size {
                 // Remove oldest blocks (simplified - in practice you'd use LRU)
@@ -326,18 +350,25 @@ impl NetworkedBlockchainNode {
         // Update blockchain state
         {
             let mut state = blockchain_state.write().await;
-            
+
             // Check if this block extends our chain
             if block_height == state.current_height + 1 {
                 state.current_height = block_height;
                 state.best_block_hash = Some(block_hash.clone());
-                state.last_update = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-                
+                state.last_update = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+
                 log::info!("Extended blockchain to height {}", block_height);
             } else if block_height > state.current_height {
                 // Add to pending blocks for potential reorganization
                 state.pending_blocks.push_back(block);
-                log::debug!("Added block {} to pending (current height: {})", block_height, state.current_height);
+                log::debug!(
+                    "Added block {} to pending (current height: {})",
+                    block_height,
+                    state.current_height
+                );
             }
         }
 
@@ -367,7 +398,7 @@ impl NetworkedBlockchainNode {
         let tx_hash = format!("{:?}", transaction.hash());
 
         let mut pool = mempool.write().await;
-        
+
         // Check if we already have this transaction
         if pool.transactions.contains_key(&tx_hash) {
             return Ok(());
@@ -383,7 +414,11 @@ impl NetworkedBlockchainNode {
         pool.transactions.insert(tx_hash.clone(), transaction);
         pool.pending_count += 1;
 
-        log::debug!("Added transaction {} to mempool (total: {})", tx_hash, pool.transactions.len());
+        log::debug!(
+            "Added transaction {} to mempool (total: {})",
+            tx_hash,
+            pool.transactions.len()
+        );
         Ok(())
     }
 
@@ -395,7 +430,7 @@ impl NetworkedBlockchainNode {
         network_commands: mpsc::UnboundedSender<NetworkCommand>,
     ) -> Result<()> {
         let mut sync = sync_state.write().await;
-        
+
         if sync.is_syncing {
             return Ok(()); // Already syncing
         }
@@ -403,16 +438,23 @@ impl NetworkedBlockchainNode {
         sync.is_syncing = true;
         sync.target_height = Some(target_height);
         sync.sync_peer = Some(peer_id);
-        sync.last_sync_request = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        sync.last_sync_request = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         // Request blocks starting from our current height + 1
         // In practice, you'd implement a more sophisticated sync protocol
         let _ = network_commands.send(NetworkCommand::RequestBlock(
             "next_block_hash".to_string(), // Placeholder
-            peer_id
+            peer_id,
         ));
 
-        log::info!("Started synchronization with {} (target height: {})", peer_id, target_height);
+        log::info!(
+            "Started synchronization with {} (target height: {})",
+            peer_id,
+            target_height
+        );
         Ok(())
     }
 
@@ -439,7 +481,11 @@ impl NetworkedBlockchainNode {
             let mut interval = interval(Duration::from_secs(30));
             loop {
                 interval.tick().await;
-                Self::monitor_sync_progress(sync_state_monitor.clone(), network_commands_monitor.clone()).await;
+                Self::monitor_sync_progress(
+                    sync_state_monitor.clone(),
+                    network_commands_monitor.clone(),
+                )
+                .await;
             }
         });
 
@@ -459,8 +505,11 @@ impl NetworkedBlockchainNode {
     /// Cleanup mempool
     async fn cleanup_mempool(mempool: Arc<RwLock<TransactionPool>>) {
         let mut pool = mempool.write().await;
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-        
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
         // Remove old transactions (simplified - in practice you'd check transaction age)
         if pool.transactions.len() > pool.max_size / 2 {
             let keys_to_remove: Vec<String> = pool.transactions.keys().take(100).cloned().collect();
@@ -468,9 +517,12 @@ impl NetworkedBlockchainNode {
                 pool.transactions.remove(&key);
             }
             pool.pending_count = pool.transactions.len();
-            log::debug!("Cleaned up mempool, {} transactions remaining", pool.transactions.len());
+            log::debug!(
+                "Cleaned up mempool, {} transactions remaining",
+                pool.transactions.len()
+            );
         }
-        
+
         pool.last_cleanup = now;
     }
 
@@ -481,8 +533,12 @@ impl NetworkedBlockchainNode {
     ) {
         let sync = sync_state.read().await;
         if sync.is_syncing {
-            let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-            if now - sync.last_sync_request > 60 { // 1 minute timeout
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            if now - sync.last_sync_request > 60 {
+                // 1 minute timeout
                 log::warn!("Sync timeout, may need to restart synchronization");
             }
         }
@@ -496,11 +552,15 @@ impl NetworkedBlockchainNode {
             let mut state = self.blockchain_state.write().await;
             state.current_height = block.get_height();
             state.best_block_hash = Some(format!("{:?}", block.get_hash()));
-            state.last_update = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+            state.last_update = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
         }
 
         // Broadcast to network
-        self.network_commands.send(NetworkCommand::BroadcastBlock(Box::new(block)))
+        self.network_commands
+            .send(NetworkCommand::BroadcastBlock(Box::new(block)))
             .map_err(|e| format_err!("Failed to broadcast block: {}", e))?;
 
         Ok(())
@@ -512,15 +572,17 @@ impl NetworkedBlockchainNode {
         {
             let tx_hash = format!("{:?}", transaction.hash());
             let mut pool = self.mempool.write().await;
-            
-            if !pool.transactions.contains_key(&tx_hash) && pool.transactions.len() < pool.max_size {
+
+            if !pool.transactions.contains_key(&tx_hash) && pool.transactions.len() < pool.max_size
+            {
                 pool.transactions.insert(tx_hash, transaction.clone());
                 pool.pending_count += 1;
             }
         }
 
         // Broadcast to network
-        self.network_commands.send(NetworkCommand::BroadcastTransaction(transaction))
+        self.network_commands
+            .send(NetworkCommand::BroadcastTransaction(transaction))
             .map_err(|e| format_err!("Failed to broadcast transaction: {}", e))?;
 
         Ok(())
@@ -544,7 +606,8 @@ impl NetworkedBlockchainNode {
 
     /// Connect to a peer
     pub async fn connect_to_peer(&self, addr: std::net::SocketAddr) -> Result<()> {
-        self.network_commands.send(NetworkCommand::ConnectPeer(addr))
+        self.network_commands
+            .send(NetworkCommand::ConnectPeer(addr))
             .map_err(|e| format_err!("Failed to connect to peer: {}", e))?;
         Ok(())
     }
@@ -556,8 +619,8 @@ impl NetworkedBlockchainNode {
     }
 
     /// Add an event handler
-    pub async fn add_event_handler<F>(&self, handler: F) 
-    where 
+    pub async fn add_event_handler<F>(&self, handler: F)
+    where
         F: Fn(&NetworkEvent) -> Result<()> + Send + Sync + 'static,
     {
         let mut handlers = self.event_handlers.write().await;
@@ -568,7 +631,7 @@ impl NetworkedBlockchainNode {
     pub async fn get_network_stats(&self) -> Result<String> {
         let p2p = self.p2p_node.read().await;
         let stats = p2p.get_stats();
-        
+
         Ok(format!(
             "Connected Peers: {}\nMessages Sent: {}\nMessages Received: {}\nBlocks Propagated: {}\nTransactions Propagated: {}",
             p2p.get_connected_peers().len(),

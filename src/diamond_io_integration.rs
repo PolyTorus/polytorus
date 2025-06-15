@@ -18,7 +18,8 @@ pub struct DiamondIOConfig {
     pub dummy_mode: bool,
 }
 
-impl DiamondIOConfig {    pub fn production() -> Self {
+impl DiamondIOConfig {
+    pub fn production() -> Self {
         Self {
             enabled: true,
             max_circuits: 1000,
@@ -120,7 +121,8 @@ impl DiamondIOIntegration {
             input_size: 4,
             output_size: 2,
         }
-    }    /// Register a new circuit
+    }
+    /// Register a new circuit
     pub fn register_circuit(&mut self, circuit: DiamondCircuit) -> anyhow::Result<()> {
         if self.circuits.len() >= self.config.max_circuits {
             return Err(anyhow::anyhow!("Maximum circuits limit reached"));
@@ -131,12 +133,22 @@ impl DiamondIOIntegration {
     }
 
     /// Execute circuit with inputs
-    pub fn execute_circuit(&mut self, circuit_id: &str, inputs: Vec<bool>) -> anyhow::Result<DiamondIOResult> {
-        let circuit = self.circuits.get(circuit_id)
+    pub fn execute_circuit(
+        &mut self,
+        circuit_id: &str,
+        inputs: Vec<bool>,
+    ) -> anyhow::Result<DiamondIOResult> {
+        let circuit = self
+            .circuits
+            .get(circuit_id)
             .ok_or_else(|| anyhow::anyhow!("Circuit {} not found", circuit_id))?;
 
         if inputs.len() != circuit.input_size {
-            return Err(anyhow::anyhow!("Input size mismatch: expected {}, got {}", circuit.input_size, inputs.len()));
+            return Err(anyhow::anyhow!(
+                "Input size mismatch: expected {}, got {}",
+                circuit.input_size,
+                inputs.len()
+            ));
         }
 
         // Simulate circuit execution
@@ -196,10 +208,12 @@ impl DiamondIOIntegration {
     fn simulate_execution(&self, circuit: &DiamondCircuit, inputs: &[bool]) -> Vec<bool> {
         // Simplified simulation - in practice would execute actual circuit
         let mut outputs = Vec::with_capacity(circuit.output_size);
-        
+
         for i in 0..circuit.output_size {
             // Simple XOR-based simulation
-            let output = inputs.iter().enumerate()
+            let output = inputs
+                .iter()
+                .enumerate()
                 .map(|(idx, &val)| val && (idx % 2 == i % 2))
                 .fold(false, |acc, x| acc ^ x);
             outputs.push(output);
@@ -209,7 +223,7 @@ impl DiamondIOIntegration {
     }
 
     /// Legacy compatibility methods
-      /// Evaluate circuit (alias for execute_circuit)
+    /// Evaluate circuit (alias for execute_circuit)
     pub async fn evaluate_circuit(&mut self, inputs: &[bool]) -> anyhow::Result<DiamondIOResult> {
         // Use demo circuit for legacy compatibility
         let circuit = self.create_demo_circuit();
@@ -218,12 +232,15 @@ impl DiamondIOIntegration {
     }
 
     /// Obfuscate circuit (simplified for compatibility)
-    pub async fn obfuscate_circuit(&mut self, circuit: DiamondCircuit) -> anyhow::Result<DiamondIOResult> {
+    pub async fn obfuscate_circuit(
+        &mut self,
+        circuit: DiamondCircuit,
+    ) -> anyhow::Result<DiamondIOResult> {
         // Register and execute the circuit with dummy inputs
         let circuit_id = circuit.id.clone();
         let input_size = circuit.input_size;
         self.register_circuit(circuit)?;
-        
+
         // Generate dummy inputs
         let dummy_inputs = vec![false; input_size];
         self.execute_circuit(&circuit_id, dummy_inputs)

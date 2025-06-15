@@ -3,14 +3,14 @@
 //! This layer provides Diamond IO cryptographic operations integration.
 
 use crate::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
-use crate::modular::traits::{Layer, LayerMessage};
 use crate::modular::message_bus::MessageBus;
+use crate::modular::traits::{Layer, LayerMessage};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 /// Diamond IO Layer message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,7 +108,7 @@ impl DiamondIOLayer {
         let integration_guard = self.integration.read().await;
         if let Some(ref integration) = *integration_guard {
             let _circuit = integration.create_demo_circuit();
-            
+
             // Update stats
             let mut stats = self.stats.write().await;
             stats.circuits_created += 1;
@@ -156,12 +156,12 @@ impl DiamondIOLayer {
     /// Update configuration
     pub async fn update_config(&mut self, config: DiamondIOConfig) -> Result<()> {
         self.config.diamond_config = config.clone();
-        
+
         // Reinitialize the integration with new config
         let integration = DiamondIOIntegration::new(config)?;
         let mut integration_guard = self.integration.write().await;
         *integration_guard = Some(integration);
-        
+
         info!("Updated Diamond IO configuration");
         Ok(())
     }
@@ -175,13 +175,19 @@ impl DiamondIOLayer {
     /// Handle Diamond IO messages
     async fn handle_message(&self, message: DiamondIOMessage) -> Result<()> {
         match message {
-            DiamondIOMessage::CircuitCreation { circuit_id, description } => {
+            DiamondIOMessage::CircuitCreation {
+                circuit_id,
+                description,
+            } => {
                 self.create_demo_circuit(circuit_id, description).await?;
             }
             DiamondIOMessage::DataEncryption { data, requester } => {
                 let _ = self.encrypt_data(data, requester).await?;
             }
-            DiamondIOMessage::DataDecryption { encrypted_data: _, requester: _ } => {
+            DiamondIOMessage::DataDecryption {
+                encrypted_data: _,
+                requester: _,
+            } => {
                 // Decryption not implemented in current integration
                 warn!("Decryption not yet implemented");
             }
@@ -212,10 +218,10 @@ impl Layer for DiamondIOLayer {
 
     async fn start(&mut self) -> Result<()> {
         info!("Starting Diamond IO Layer");
-        
+
         // Initialize the integration
         self.initialize().await?;
-        
+
         info!("Diamond IO Layer started successfully");
         Ok(())
     }
@@ -278,7 +284,7 @@ mod tests {
         let config = DiamondIOLayerConfig::default();
         let message_bus = Arc::new(MessageBus::new());
         let layer = DiamondIOLayer::new(config, message_bus);
-        
+
         assert_eq!(layer.get_layer_type(), "diamond_io");
     }
 
