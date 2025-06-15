@@ -21,6 +21,8 @@ help:
 	@echo "  $(GREEN)kani-crypto$(NC)      - Run cryptographic verifications only"
 	@echo "  $(GREEN)kani-blockchain$(NC)  - Run blockchain verifications only"
 	@echo "  $(GREEN)kani-modular$(NC)     - Run modular architecture verifications only"
+	@echo "  $(GREEN)kani-security$(NC)    - Run security-focused verifications"
+	@echo "  $(GREEN)kani-performance$(NC) - Run performance-oriented verifications"
 	@echo "  $(GREEN)kani-clean$(NC)       - Clean verification results"
 	@echo "  $(GREEN)help$(NC)             - Show this help message"
 
@@ -42,12 +44,63 @@ kani-setup:
 # Run all verifications
 kani-verify: kani-setup
 	@echo "$(BLUE)Running complete Kani verification suite...$(NC)"
-	./scripts/run_kani_verification.sh
+	cd kani-verification && chmod +x run_verification.sh && ./run_verification.sh
 
 # Run quick verification (subset for development)
 kani-quick: kani-setup
 	@echo "$(BLUE)Running quick Kani verification...$(NC)"
 	@mkdir -p verification_results
+	cd kani-verification && cargo kani --harness verify_basic_arithmetic
+	cd kani-verification && cargo kani --harness verify_encryption_type_determination
+	cd kani-verification && cargo kani --harness verify_block_hash_consistency
+	cd kani-verification && cargo kani --harness verify_modular_architecture_structure
+	@echo "$(GREEN)Quick verification complete!$(NC)"
+
+# Run cryptographic verifications only
+kani-crypto: kani-setup
+	@echo "$(BLUE)Running cryptographic verifications...$(NC)"
+	cd kani-verification && cargo kani --harness verify_encryption_type_determination
+	cd kani-verification && cargo kani --harness verify_transaction_integrity
+	cd kani-verification && cargo kani --harness verify_signature_properties
+	cd kani-verification && cargo kani --harness verify_public_key_format
+	cd kani-verification && cargo kani --harness verify_hash_computation
+	@echo "$(GREEN)Cryptographic verification complete!$(NC)"
+
+# Run blockchain verifications only
+kani-blockchain: kani-setup
+	@echo "$(BLUE)Running blockchain verifications...$(NC)"
+	cd kani-verification && cargo kani --harness verify_block_hash_consistency
+	cd kani-verification && cargo kani --harness verify_blockchain_integrity
+	cd kani-verification && cargo kani --harness verify_difficulty_adjustment
+	cd kani-verification && cargo kani --harness verify_invalid_block_rejection
+	@echo "$(GREEN)Blockchain verification complete!$(NC)"
+
+# Run modular architecture verifications only
+kani-modular: kani-setup
+	@echo "$(BLUE)Running modular architecture verifications...$(NC)"
+	cd kani-verification && cargo kani --harness verify_modular_architecture_structure
+	cd kani-verification && cargo kani --harness verify_layer_communication
+	cd kani-verification && cargo kani --harness verify_invalid_communication_rejection
+	cd kani-verification && cargo kani --harness verify_layer_state_update
+	cd kani-verification && cargo kani --harness verify_synchronization_mechanism
+	@echo "$(GREEN)Modular architecture verification complete!$(NC)"
+
+# Run security-focused verifications
+kani-security: kani-setup
+	@echo "$(BLUE)Running security-focused verifications...$(NC)"
+	cd kani-verification && cargo kani --harness verify_array_bounds
+	cd kani-verification && cargo kani --harness verify_transaction_value_bounds
+	cd kani-verification && cargo kani --harness verify_invalid_block_rejection
+	cd kani-verification && cargo kani --harness verify_invalid_communication_rejection
+	@echo "$(GREEN)Security verification complete!$(NC)"
+
+# Performance testing with Kani
+kani-performance: kani-setup
+	@echo "$(BLUE)Running performance-oriented verifications...$(NC)"
+	cd kani-verification && timeout 120 cargo kani --harness verify_queue_operations
+	cd kani-verification && timeout 120 cargo kani --harness verify_hash_determinism
+	cd kani-verification && timeout 120 cargo kani --harness verify_synchronization_mechanism
+	@echo "$(GREEN)Performance verification complete!$(NC)"
 	cargo kani --harness verify_encryption_type_determination
 	cargo kani --harness verify_mining_stats
 	cargo kani --harness verify_layer_state_transitions
@@ -64,21 +117,42 @@ kani-crypto: kani-setup
 	@echo "$(GREEN)Cryptographic verifications complete!$(NC)"
 
 # Run blockchain verifications only
-kani-blockchain: kani-setup
-	@echo "$(BLUE)Running blockchain verifications...$(NC)"
-	@mkdir -p verification_results
-	-cargo kani --harness verify_mining_stats 2>&1 | tee verification_results/mining_stats.log
-	-cargo kani --harness verify_mining_attempts 2>&1 | tee verification_results/mining_attempts.log
-	-cargo kani --harness verify_difficulty_adjustment_config 2>&1 | tee verification_results/difficulty_config.log
-	-cargo kani --harness verify_difficulty_bounds 2>&1 | tee verification_results/difficulty_bounds.log
-	-cargo kani --harness verify_block_hash_consistency 2>&1 | tee verification_results/block_hash.log
-	@echo "$(GREEN)Blockchain verifications complete!$(NC)"
+# Clean verification results
+kani-clean:
+	@echo "$(BLUE)Cleaning verification results...$(NC)"
+	rm -rf verification_results/
+	rm -rf kani-verification/kani_results/
+	rm -rf kani-verification/target/kani/
+	@echo "$(GREEN)Verification results cleaned!$(NC)"
 
-# Run modular architecture verifications only
-kani-modular: kani-setup
-	@echo "$(BLUE)Running modular architecture verifications...$(NC)"
-	@mkdir -p verification_results
-	-cargo kani --harness verify_message_priority_ordering 2>&1 | tee verification_results/message_priority.log
+# Watch mode for continuous verification during development
+kani-watch: kani-setup
+	@echo "$(BLUE)Starting Kani watch mode...$(NC)"
+	@echo "Will re-run verification when files change..."
+	@while true; do \
+		$(MAKE) kani-quick; \
+		echo "$(YELLOW)Waiting for file changes... (Ctrl+C to stop)$(NC)"; \
+		sleep 10; \
+	done
+
+# Generate verification report
+kani-report: kani-verify
+	@echo "$(BLUE)Generating verification report...$(NC)"
+	@mkdir -p docs/verification
+	@if [ -f kani-verification/kani_results/summary.md ]; then \
+		cp kani-verification/kani_results/summary.md docs/verification/latest-report.md; \
+		echo "$(GREEN)Verification report generated at docs/verification/latest-report.md$(NC)"; \
+	else \
+		echo "$(RED)No verification results found. Run 'make kani-verify' first.$(NC)"; \
+	fi
+
+# Development workflow - quick check before commit
+pre-commit: kani-quick
+	@echo "$(GREEN)Pre-commit verification passed!$(NC)"
+
+# CI workflow - comprehensive verification
+ci-verify: kani-verify kani-report
+	@echo "$(GREEN)CI verification workflow complete!$(NC)"
 	-cargo kani --harness verify_layer_state_transitions 2>&1 | tee verification_results/layer_states.log
 	-cargo kani --harness verify_message_bus_capacity 2>&1 | tee verification_results/message_bus.log
 	-cargo kani --harness verify_orchestrator_coordination 2>&1 | tee verification_results/orchestrator.log

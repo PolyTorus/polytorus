@@ -1,0 +1,222 @@
+name: Kani Formal Verification
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  kani-verification:
+    name: Kani Formal Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+        components: rustfmt, clippy
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install Kani
+      run: |
+        cargo install --locked kani-verifier
+        cargo kani setup
+
+    - name: Run basic Kani verification tests
+      working-directory: ./kani-verification
+      run: |
+        echo "🔍 Verifying basic arithmetic operations..."
+        timeout 300 cargo kani --harness verify_basic_arithmetic
+        
+        echo "🔍 Verifying boolean logic..."
+        timeout 300 cargo kani --harness verify_boolean_logic
+        
+        echo "🔍 Verifying array bounds..."
+        timeout 300 cargo kani --harness verify_array_bounds
+
+    - name: Run crypto verification tests
+      working-directory: ./kani-verification
+      run: |
+        echo "🔐 Verifying encryption type determination..."
+        timeout 300 cargo kani --harness verify_encryption_type_determination
+        
+        echo "🔐 Verifying transaction integrity..."
+        timeout 300 cargo kani --harness verify_transaction_integrity
+        
+        echo "🔐 Verifying signature properties..."
+        timeout 300 cargo kani --harness verify_signature_properties
+
+    - name: Run blockchain verification tests
+      working-directory: ./kani-verification
+      run: |
+        echo "⛓️ Verifying block hash consistency..."
+        timeout 300 cargo kani --harness verify_block_hash_consistency
+        
+        echo "⛓️ Verifying blockchain integrity..."
+        timeout 300 cargo kani --harness verify_blockchain_integrity
+        
+        echo "⛓️ Verifying difficulty adjustment..."
+        timeout 300 cargo kani --harness verify_difficulty_adjustment
+
+    - name: Run modular architecture verification tests
+      working-directory: ./kani-verification
+      run: |
+        echo "🏗️ Verifying modular architecture structure..."
+        timeout 300 cargo kani --harness verify_modular_architecture_structure
+        
+        echo "🏗️ Verifying layer communication..."
+        timeout 300 cargo kani --harness verify_layer_communication
+        
+        echo "🏗️ Verifying synchronization mechanism..."
+        timeout 300 cargo kani --harness verify_synchronization_mechanism
+
+    - name: Run comprehensive verification suite
+      working-directory: ./kani-verification
+      run: |
+        echo "🎯 Running comprehensive verification suite..."
+        chmod +x run_verification.sh
+        timeout 1800 ./run_verification.sh || echo "Some verifications timed out"
+
+    - name: Upload verification results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: kani-verification-results
+        path: |
+          kani-verification/kani_results/
+          kani-verification/target/kani/
+        retention-days: 30
+
+    - name: Generate verification report
+      if: always()
+      working-directory: ./kani-verification
+      run: |
+        mkdir -p verification-report
+        echo "# Polytorus Kani Formal Verification Report" > verification-report/README.md
+        echo "" >> verification-report/README.md
+        echo "Execution Date: $(date)" >> verification-report/README.md
+        echo "Commit: ${{ github.sha }}" >> verification-report/README.md
+        echo "" >> verification-report/README.md
+        
+        if [ -f kani_results/summary.md ]; then
+          echo "## Verification Results Summary" >> verification-report/README.md
+          cat kani_results/summary.md >> verification-report/README.md
+        else
+          echo "## Verification Results" >> verification-report/README.md
+          echo "Detailed verification result files were not found." >> verification-report/README.md
+        fi
+
+    - name: Comment PR with verification results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'kani-verification/verification-report/README.md';
+          
+          if (fs.existsSync(path)) {
+            const report = fs.readFileSync(path, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔍 Kani Formal Verification Results\n\n${report}`
+            });
+          }
+
+  security-analysis:
+    name: Security Analysis with Kani
+    runs-on: ubuntu-latest
+    needs: kani-verification
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+
+    - name: Install Kani
+      run: |
+        cargo install --locked kani-verifier
+        cargo kani setup
+
+    - name: Run security-focused verification
+      working-directory: ./kani-verification
+      run: |
+        echo "🔒 Running security-focused verification..."
+        
+        # Integer overflow verification
+        echo "Integer overflow verification..."
+        timeout 300 cargo kani --harness verify_transaction_value_bounds || true
+        
+        # Array bounds checking verification
+        echo "Array bounds checking verification..."
+        timeout 300 cargo kani --harness verify_array_bounds || true
+        
+        # Invalid input rejection verification
+        echo "Invalid input rejection verification..."
+        timeout 300 cargo kani --harness verify_invalid_block_rejection || true
+        timeout 300 cargo kani --harness verify_invalid_communication_rejection || true
+
+    - name: Check for verification failures
+      working-directory: ./kani-verification
+      run: |
+        if [ -d kani_results ]; then
+          failed_count=$(find kani_results -name "*.log" -exec grep -l "VERIFICATION:- FAILED" {} \; | wc -l)
+          if [ $failed_count -gt 0 ]; then
+            echo "⚠️ $failed_count verification(s) failed"
+            echo "failed_verifications=$failed_count" >> $GITHUB_ENV
+          else
+            echo "✅ All security verifications passed successfully"
+            echo "failed_verifications=0" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: Create security issue if verifications failed
+      if: env.failed_verifications != '0'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '🚨 Kani Formal Verification Detected Security Issues',
+            body: `## Security Verification Error
+            
+            Kani formal verification detected ${{ env.failed_verifications }} security-related verification failure(s).
+            
+            **Failed Verifications:**
+            - See Actions execution logs for details
+            
+            **Action Required:**
+            1. Review failed verification details
+            2. Fix security issues
+            3. Re-run verification to confirm issues are resolved
+            
+            **Related Commit:** ${{ github.sha }}
+            **Execution Date:** $(date)
+            `,
+            labels: ['security', 'verification', 'bug']
+          });

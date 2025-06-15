@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "Kani formal verification for Polytorus core functions"
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 # No runtime dependencies needed for Kani verification
-
-[dev-dependencies]
-kani-verifier = "0.63.0"
