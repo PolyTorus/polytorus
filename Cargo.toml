@@ -23,6 +23,14 @@ path = "examples/modular_architecture_simple.rs"
 name = "diamond_io_demo"
 path = "examples/diamond_io_demo.rs"
 
+[[example]]
+name = "multi_node_simulation"
+path = "examples/multi_node_simulation.rs"
+
+[[example]]
+name = "transaction_monitor" 
+path = "examples/transaction_monitor.rs"
+
 [dependencies]
 # Cryptography - unified versions (modern alternatives)
 sha2 = "0.10"  # Modern cryptographic hash functions
@@ -79,6 +87,7 @@ anyhow = "1.0"
 wat = "1.0"
 hex = "0.4"
 toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
 
 # Diamond IO dependencies
 diamond-io = { git = "https://github.com/MachinaIO/diamond-io", default-features = false, features = ["debug"] }
