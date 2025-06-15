@@ -109,13 +109,60 @@ impl ModernCli {
                     .help("Deploy a smart contract")
                     .takes_value(true)
                     .value_name("CONTRACT_PATH"),
-            )
-            .arg(
+            )            .arg(
                 Arg::with_name("smart-contract-call")
                     .long("smart-contract-call")
                     .help("Call a smart contract function")
                     .takes_value(true)
                     .value_name("CONTRACT_ADDRESS"),
+            )
+            .arg(
+                Arg::with_name("erc20-deploy")
+                    .long("erc20-deploy")
+                    .help("Deploy an ERC20 token contract")
+                    .takes_value(true)
+                    .value_name("NAME,SYMBOL,DECIMALS,SUPPLY,OWNER"),
+            )
+            .arg(
+                Arg::with_name("erc20-transfer")
+                    .long("erc20-transfer")
+                    .help("Transfer ERC20 tokens")
+                    .takes_value(true)
+                    .value_name("CONTRACT,TO,AMOUNT"),
+            )
+            .arg(
+                Arg::with_name("erc20-balance")
+                    .long("erc20-balance")
+                    .help("Check ERC20 token balance")
+                    .takes_value(true)
+                    .value_name("CONTRACT,ADDRESS"),
+            )
+            .arg(
+                Arg::with_name("erc20-approve")
+                    .long("erc20-approve")
+                    .help("Approve ERC20 token spending")
+                    .takes_value(true)
+                    .value_name("CONTRACT,SPENDER,AMOUNT"),
+            )
+            .arg(
+                Arg::with_name("erc20-allowance")
+                    .long("erc20-allowance")
+                    .help("Check ERC20 token allowance")
+                    .takes_value(true)
+                    .value_name("CONTRACT,OWNER,SPENDER"),
+            )
+            .arg(
+                Arg::with_name("erc20-info")
+                    .long("erc20-info")
+                    .help("Get ERC20 token information")
+                    .takes_value(true)
+                    .value_name("CONTRACT_ADDRESS"),
+            )
+            .arg(
+                Arg::with_name("erc20-list")
+                    .long("erc20-list")
+                    .help("List all deployed ERC20 contracts")
+                    .takes_value(false),
             )
             .arg(
                 Arg::with_name("governance-propose")
@@ -210,9 +257,22 @@ impl ModernCli {
         } else if matches.is_present("modular-config") {
             self.cmd_modular_config().await?;
         } else if let Some(contract_path) = matches.value_of("smart-contract-deploy") {
-            self.cmd_smart_contract_deploy(contract_path).await?;
-        } else if let Some(contract_address) = matches.value_of("smart-contract-call") {
+            self.cmd_smart_contract_deploy(contract_path).await?;        } else if let Some(contract_address) = matches.value_of("smart-contract-call") {
             self.cmd_smart_contract_call(contract_address).await?;
+        } else if let Some(params) = matches.value_of("erc20-deploy") {
+            self.cmd_erc20_deploy(params).await?;
+        } else if let Some(params) = matches.value_of("erc20-transfer") {
+            self.cmd_erc20_transfer(params).await?;
+        } else if let Some(params) = matches.value_of("erc20-balance") {
+            self.cmd_erc20_balance(params).await?;
+        } else if let Some(params) = matches.value_of("erc20-approve") {
+            self.cmd_erc20_approve(params).await?;
+        } else if let Some(params) = matches.value_of("erc20-allowance") {
+            self.cmd_erc20_allowance(params).await?;
+        } else if let Some(contract_address) = matches.value_of("erc20-info") {
+            self.cmd_erc20_info(contract_address).await?;
+        } else if matches.is_present("erc20-list") {
+            self.cmd_erc20_list().await?;
         } else if let Some(proposal_data) = matches.value_of("governance-propose") {
             self.cmd_governance_propose(proposal_data).await?;
         } else if let Some(proposal_id) = matches.value_of("governance-vote") {
@@ -647,6 +707,331 @@ impl ModernCli {
             .await
             .expect("Failed to listen for ctrl+c");
         println!("Shutting down...");
+
+        Ok(())
+    }
+
+    // ERC20 Command Handlers
+    
+    pub async fn cmd_erc20_deploy(&self, params: &str) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        let parts: Vec<&str> = params.split(',').collect();
+        if parts.len() != 5 {
+            println!("Error: Invalid parameters. Expected: NAME,SYMBOL,DECIMALS,SUPPLY,OWNER");
+            return Ok(());
+        }
+
+        let name = parts[0].to_string();
+        let symbol = parts[1].to_string();
+        let decimals: u8 = parts[2].parse().unwrap_or(18);
+        let initial_supply: u64 = parts[3].parse().unwrap_or(0);
+        let owner = parts[4].to_string();
+
+        println!("Deploying ERC20 token contract...");
+        println!("Name: {}", name);
+        println!("Symbol: {}", symbol);
+        println!("Decimals: {}", decimals);
+        println!("Initial Supply: {}", initial_supply);        println!("Owner: {}", owner);
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        // Generate contract address
+        let contract_address = format!("erc20_{}", symbol.to_lowercase());
+
+        // Deploy ERC20 contract
+        match engine.deploy_erc20_contract(
+            name.clone(),
+            symbol.clone(),
+            decimals,
+            initial_supply,
+            owner.clone(),
+            contract_address.clone(),
+        ) {
+            Ok(_) => {
+                println!("✅ ERC20 contract deployed successfully!");
+                println!("Contract Address: {}", contract_address);
+            }
+            Err(e) => {
+                println!("❌ Failed to deploy ERC20 contract: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cmd_erc20_transfer(&self, params: &str) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        let parts: Vec<&str> = params.split(',').collect();
+        if parts.len() != 3 {
+            println!("Error: Invalid parameters. Expected: CONTRACT,TO,AMOUNT");
+            return Ok(());
+        }
+
+        let contract_address = parts[0];
+        let to = parts[1];
+        let amount: u64 = parts[2].parse().unwrap_or(0);
+
+        println!("Transferring ERC20 tokens...");
+        println!("Contract: {}", contract_address);
+        println!("To: {}", to);
+        println!("Amount: {}", amount);
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        // Use first available wallet address as caller
+        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let addresses = wallets.get_all_addresses();
+        let caller = if addresses.is_empty() {
+            "alice".to_string()
+        } else {
+            addresses[0].clone()
+        };
+
+        match engine.execute_erc20_contract(
+            contract_address,
+            "transfer",
+            &caller,
+            vec![to.to_string(), amount.to_string()],
+        ) {
+            Ok(result) => {
+                if result.success {
+                    println!("✅ Transfer successful!");
+                    for log in result.logs {
+                        println!("📝 {}", log);
+                    }
+                } else {
+                    println!("❌ Transfer failed: {}", String::from_utf8_lossy(&result.return_value));
+                }
+            }
+            Err(e) => {
+                println!("❌ Transfer error: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cmd_erc20_balance(&self, params: &str) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        let parts: Vec<&str> = params.split(',').collect();
+        if parts.len() != 2 {
+            println!("Error: Invalid parameters. Expected: CONTRACT,ADDRESS");
+            return Ok(());
+        }
+
+        let contract_address = parts[0];
+        let address = parts[1];
+
+        println!("Checking ERC20 token balance...");
+        println!("Contract: {}", contract_address);
+        println!("Address: {}", address);
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        match engine.execute_erc20_contract(
+            contract_address,
+            "balanceOf",
+            address,
+            vec![address.to_string()],
+        ) {
+            Ok(result) => {
+                if result.success {
+                    let balance = String::from_utf8_lossy(&result.return_value);
+                    println!("💰 Balance: {} tokens", balance);
+                } else {
+                    println!("❌ Failed to get balance: {}", String::from_utf8_lossy(&result.return_value));
+                }
+            }
+            Err(e) => {
+                println!("❌ Balance check error: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cmd_erc20_approve(&self, params: &str) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        let parts: Vec<&str> = params.split(',').collect();
+        if parts.len() != 3 {
+            println!("Error: Invalid parameters. Expected: CONTRACT,SPENDER,AMOUNT");
+            return Ok(());
+        }
+
+        let contract_address = parts[0];
+        let spender = parts[1];
+        let amount: u64 = parts[2].parse().unwrap_or(0);
+
+        println!("Approving ERC20 token spending...");
+        println!("Contract: {}", contract_address);
+        println!("Spender: {}", spender);
+        println!("Amount: {}", amount);
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        // Use first available wallet address as caller
+        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let addresses = wallets.get_all_addresses();
+        let caller = if addresses.is_empty() {
+            "alice".to_string()
+        } else {
+            addresses[0].clone()
+        };
+
+        match engine.execute_erc20_contract(
+            contract_address,
+            "approve",
+            &caller,
+            vec![spender.to_string(), amount.to_string()],
+        ) {
+            Ok(result) => {
+                if result.success {
+                    println!("✅ Approval successful!");
+                    for log in result.logs {
+                        println!("📝 {}", log);
+                    }
+                } else {
+                    println!("❌ Approval failed: {}", String::from_utf8_lossy(&result.return_value));
+                }
+            }
+            Err(e) => {
+                println!("❌ Approval error: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cmd_erc20_allowance(&self, params: &str) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        let parts: Vec<&str> = params.split(',').collect();
+        if parts.len() != 3 {
+            println!("Error: Invalid parameters. Expected: CONTRACT,OWNER,SPENDER");
+            return Ok(());
+        }
+
+        let contract_address = parts[0];
+        let owner = parts[1];
+        let spender = parts[2];
+
+        println!("Checking ERC20 token allowance...");
+        println!("Contract: {}", contract_address);
+        println!("Owner: {}", owner);
+        println!("Spender: {}", spender);
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        match engine.execute_erc20_contract(
+            contract_address,
+            "allowance",
+            owner,
+            vec![owner.to_string(), spender.to_string()],
+        ) {
+            Ok(result) => {
+                if result.success {
+                    let allowance = String::from_utf8_lossy(&result.return_value);
+                    println!("🔓 Allowance: {} tokens", allowance);
+                } else {
+                    println!("❌ Failed to get allowance: {}", String::from_utf8_lossy(&result.return_value));
+                }
+            }
+            Err(e) => {
+                println!("❌ Allowance check error: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cmd_erc20_info(&self, contract_address: &str) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        println!("Getting ERC20 contract information...");
+        println!("Contract: {}", contract_address);
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        match engine.get_erc20_contract_info(contract_address) {
+            Ok(Some((name, symbol, decimals, total_supply))) => {
+                println!("📄 Contract Information:");
+                println!("  Name: {}", name);
+                println!("  Symbol: {}", symbol);
+                println!("  Decimals: {}", decimals);
+                println!("  Total Supply: {}", total_supply);
+            }
+            Ok(None) => {
+                println!("❌ ERC20 contract not found: {}", contract_address);
+            }
+            Err(e) => {
+                println!("❌ Error getting contract info: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cmd_erc20_list(&self) -> Result<()> {
+        use crate::smart_contract::{ContractEngine, ContractState};
+        
+        println!("Listing all deployed ERC20 contracts...");
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+        let state = ContractState::new(&data_context.contracts_db_path)?;
+        let engine = ContractEngine::new(state)?;
+
+        match engine.list_erc20_contracts() {
+            Ok(contracts) => {
+                if contracts.is_empty() {
+                    println!("No ERC20 contracts found.");
+                } else {
+                    println!("📋 Deployed ERC20 contracts:");
+                    for contract_address in contracts {
+                        println!("  📄 {}", contract_address);
+                        
+                        // Get additional info for each contract
+                        if let Ok(Some((name, symbol, decimals, total_supply))) = 
+                            engine.get_erc20_contract_info(&contract_address) {
+                            println!("     Name: {}, Symbol: {}", name, symbol);
+                            println!("     Decimals: {}, Supply: {}", decimals, total_supply);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                println!("❌ Error listing contracts: {}", e);
+            }
+        }
 
         Ok(())
     }

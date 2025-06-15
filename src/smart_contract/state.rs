@@ -172,4 +172,38 @@ impl ContractState {
 
         Ok(contracts)
     }
+
+    /// Store generic data with a key
+    pub fn store_data(&self, key: &str, data: &[u8]) -> Result<()> {
+        self.db.insert(key.as_bytes(), data)?;
+        self.db.flush()?;
+        Ok(())
+    }
+
+    /// Get generic data by key
+    pub fn get_data(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        if let Some(data) = self.db.get(key.as_bytes())? {
+            Ok(Some(data.to_vec()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Remove data by key
+    pub fn remove_data(&self, key: &str) -> Result<()> {
+        self.db.remove(key.as_bytes())?;
+        self.db.flush()?;
+        Ok(())
+    }
+
+    /// Scan for keys with a given prefix
+    pub fn scan_prefix(&self, prefix: &str) -> Result<Vec<String>> {
+        let mut keys = Vec::new();
+        for item in self.db.scan_prefix(prefix.as_bytes()) {
+            let (key, _) = item?;
+            let key_str = String::from_utf8(key.to_vec())?;
+            keys.push(key_str);
+        }
+        Ok(keys)
+    }
 }

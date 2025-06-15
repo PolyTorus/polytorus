@@ -17,6 +17,7 @@ use crate::smart_contract::types::{
     ContractResult,
     GasConfig,
 };
+use crate::smart_contract::erc20::ERC20Contract;
 use crate::Result;
 
 /// WASM contract execution engine
@@ -24,6 +25,7 @@ pub struct ContractEngine {
     engine: Engine,
     state: Arc<Mutex<ContractState>>,
     gas_config: GasConfig,
+    erc20_contracts: Arc<Mutex<HashMap<String, ERC20Contract>>>,
 }
 
 impl ContractEngine {
@@ -34,7 +36,282 @@ impl ContractEngine {
             engine,
             state: Arc::new(Mutex::new(state)),
             gas_config: GasConfig::default(),
+            erc20_contracts: Arc::new(Mutex::new(HashMap::new())),
         })
+    }
+
+    /// Deploy an ERC20 token contract
+    pub fn deploy_erc20_contract(
+        &self,
+        name: String,
+        symbol: String,
+        decimals: u8,
+        initial_supply: u64,
+        initial_owner: String,
+        contract_address: String,
+    ) -> Result<String> {
+        let contract = ERC20Contract::new(name, symbol, decimals, initial_supply, initial_owner);
+        
+        // Save to persistent storage
+        let state = self.state.lock().unwrap();
+        let contract_data = bincode::serialize(&contract.state)?;
+        state.store_data(&format!("erc20:{}", contract_address), &contract_data)?;
+        
+        // Also keep in memory
+        let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
+        erc20_contracts.insert(contract_address.clone(), contract);
+        
+        println!("ERC20 contract deployed at address: {}", contract_address);
+        Ok(contract_address)
+    }
+
+    /// Load ERC20 contract from storage
+    fn load_erc20_contract(&self, contract_address: &str) -> Result<Option<ERC20Contract>> {
+        // First check memory
+        {
+            let erc20_contracts = self.erc20_contracts.lock().unwrap();
+            if let Some(contract) = erc20_contracts.get(contract_address) {
+                return Ok(Some(contract.clone()));
+            }
+        }
+        
+        // Then check persistent storage
+        let state = self.state.lock().unwrap();
+        if let Some(contract_data) = state.get_data(&format!("erc20:{}", contract_address))? {
+            let erc20_state: crate::smart_contract::erc20::ERC20State = bincode::deserialize(&contract_data)?;
+            let contract = ERC20Contract {
+                state: erc20_state,
+                events: Vec::new(), // Events are not persisted
+            };
+            
+            // Cache in memory
+            drop(state);
+            let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
+            erc20_contracts.insert(contract_address.to_string(), contract.clone());
+            
+            Ok(Some(contract))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Execute an ERC20 contract function
+    pub fn execute_erc20_contract(
+        &self,
+        contract_address: &str,
+        function_name: &str,
+        caller: &str,
+        args: Vec<String>,
+    ) -> Result<ContractResult> {
+        // Load contract from storage or memory
+        let mut contract = match self.load_erc20_contract(contract_address)? {
+            Some(contract) => contract,
+            None => {
+                return Ok(ContractResult {
+                    success: false,
+                    return_value: b"ERC20 contract not found".to_vec(),
+                    gas_used: 500,
+                    logs: vec![format!("ERC20 contract not found: {}", contract_address)],
+                    state_changes: HashMap::new(),
+                });
+            }
+        };
+        
+        let result = match function_name {
+            "name" => Ok(ContractResult {
+                success: true,
+                return_value: contract.name().as_bytes().to_vec(),
+                gas_used: 500,
+                logs: vec![],
+                state_changes: HashMap::new(),
+            }),
+            "symbol" => Ok(ContractResult {
+                success: true,
+                return_value: contract.symbol().as_bytes().to_vec(),
+                gas_used: 500,
+                logs: vec![],
+                state_changes: HashMap::new(),
+            }),
+            "decimals" => Ok(ContractResult {
+                success: true,
+                return_value: contract.decimals().to_string().as_bytes().to_vec(),
+                gas_used: 500,
+                logs: vec![],
+                state_changes: HashMap::new(),
+            }),
+            "totalSupply" => Ok(ContractResult {
+                success: true,
+                return_value: contract.total_supply().to_string().as_bytes().to_vec(),
+                gas_used: 500,
+                logs: vec![],
+                state_changes: HashMap::new(),
+            }),
+            "balanceOf" => {
+                if args.is_empty() {
+                    return Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing owner address".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing owner address for balanceOf".to_string()],
+                        state_changes: HashMap::new(),
+                    });
+                }
+                let balance = contract.balance_of(&args[0]);
+                Ok(ContractResult {
+                    success: true,
+                    return_value: balance.to_string().as_bytes().to_vec(),
+                    gas_used: 800,
+                    logs: vec![],
+                    state_changes: HashMap::new(),
+                })
+            },
+            "allowance" => {
+                if args.len() < 2 {
+                    return Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing owner or spender address".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing owner or spender address for allowance".to_string()],
+                        state_changes: HashMap::new(),
+                    });
+                }
+                let allowance = contract.allowance(&args[0], &args[1]);
+                Ok(ContractResult {
+                    success: true,
+                    return_value: allowance.to_string().as_bytes().to_vec(),
+                    gas_used: 800,
+                    logs: vec![],
+                    state_changes: HashMap::new(),
+                })
+            },
+            "transfer" => {
+                if args.len() < 2 {
+                    Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing to address or amount".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing to address or amount for transfer".to_string()],
+                        state_changes: HashMap::new(),
+                    })
+                } else {
+                    let to = &args[0];
+                    let amount: u64 = args[1].parse().unwrap_or(0);
+                    contract.transfer(caller, to, amount)
+                }
+            },
+            "approve" => {
+                if args.len() < 2 {
+                    Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing spender address or amount".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing spender address or amount for approve".to_string()],
+                        state_changes: HashMap::new(),
+                    })
+                } else {
+                    let spender = &args[0];
+                    let amount: u64 = args[1].parse().unwrap_or(0);
+                    contract.approve(caller, spender, amount)
+                }
+            },
+            "transferFrom" => {
+                if args.len() < 3 {
+                    Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing from address, to address, or amount".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing from address, to address, or amount for transferFrom".to_string()],
+                        state_changes: HashMap::new(),
+                    })
+                } else {
+                    let from = &args[0];
+                    let to = &args[1];
+                    let amount: u64 = args[2].parse().unwrap_or(0);
+                    contract.transfer_from(caller, from, to, amount)
+                }
+            },
+            "mint" => {
+                if args.len() < 2 {
+                    Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing to address or amount".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing to address or amount for mint".to_string()],
+                        state_changes: HashMap::new(),
+                    })
+                } else {
+                    let to = &args[0];
+                    let amount: u64 = args[1].parse().unwrap_or(0);
+                    contract.mint(to, amount)
+                }
+            },
+            "burn" => {
+                if args.len() < 1 {
+                    Ok(ContractResult {
+                        success: false,
+                        return_value: b"Missing amount".to_vec(),
+                        gas_used: 500,
+                        logs: vec!["Missing amount for burn".to_string()],
+                        state_changes: HashMap::new(),
+                    })
+                } else {
+                    let amount: u64 = args[0].parse().unwrap_or(0);
+                    contract.burn(caller, amount)
+                }
+            },
+            _ => Ok(ContractResult {
+                success: false,
+                return_value: format!("Unknown function: {}", function_name).as_bytes().to_vec(),
+                gas_used: 500,
+                logs: vec![format!("Unknown ERC20 function: {}", function_name)],
+                state_changes: HashMap::new(),
+            }),
+        };
+
+        // Save updated contract state back to storage if the operation was successful
+        if let Ok(ref contract_result) = result {
+            if contract_result.success && !contract_result.state_changes.is_empty() {
+                let state = self.state.lock().unwrap();
+                let contract_data = bincode::serialize(&contract.state)?;
+                state.store_data(&format!("erc20:{}", contract_address), &contract_data)?;
+                
+                // Update memory cache
+                let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
+                erc20_contracts.insert(contract_address.to_string(), contract);
+            }
+        }
+
+        result
+    }
+
+    /// Get ERC20 contract information
+    pub fn get_erc20_contract_info(&self, contract_address: &str) -> Result<Option<(String, String, u8, u64)>> {
+        if let Some(contract) = self.load_erc20_contract(contract_address)? {
+            Ok(Some((
+                contract.name().to_string(),
+                contract.symbol().to_string(),
+                contract.decimals(),
+                contract.total_supply(),
+            )))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all ERC20 contracts
+    pub fn list_erc20_contracts(&self) -> Result<Vec<String>> {
+        let state = self.state.lock().unwrap();
+        let mut contracts = Vec::new();
+        
+        // Scan for ERC20 contracts in storage
+        let keys = state.scan_prefix("erc20:")?;
+        for key_str in keys {
+            if let Some(contract_address) = key_str.strip_prefix("erc20:") {
+                contracts.push(contract_address.to_string());
+            }
+        }
+        
+        Ok(contracts)
     }
 
     /// Deploy a smart contract

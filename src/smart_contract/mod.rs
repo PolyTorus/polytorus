@@ -4,11 +4,13 @@
 
 pub mod contract;
 pub mod engine;
+pub mod erc20;
 pub mod state;
 pub mod types;
 
 // Re-export commonly used types
 pub use contract::*;
 pub use engine::*;
+pub use erc20::*;
 pub use state::*;
 pub use types::*;
