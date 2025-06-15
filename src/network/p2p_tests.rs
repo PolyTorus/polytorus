@@ -62,7 +62,7 @@ mod tests {
             _ => panic!("Wrong event type"),
         }
     }
-    /// Test network command enumeration  
+    /// Test network command enumeration
     #[test]
     fn test_network_commands() {
         // Test with a valid NetworkCommand variant

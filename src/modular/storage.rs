@@ -3,17 +3,26 @@
 //! This module provides a modular storage layer that replaces legacy blockchain storage
 //! with a more flexible and independent storage system for the modular architecture.
 
+use std::collections::HashMap;
+use std::path::{
+    Path,
+    PathBuf,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+};
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 use super::traits::Hash;
 use crate::blockchain::block::Block;
-use crate::Result;
-
 #[cfg(test)]
 use crate::blockchain::block::TestFinalizedParams;
-
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use crate::Result;
 
 /// Storage configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +52,7 @@ impl Default for StorageConfig {
 pub struct ModularStorage {
     /// Block storage database
     block_db: sled::Db,
-    /// State storage database  
+    /// State storage database
     state_db: sled::Db,
     /// Index storage database
     index_db: sled::Db,
@@ -530,10 +539,11 @@ impl Default for StorageLayerBuilder {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
+
     use super::*;
     use crate::blockchain::block::Block;
     use crate::crypto::transaction::Transaction;
-    use tempfile::TempDir;
 
     fn create_test_block(height: i32) -> Block {
         let transactions =

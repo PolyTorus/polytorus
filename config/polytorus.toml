@@ -54,7 +54,7 @@ file_path = null            # null = no file logging
 max_file_size = 104857600   # 100MB
 rotation_count = 5
 
-# Storage Configuration  
+# Storage Configuration
 [storage]
 data_dir = "./data"
 max_cache_size = 1073741824 # 1GB

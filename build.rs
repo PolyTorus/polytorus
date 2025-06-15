@@ -5,7 +5,7 @@ use std::process::Command;
 fn main() {
     println!("cargo::rerun-if-changed=src/main.rs");
     println!("cargo::rerun-if-changed=build.rs");
-    
+
     // Enable Kani verification cfg
     println!("cargo::rustc-check-cfg=cfg(kani)");
 

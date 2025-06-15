@@ -3,19 +3,36 @@
 //! Provides message prioritization, rate limiting, and bandwidth management
 //! for efficient network communication.
 
-use crate::network::PeerId;
-use crate::Result;
-use failure::format_err;
-use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    collections::{
+        HashMap,
+        VecDeque,
+    },
+    sync::{
+        Arc,
+        Mutex,
+    },
+    time::{
+        Duration,
+        Instant,
+    },
+};
+
+use failure::format_err;
+use serde::{
+    Deserialize,
+    Serialize,
 };
 use tokio::{
-    sync::{RwLock, Semaphore},
+    sync::{
+        RwLock,
+        Semaphore,
+    },
     time::sleep,
 };
+
+use crate::network::PeerId;
+use crate::Result;
 
 /// Message priority levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -534,8 +551,9 @@ impl Default for QueueStats {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use uuid::Uuid;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_priority_queue() {

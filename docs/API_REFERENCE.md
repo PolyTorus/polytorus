@@ -443,7 +443,7 @@ use polytorus_sdk::PolyTorusClient;
 #[tokio::main]
 async fn main() {
     let client = PolyTorusClient::new("http://localhost:8000/api/v1");
-    
+
     let balance = client.get_balance("address").await.unwrap();
     println!("Balance: {}", balance);
 }
@@ -462,9 +462,9 @@ Returns a reference to the contract execution engine for direct smart contract o
 #### Execute Contract with Engine
 ```rust
 pub fn execute_contract_with_engine(
-    &self, 
-    contract_address: &str, 
-    function_name: &str, 
+    &self,
+    contract_address: &str,
+    function_name: &str,
     args: &[u8]
 ) -> Result<Vec<u8>>
 ```
@@ -511,7 +511,7 @@ pub fn validate_execution_context(&self) -> Result<bool>
 ```
 Validates the current execution context, checking:
 - Context ID validity
-- State root integrity  
+- State root integrity
 - Gas usage within limits
 - Pending changes consistency
 

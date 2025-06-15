@@ -1,6 +1,11 @@
 // Modern CLI integration
+use actix_web::{
+    post,
+    HttpResponse,
+    Responder,
+};
+
 use crate::command::cli::ModernCli;
-use actix_web::{post, HttpResponse, Responder};
 
 #[post("/list-addresses")]
 pub async fn list_addresses() -> impl Responder {

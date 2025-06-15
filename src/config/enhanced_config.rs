@@ -3,14 +3,19 @@
 //! This module provides comprehensive configuration management including
 //! network settings, environment variable overrides, and dynamic updates.
 
-use crate::Result;
-use failure::format_err;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
+
+use failure::format_err;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::Result;
 
 /// Complete configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

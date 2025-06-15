@@ -50,7 +50,7 @@ macro_rules! kani_verify_transaction_properties {
         assert!(!$tx.id.is_empty());
         assert!(!$tx.vin.is_empty());
         assert!(!$tx.vout.is_empty());
-        
+
         // Verify all inputs have valid properties
         for input in &$tx.vin {
             assert!(!input.txid.is_empty());
@@ -58,7 +58,7 @@ macro_rules! kani_verify_transaction_properties {
             assert!(!input.signature.is_empty());
             assert!(!input.pub_key.is_empty());
         }
-        
+
         // Verify all outputs have valid properties
         for output in &$tx.vout {
             assert!(output.value >= 0);
@@ -75,7 +75,7 @@ macro_rules! kani_verify_block_properties {
         assert!($block.timestamp > 0);
         assert!($block.height >= 0);
         assert!($block.prev_hash.len() == 32);
-        
+
         // Verify all transactions in the block
         for tx in &$block.transactions {
             kani_verify_transaction_properties!(tx);
@@ -89,11 +89,11 @@ macro_rules! kani_verify_mining_stats_properties {
     ($stats:expr) => {
         assert!($stats.total_attempts >= $stats.successful_mines);
         assert!($stats.recent_block_times.len() <= 10); // Bounded size
-        
+
         if $stats.successful_mines > 0 {
             assert!($stats.avg_mining_time > 0);
         }
-        
+
         let success_rate = $stats.success_rate();
         assert!(success_rate >= 0.0 && success_rate <= 1.0);
     };

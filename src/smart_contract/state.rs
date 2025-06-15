@@ -1,10 +1,15 @@
 //! Smart contract state management
 
+use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use sled;
+
 use crate::smart_contract::types::ContractMetadata;
 use crate::Result;
-use serde::{Deserialize, Serialize};
-use sled;
-use std::collections::HashMap;
 
 /// Contract state storage
 #[derive(Debug, Clone)]

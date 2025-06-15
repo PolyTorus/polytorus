@@ -11,7 +11,7 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 - **[CLI Commands](CLI_COMMANDS.md)** - Complete command-line interface reference
 - **[Configuration](CONFIGURATION.md)** - System configuration and setup
 
-### Architecture & Design  
+### Architecture & Design
 - **[Modular Architecture](MODULAR_ARCHITECTURE.md)** - Core modular design principles and implementation
 - **[Network Architecture](NETWORK_ARCHITECTURE.md)** - ⭐ **NEW** Advanced P2P networking and message prioritization
 - **[Modular First](MODULAR_FIRST.md)** - Philosophy and advantages of modular-first approach
@@ -44,7 +44,7 @@ This directory contains comprehensive documentation for the PolyTorus modular bl
 
 ### Updated Documentation
 - **[Modular Architecture](MODULAR_ARCHITECTURE.md)** - Updated with recent improvements and enhanced API details
-- **[Development Guide](DEVELOPMENT.md)** - Added code quality section and warning elimination best practices  
+- **[Development Guide](DEVELOPMENT.md)** - Added code quality section and warning elimination best practices
 - **[API Reference](API_REFERENCE.md)** - Expanded with new execution layer methods and examples
 
 ## 🎯 Quick Reference by Role

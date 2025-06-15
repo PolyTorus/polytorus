@@ -6,14 +6,20 @@
 pub mod enhanced_config;
 
 // Re-export commonly used types
+use std::path::PathBuf;
+
 pub use enhanced_config::{
-    CompleteConfig, ConfigManager, ConsensusConfig, ExecutionConfig, LoggingConfig, NetworkConfig,
+    CompleteConfig,
+    ConfigManager,
+    ConsensusConfig,
+    ExecutionConfig,
+    LoggingConfig,
+    NetworkConfig,
     StorageConfig,
 };
 
 // Legacy compatibility - maintain existing DataContext structure
 use crate::Result;
-use std::path::PathBuf;
 
 /// Data context for legacy compatibility
 #[derive(Debug, Clone)]

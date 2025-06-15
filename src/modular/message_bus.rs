@@ -3,12 +3,17 @@
 //! This module provides a flexible message bus system for communication
 //! between different layers of the modular blockchain.
 
-use super::traits::*;
-use crate::Result;
-
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc, RwLock};
+
+use tokio::sync::{
+    broadcast,
+    mpsc,
+    RwLock,
+};
+
+use super::traits::*;
+use crate::Result;
 
 /// Message bus for inter-layer communication
 pub struct ModularMessageBus {

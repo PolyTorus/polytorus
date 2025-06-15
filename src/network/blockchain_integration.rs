@@ -3,17 +3,36 @@
 //! This module integrates the blockchain with the P2P network layer,
 //! handling block propagation, transaction broadcasting, and network consensus.
 
-use crate::blockchain::block::FinalizedBlock;
-use crate::crypto::transaction::Transaction;
-use crate::network::p2p_enhanced::{EnhancedP2PNode, NetworkCommand, NetworkEvent, PeerId};
-use crate::Result;
+use std::collections::{
+    HashMap,
+    VecDeque,
+};
+use std::sync::{
+    Arc,
+    Mutex,
+};
+use std::time::{
+    Duration,
+    SystemTime,
+    UNIX_EPOCH,
+};
 
 use failure::format_err;
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{
+    mpsc,
+    RwLock,
+};
 use tokio::time::interval;
+
+use crate::blockchain::block::FinalizedBlock;
+use crate::crypto::transaction::Transaction;
+use crate::network::p2p_enhanced::{
+    EnhancedP2PNode,
+    NetworkCommand,
+    NetworkEvent,
+    PeerId,
+};
+use crate::Result;
 
 /// Network-integrated blockchain node
 pub struct NetworkedBlockchainNode {

@@ -4,21 +4,31 @@
 //! from both the legacy and enhanced implementations, providing a clean
 //! trait-based architecture with comprehensive event handling.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use failure;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use tokio::sync::{
+    mpsc,
+    Mutex as AsyncMutex,
+    RwLock,
+};
+
 use super::config_manager::ModularConfigManager;
 use super::layer_factory::ModularLayerFactory;
 use super::message_bus::ModularMessageBus;
 use super::traits::*;
-
 use crate::blockchain::block::Block;
-use crate::blockchain::types::{block_states, network};
+use crate::blockchain::types::{
+    block_states,
+    network,
+};
 use crate::network::blockchain_integration::NetworkedBlockchainNode;
 use crate::Result;
-
-use failure;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex as AsyncMutex, RwLock};
 
 /// Unified Modular Blockchain Orchestrator with P2P Network Integration
 ///

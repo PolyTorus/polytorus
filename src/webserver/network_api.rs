@@ -3,11 +3,26 @@
 //! RESTful API endpoints for network health monitoring, peer management,
 //! and message queue statistics using Actix-web.
 
-use crate::network::{NetworkCommand, PeerId};
-use actix_web::{delete, get, post, web, HttpResponse, Result as ActixResult};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+use actix_web::{
+    delete,
+    get,
+    post,
+    web,
+    HttpResponse,
+    Result as ActixResult,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::sync::mpsc;
+
+use crate::network::{
+    NetworkCommand,
+    PeerId,
+};
 
 /// Network health response
 #[derive(Debug, Serialize, Deserialize)]

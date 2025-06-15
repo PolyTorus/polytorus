@@ -1,7 +1,14 @@
 //! Simple difficulty adjustment test
 
-use polytorus::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
-use polytorus::blockchain::types::{block_states, network};
+use polytorus::blockchain::block::{
+    Block,
+    DifficultyAdjustmentConfig,
+    MiningStats,
+};
+use polytorus::blockchain::types::{
+    block_states,
+    network,
+};
 use polytorus::crypto::transaction::Transaction;
 
 fn main() -> polytorus::Result<()> {

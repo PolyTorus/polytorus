@@ -242,7 +242,7 @@ This TPS benchmarking foundation enables data-driven optimization decisions, ens
 
 ---
 
-**Report Generated**: June 9, 2025  
-**Next Review**: July 9, 2025  
-**Benchmark Version**: 1.0  
+**Report Generated**: June 9, 2025
+**Next Review**: July 9, 2025
+**Benchmark Version**: 1.0
 **Contact**: PolyTorus Development Team

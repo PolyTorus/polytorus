@@ -173,7 +173,7 @@ pub fn create_transaction() -> Result<Transaction, TransactionError> {
 pub enum TransactionError {
     #[error("Insufficient balance: required {required}, available {available}")]
     InsufficientBalance { required: u64, available: u64 },
-    
+
     #[error("Invalid signature")]
     InvalidSignature,
 }
@@ -182,17 +182,17 @@ pub enum TransactionError {
 #### 2. Documentation
 ```rust
 /// Calculate the dynamic difficulty based on recent block times
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `recent_blocks` - Slice of recent finalized blocks for analysis
-/// 
+///
 /// # Returns
-/// 
+///
 /// New difficulty value clamped between min and max difficulty
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// let difficulty = block.calculate_dynamic_difficulty(&recent_blocks);
 /// assert!(difficulty >= 1);
@@ -207,13 +207,13 @@ pub fn calculate_dynamic_difficulty(&self, recent_blocks: &[&Block<Finalized, N>
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_block_creation() {
         let block = Block::new_building(vec![], "prev_hash".to_string(), 1, 4);
         assert_eq!(block.get_height(), 1);
     }
-    
+
     #[tokio::test]
     async fn test_async_operation() {
         // Async test implementation
@@ -338,14 +338,14 @@ use log::{debug, info, warn, error};
 pub fn mine_block(&mut self) -> Result<Block> {
     info!("Starting to mine block at height {}", self.height);
     debug!("Mining parameters: difficulty={}, nonce={}", self.difficulty, self.nonce);
-    
+
     while !self.validate_pow()? {
         self.nonce += 1;
         if self.nonce % 10000 == 0 {
             debug!("Mining progress: nonce={}", self.nonce);
         }
     }
-    
+
     info!("Block mined successfully: hash={}", self.hash);
     Ok(self)
 }
@@ -490,7 +490,7 @@ impl PluginManager {
     pub fn register_plugin(&mut self, plugin: Box<dyn Plugin>) {
         self.plugins.push(plugin);
     }
-    
+
     pub fn execute_all(&self, context: &Context) -> Result<()> {
         for plugin in &self.plugins {
             plugin.execute(context)?;
@@ -514,7 +514,7 @@ pub struct CustomProtocolHandler;
 
 impl ProtocolHandler for CustomProtocolHandler {
     type Message = CustomMessage;
-    
+
     fn handle_message(&mut self, msg: Self::Message) -> Result<()> {
         match msg {
             CustomMessage::CustomRequest { data } => {
@@ -681,11 +681,11 @@ impl MyStruct {
     pub fn get_used_field(&self) -> &str {
         &self.used_field
     }
-    
+
     pub fn get_unused_field(&self) -> u64 {
         self.unused_field  // Now it's used!
     }
-    
+
     pub fn validate(&self) -> bool {
         !self.used_field.is_empty() && self.unused_field > 0
     }
@@ -703,8 +703,8 @@ pub fn validate_execution_context(&self) -> Result<bool> {
         let _initial_state_root = &ctx.initial_state_root;
         let _pending_changes = &ctx.pending_changes;
         let _gas_used = ctx.gas_used;
-        
-        Ok(!ctx.context_id.is_empty() 
+
+        Ok(!ctx.context_id.is_empty()
            && !ctx.initial_state_root.is_empty()
            && ctx.gas_used <= 1_000_000)
     } else {
@@ -744,7 +744,7 @@ src/command/
 #[test]
 fn test_configuration_validation() { /* ... */ }
 
-#[test] 
+#[test]
 fn test_invalid_configuration_handling() { /* ... */ }
 
 #[test]
@@ -812,7 +812,7 @@ cargo test cli_tests
 # Configuration tests
 cargo test test_configuration
 
-# Wallet operation tests  
+# Wallet operation tests
 cargo test test_wallet
 
 # Modular system tests
@@ -832,7 +832,7 @@ cargo test cli_tests -- --nocapture --test-threads=1
 #[test]
 fn test_wallet_creation_invalid_type_should_fail() { /* ... */ }
 
-#[test] 
+#[test]
 fn test_modular_start_missing_config_should_use_defaults() { /* ... */ }
 ```
 
@@ -843,14 +843,14 @@ fn test_feature_scenario() {
     // Arrange: Set up test environment
     let config = create_test_config();
     let temp_dir = setup_temp_directory();
-    
+
     // Act: Execute the operation
     let result = execute_cli_command(&config, &temp_dir);
-    
+
     // Assert: Verify expected outcomes
     assert!(result.is_ok());
     validate_expected_state(&temp_dir);
-    
+
     // Cleanup: Clean up test resources
     cleanup_temp_directory(temp_dir);
 }
@@ -863,14 +863,14 @@ fn create_test_config() -> Config {
     let toml_content = r#"
         [blockchain]
         difficulty = 4
-        
+
         [network]
         port = 8333
-        
+
         [modular]
         enable_all_layers = true
     "#;
-    
+
     toml::from_str(toml_content).expect("Valid test configuration")
 }
 ```

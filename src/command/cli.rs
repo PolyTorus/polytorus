@@ -1,12 +1,19 @@
 //! Modern CLI - Unified Modular Architecture Only
 
+use clap::{
+    App,
+    Arg,
+};
+
 use crate::config::ConfigManager;
 use crate::config::DataContext;
 use crate::crypto::types::EncryptionType;
 use crate::crypto::wallets::*;
-use crate::modular::{default_modular_config, UnifiedModularOrchestrator};
+use crate::modular::{
+    default_modular_config,
+    UnifiedModularOrchestrator,
+};
 use crate::Result;
-use clap::{App, Arg};
 
 pub struct ModernCli {}
 

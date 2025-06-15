@@ -7,7 +7,7 @@ use diamond_io::{
     },
     poly::{
         dcrt::{
-            DCRTPoly, DCRTPolyMatrix, DCRTPolyParams, 
+            DCRTPoly, DCRTPolyMatrix, DCRTPolyParams,
             DCRTPolyUniformSampler, DCRTPolyHashSampler, DCRTPolyTrapdoorSampler,
         },
         sampler::{DistType, PolyHashSampler, PolyTrapdoorSampler},
@@ -181,7 +181,7 @@ impl DiamondIOIntegration {
     /// Create a demo circuit for testing
     pub fn create_demo_circuit(&self) -> PolyCircuit {
         let mut circuit = PolyCircuit::new();
-        
+
         if self.config.dummy_mode {
             // Simple circuit for dummy mode
             let inputs = circuit.input(2);
@@ -193,14 +193,14 @@ impl DiamondIOIntegration {
             }
             return circuit;
         }
-        
+
         // Real mode: Create more sophisticated circuits
         let input_count = std::cmp::min(self.config.input_size, 16);
         let inputs = circuit.input(input_count);
-        
+
         if inputs.len() >= 2 {
             let mut result = inputs[0];
-            
+
             for i in 1..inputs.len() {
                 if i % 2 == 1 {
                     result = circuit.add_gate(result, inputs[i]);
@@ -208,10 +208,10 @@ impl DiamondIOIntegration {
                     result = circuit.mul_gate(result, inputs[i]);
                 }
             }
-            
+
             circuit.output(vec![result]);
         }
-        
+
         circuit
     }
 
@@ -226,7 +226,7 @@ impl DiamondIOIntegration {
         }
 
         info!("Starting real Diamond IO circuit obfuscation...");
-        
+
         let dir = Path::new(&self.obfuscation_dir);
         if dir.exists() {
             fs::remove_dir_all(dir).unwrap_or_else(|e| {
@@ -258,7 +258,7 @@ impl DiamondIOIntegration {
         // Generate hardcoded key
         let sampler_uniform = DCRTPolyUniformSampler::new();
         let hardcoded_key = sampler_uniform.sample_poly(&self.params, &DistType::BitDist);
-        
+
         // Clone for async task
         let obf_params_clone = obf_params.clone();
         let dir_clone = dir.to_path_buf();
@@ -270,9 +270,9 @@ impl DiamondIOIntegration {
             rt.block_on(async {
                 // Create seeded RNG for reproducible results
                 let mut rng = ChaCha20Rng::seed_from_u64(42);
-                
+
                 info!("Calling real Diamond IO obfuscate function...");
-                
+
                 // Call actual Diamond IO obfuscation
                 obfuscate::<
                     DCRTPolyMatrix,
@@ -282,7 +282,7 @@ impl DiamondIOIntegration {
                     _,
                     _,
                 >(obf_params_clone, hardcoded_key, &mut rng, &dir_clone).await;
-                
+
                 info!("Real Diamond IO obfuscation completed successfully");
             })
         }).await?;
@@ -303,7 +303,7 @@ impl DiamondIOIntegration {
 
         info!("Starting real Diamond IO circuit evaluation...");
         let start_time = std::time::Instant::now();
-        
+
         let dir = Path::new(&self.obfuscation_dir);
         if !dir.exists() {
             return Err(anyhow::anyhow!("Obfuscation data not found. Please run obfuscate_circuit first."));
@@ -334,7 +334,7 @@ impl DiamondIOIntegration {
         // Perform real Diamond IO evaluation
         let evaluation_result = tokio::task::spawn_blocking(move || {
             info!("Calling real Diamond IO evaluate function...");
-            
+
             // Call actual Diamond IO evaluation
             let output = evaluate::<
                 DCRTPolyMatrix,
@@ -342,7 +342,7 @@ impl DiamondIOIntegration {
                 DCRTPolyTrapdoorSampler,
                 _,
             >(obf_params_clone, &inputs_clone, &dir_clone);
-            
+
             info!("Real Diamond IO evaluation completed successfully");
             output
         }).await?;
@@ -356,7 +356,7 @@ impl DiamondIOIntegration {
     /// Simulate circuit evaluation for dummy mode or fallback
     fn simulate_circuit_evaluation(&self, inputs: &[bool]) -> anyhow::Result<Vec<bool>> {
         info!("Simulating circuit evaluation...");
-        
+
         // Simple simulation: XOR all inputs
         let result = inputs.iter().fold(false, |acc, &x| acc ^ x);
         Ok(vec![result])
@@ -397,7 +397,7 @@ mod tests {
         let config = DiamondIOConfig::default();
         let integration = DiamondIOIntegration::new(config).unwrap();
         let circuit = integration.create_demo_circuit();
-        
+
         assert!(circuit.num_input() > 0);
         assert!(circuit.num_output() > 0);
     }
@@ -406,7 +406,7 @@ mod tests {
     async fn test_dummy_mode_obfuscation() {
         let config = DiamondIOConfig::dummy();
         let integration = DiamondIOIntegration::new(config).unwrap();
-        
+
         let circuit = integration.create_demo_circuit();
         let result = integration.obfuscate_circuit(circuit).await;
         assert!(result.is_ok());
@@ -416,7 +416,7 @@ mod tests {
     async fn test_dummy_mode_evaluation() {
         let config = DiamondIOConfig::dummy();
         let integration = DiamondIOIntegration::new(config).unwrap();
-        
+
         let inputs = vec![true, false, true, false];
         let result = integration.evaluate_circuit(&inputs).await;
         assert!(result.is_ok());

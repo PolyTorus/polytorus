@@ -1,16 +1,41 @@
 //! Verkle Tree implementation for efficient state commitment and proofs
 
-use ark_ec::{CurveGroup, PrimeGroup};
-use ark_ed_on_bls12_381::{EdwardsAffine, EdwardsProjective, Fr};
+use std::fmt;
+
+use ark_ec::{
+    CurveGroup,
+    PrimeGroup,
+};
+use ark_ed_on_bls12_381::{
+    EdwardsAffine,
+    EdwardsProjective,
+    Fr,
+};
 #[cfg(test)]
 use ark_ff::One;
-use ark_ff::{PrimeField, Zero};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{collections::BTreeMap, vec::Vec};
+use ark_ff::{
+    PrimeField,
+    Zero,
+};
+use ark_serialize::{
+    CanonicalDeserialize,
+    CanonicalSerialize,
+};
+use ark_std::{
+    collections::BTreeMap,
+    vec::Vec,
+};
 use blake3;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
-use tiny_keccak::{Hasher, Keccak};
+use serde::{
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
+use tiny_keccak::{
+    Hasher,
+    Keccak,
+};
 
 /// Width of the Verkle tree (number of children per node)
 pub const VERKLE_WIDTH: usize = 256;

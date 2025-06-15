@@ -1,6 +1,6 @@
 # Makefile for Polytorus Kani Verification
 
-.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular help
+.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify kani-dev kani-list kani-check dep-check kani-ci help
 
 # Colors for output
 BLUE := \033[0;34m
@@ -101,29 +101,6 @@ kani-performance: kani-setup
 	cd kani-verification && timeout 120 cargo kani --harness verify_hash_determinism
 	cd kani-verification && timeout 120 cargo kani --harness verify_synchronization_mechanism
 	@echo "$(GREEN)Performance verification complete!$(NC)"
-	cargo kani --harness verify_encryption_type_determination
-	cargo kani --harness verify_mining_stats
-	cargo kani --harness verify_layer_state_transitions
-	@echo "$(GREEN)Quick verification complete!$(NC)"
-
-# Run cryptographic verifications only
-kani-crypto: kani-setup
-	@echo "$(BLUE)Running cryptographic verifications...$(NC)"
-	@mkdir -p verification_results
-	-cargo kani --harness verify_ecdsa_sign_verify 2>&1 | tee verification_results/ecdsa.log
-	-cargo kani --harness verify_encryption_type_determination 2>&1 | tee verification_results/encryption_type.log
-	-cargo kani --harness verify_transaction_integrity 2>&1 | tee verification_results/transaction_integrity.log
-	-cargo kani --harness verify_transaction_value_bounds 2>&1 | tee verification_results/transaction_bounds.log
-	@echo "$(GREEN)Cryptographic verifications complete!$(NC)"
-
-# Run blockchain verifications only
-# Clean verification results
-kani-clean:
-	@echo "$(BLUE)Cleaning verification results...$(NC)"
-	rm -rf verification_results/
-	rm -rf kani-verification/kani_results/
-	rm -rf kani-verification/target/kani/
-	@echo "$(GREEN)Verification results cleaned!$(NC)"
 
 # Watch mode for continuous verification during development
 kani-watch: kani-setup
@@ -153,17 +130,6 @@ pre-commit: kani-quick
 # CI workflow - comprehensive verification
 ci-verify: kani-verify kani-report
 	@echo "$(GREEN)CI verification workflow complete!$(NC)"
-	-cargo kani --harness verify_layer_state_transitions 2>&1 | tee verification_results/layer_states.log
-	-cargo kani --harness verify_message_bus_capacity 2>&1 | tee verification_results/message_bus.log
-	-cargo kani --harness verify_orchestrator_coordination 2>&1 | tee verification_results/orchestrator.log
-	-cargo kani --harness verify_data_availability_properties 2>&1 | tee verification_results/data_availability.log
-	@echo "$(GREEN)Modular architecture verifications complete!$(NC)"
-
-# Clean verification results
-kani-clean:
-	@echo "$(YELLOW)Cleaning verification results...$(NC)"
-	rm -rf verification_results
-	@echo "$(GREEN)Clean complete!$(NC)"
 
 # Development targets
 .PHONY: kani-dev kani-list kani-check

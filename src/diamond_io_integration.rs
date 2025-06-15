@@ -3,8 +3,12 @@
 //! This module provides integration with Diamond IO cryptographic operations
 //! for advanced privacy-preserving smart contracts.
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Diamond IO configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,7 +78,7 @@ impl DiamondCircuit {
         self.input_size
     }
 
-    /// Get number of outputs  
+    /// Get number of outputs
     pub fn num_output(&self) -> usize {
         self.output_size
     }

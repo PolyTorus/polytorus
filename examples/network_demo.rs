@@ -3,8 +3,14 @@
 //! This demonstrates the working implementation of the PolyTorus blockchain
 //! with integrated P2P networking, transaction propagation, and block synchronization.
 
-use polytorus::config::{ConfigManager, DataContext};
-use polytorus::modular::{default_modular_config, UnifiedModularOrchestrator};
+use polytorus::config::{
+    ConfigManager,
+    DataContext,
+};
+use polytorus::modular::{
+    default_modular_config,
+    UnifiedModularOrchestrator,
+};
 use polytorus::Result;
 
 #[tokio::main]

@@ -106,7 +106,7 @@ PolyTorus implements a revolutionary **modular blockchain architecture** that se
 - Challenge period management
 - Validator stake management and slashing
 
-### 🤝 **Consensus Layer** 
+### 🤝 **Consensus Layer**
 - Pluggable consensus mechanisms (currently PoW, designed for PoS)
 - Block validation and chain management
 - Validator set management
@@ -344,7 +344,7 @@ PolyTorus includes cutting-edge Diamond IO integration, bringing **indistinguish
 - `test_diamond_io_integration_basic` ✓
 - `test_diamond_io_with_production_params` ✓ (real parameters)
 - `test_diamond_io_obfuscation_with_real_params` ✓ (real obfuscation)
-- `test_smart_contract_engine` ✓ 
+- `test_smart_contract_engine` ✓
 - `test_modular_layer_integration` ✓
 - `test_multiple_contract_types` ✓
 - `test_diamond_io_config_serialization` ✓
@@ -452,7 +452,7 @@ let config = DiamondIOConfig::production();
 ### Performance Characteristics
 
 - **Dummy Mode**: Instant operations, perfect for development
-- **Testing Mode**: ~1ms obfuscation, ~0.5ms evaluation  
+- **Testing Mode**: ~1ms obfuscation, ~0.5ms evaluation
 - **Production Mode**: ~1-2ms obfuscation, robust error handling with fallbacks
 - **Memory Usage**: Scales with ring dimension (16MB for testing, 256MB for production)
 - **Computation**: Parallelized operations using `rayon` for performance

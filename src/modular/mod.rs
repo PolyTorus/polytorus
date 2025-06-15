@@ -6,9 +6,10 @@
 //! pluggable implementations, sophisticated configuration management, and
 //! event-driven communication between layers.
 
-use crate::Result;
 use std::fs;
 use std::path::Path;
+
+use crate::Result;
 
 // Core modular components
 pub mod consensus;
@@ -32,47 +33,92 @@ pub mod unified_orchestrator;
 pub mod kani_verification;
 
 // Re-export main types and traits
+// Supporting modular components exports
+pub use config_manager::{
+    create_config_templates,
+    ConfigTemplate,
+    ModularConfigManager,
+    UseCase,
+    ValidationResult,
+};
 pub use consensus::PolyTorusConsensusLayer;
 pub use data_availability::PolyTorusDataAvailabilityLayer;
 pub use diamond_io_layer::{
-    DiamondIOLayer, DiamondIOLayerConfig, DiamondIOLayerFactory, DiamondIOMessage, DiamondIOStats,
+    DiamondIOLayer,
+    DiamondIOLayerConfig,
+    DiamondIOLayerFactory,
+    DiamondIOMessage,
+    DiamondIOStats,
 };
-pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
+pub use eutxo_processor::{
+    EUtxoProcessor,
+    EUtxoProcessorConfig,
+    UtxoState,
+    UtxoStats,
+};
 pub use execution::PolyTorusExecutionLayer;
-pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
-pub use settlement::PolyTorusSettlementLayer;
-pub use storage::{
-    BlockMetadata, ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats,
-};
-pub use traits::*;
-pub use transaction_processor::{
-    ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
-    TransactionResult,
-};
-
-// Main unified orchestrator exports
-pub use unified_orchestrator::{
-    AlertSeverity, ExecutionEventResult, LayerMetrics, LayerStatus, OrchestratorMetrics,
-    OrchestratorState, UnifiedEvent, UnifiedModularOrchestrator, UnifiedOrchestratorBuilder,
-};
-
-// Re-export configuration types for external use
-pub use traits::{
-    ConsensusConfig, DataAvailabilityConfig, ExecutionConfig, ModularConfig, NetworkConfig,
-    SettlementConfig, WasmConfig,
-};
-
-// Supporting modular components exports
-pub use config_manager::{
-    create_config_templates, ConfigTemplate, ModularConfigManager, UseCase, ValidationResult,
-};
 pub use layer_factory::{
-    create_default_enhanced_config, EnhancedModularConfig, GlobalConfig, LayerConfig,
-    LayerImplementation, ModularLayerFactory, PerformanceMode,
+    create_default_enhanced_config,
+    EnhancedModularConfig,
+    GlobalConfig,
+    LayerConfig,
+    LayerImplementation,
+    ModularLayerFactory,
+    PerformanceMode,
 };
 pub use message_bus::{
-    HealthStatus, LayerInfo, LayerType, MessageBuilder, MessagePayload, MessagePriority,
-    MessageType, ModularMessage, ModularMessageBus,
+    HealthStatus,
+    LayerInfo,
+    LayerType,
+    MessageBuilder,
+    MessagePayload,
+    MessagePriority,
+    MessageType,
+    ModularMessage,
+    ModularMessageBus,
+};
+pub use network::{
+    ModularNetwork,
+    ModularNetworkConfig,
+    ModularNetworkStats,
+};
+pub use settlement::PolyTorusSettlementLayer;
+pub use storage::{
+    BlockMetadata,
+    ModularStorage,
+    StorageConfig,
+    StorageLayer,
+    StorageLayerBuilder,
+    StorageStats,
+};
+pub use traits::*;
+// Re-export configuration types for external use
+pub use traits::{
+    ConsensusConfig,
+    DataAvailabilityConfig,
+    ExecutionConfig,
+    ModularConfig,
+    NetworkConfig,
+    SettlementConfig,
+    WasmConfig,
+};
+pub use transaction_processor::{
+    ModularTransactionProcessor,
+    ProcessorAccountState,
+    TransactionProcessorConfig,
+    TransactionResult,
+};
+// Main unified orchestrator exports
+pub use unified_orchestrator::{
+    AlertSeverity,
+    ExecutionEventResult,
+    LayerMetrics,
+    LayerStatus,
+    OrchestratorMetrics,
+    OrchestratorState,
+    UnifiedEvent,
+    UnifiedModularOrchestrator,
+    UnifiedOrchestratorBuilder,
 };
 
 #[cfg(test)]

@@ -1,4 +1,7 @@
-use polytorus::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
+use polytorus::diamond_io_integration::{
+    DiamondIOConfig,
+    DiamondIOIntegration,
+};
 
 #[tokio::test]
 async fn test_basic_integration() {

@@ -2,15 +2,30 @@
 //!
 //! This layer provides Diamond IO cryptographic operations integration.
 
-use crate::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
-use crate::modular::message_bus::MessageBus;
-use crate::modular::traits::{Layer, LayerMessage};
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use anyhow::Result;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{
+    error,
+    info,
+    warn,
+};
+
+use crate::diamond_io_integration::{
+    DiamondIOConfig,
+    DiamondIOIntegration,
+};
+use crate::modular::message_bus::MessageBus;
+use crate::modular::traits::{
+    Layer,
+    LayerMessage,
+};
 
 /// Diamond IO Layer message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -276,8 +291,9 @@ impl DiamondIOLayerFactory {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tokio;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_diamond_io_layer_creation() {

@@ -3,6 +3,9 @@
 //! A simplified demo showcasing the core modular components working together
 //! without potentially blocking async operations.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use polytorus::modular::{
     create_config_templates,
 
@@ -31,9 +34,6 @@ use polytorus::modular::{
     SettlementConfig,
     WasmConfig,
 };
-
-use std::collections::HashMap;
-use std::sync::Arc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging

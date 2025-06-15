@@ -87,7 +87,7 @@ impl PriorityMessageQueue {
         // 3. Insert into appropriate priority queue
         // 4. Update statistics
     }
-    
+
     pub fn dequeue(&mut self) -> Option<PrioritizedMessage> {
         // 1. Process expired messages
         // 2. Find highest priority available message

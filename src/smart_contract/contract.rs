@@ -1,12 +1,20 @@
 //! Smart contract definition and management
 
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
+use crypto::digest::Digest;
+use crypto::sha2::Sha256;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 use crate::smart_contract::state::ContractState;
 use crate::smart_contract::types::ContractMetadata;
 use crate::Result;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Smart contract representation
 #[derive(Debug, Clone, Serialize, Deserialize)]

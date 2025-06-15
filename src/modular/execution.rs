@@ -3,20 +3,34 @@
 //! This module implements the execution layer for the modular blockchain,
 //! handling transaction execution and state management.
 
-use super::eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig};
+use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    Mutex,
+};
+
+use super::eutxo_processor::{
+    EUtxoProcessor,
+    EUtxoProcessorConfig,
+};
 use super::traits::*;
 use super::transaction_processor::{
-    ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
+    ModularTransactionProcessor,
+    ProcessorAccountState,
+    TransactionProcessorConfig,
 };
 use crate::blockchain::block::Block;
 use crate::config::DataContext;
 use crate::crypto::transaction::Transaction;
-use crate::smart_contract::types::{ContractDeployment, ContractExecution};
-use crate::smart_contract::{ContractEngine, ContractState};
+use crate::smart_contract::types::{
+    ContractDeployment,
+    ContractExecution,
+};
+use crate::smart_contract::{
+    ContractEngine,
+    ContractState,
+};
 use crate::Result;
-
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 /// Execution layer implementation
 pub struct PolyTorusExecutionLayer {

@@ -7,7 +7,7 @@ Design PolyTorus as a modular blockchain to build an architecture where each lay
 
 ### 1. Execution Layer
 - **Role**: Transaction execution and smart contract processing
-- **Responsibilities**: 
+- **Responsibilities**:
   - State transition logic
   - WASM execution environment
   - Gas metering and resource management
@@ -151,7 +151,7 @@ As of June 2025, the PolyTorus codebase has been significantly improved through 
 
 #### Achievements
 - ✅ **Zero Compiler Warnings**: All unused field/variable warnings eliminated
-- ✅ **77/77 Tests Passing**: Full test suite maintained during refactoring  
+- ✅ **77/77 Tests Passing**: Full test suite maintained during refactoring
 - ✅ **Functional Enhancement**: Unused code converted to practical APIs
 
 #### Key Improvements
@@ -162,7 +162,7 @@ As of June 2025, the PolyTorus codebase has been significantly improved through 
 - Enhanced contract execution capabilities with engine integration
 - Added transaction processing pipeline with comprehensive state management
 
-**2. Network Layer Enhancement**  
+**2. Network Layer Enhancement**
 - Implemented peer management using previously unused `PeerInfo` fields
 - Added connection time tracking and peer address management
 - Enhanced network statistics and peer discovery capabilities

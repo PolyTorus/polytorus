@@ -4,30 +4,66 @@
 //! with features like peer discovery, message broadcasting, transaction propagation,
 //! network resilience, network management, and message prioritization.
 
-use crate::blockchain::block::{Block, FinalizedBlock};
-use crate::crypto::transaction::Transaction;
-use crate::network::{
-    message_priority::{MessagePriority, PrioritizedMessage, PriorityMessageQueue},
-    network_manager::{NetworkManager, NetworkManagerConfig, PeerInfo as NetPeerInfo},
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+    },
+    net::SocketAddr,
+    sync::{
+        Arc,
+        Mutex,
+    },
+    time::{
+        Duration,
+        Instant,
+        SystemTime,
+        UNIX_EPOCH,
+    },
 };
-use crate::Result;
 
 use bincode;
 use failure::format_err;
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+use serde::{
+    Deserialize,
+    Serialize,
 };
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
+    io::{
+        AsyncReadExt,
+        AsyncWriteExt,
+    },
+    net::{
+        TcpListener,
+        TcpStream,
+    },
     sync::mpsc,
-    time::{interval, timeout},
+    time::{
+        interval,
+        timeout,
+    },
 };
 use uuid::Uuid;
+
+use crate::blockchain::block::{
+    Block,
+    FinalizedBlock,
+};
+use crate::crypto::transaction::Transaction;
+use crate::network::{
+    message_priority::{
+        MessagePriority,
+        PrioritizedMessage,
+        PriorityMessageQueue,
+    },
+    network_manager::{
+        NetworkManager,
+        NetworkManagerConfig,
+        PeerInfo as NetPeerInfo,
+    },
+};
+use crate::Result;
 
 /// Maximum message size (10MB)
 const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024;
