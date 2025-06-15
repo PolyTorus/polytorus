@@ -2,16 +2,16 @@
 
 use crate::blockchain::types::{block_states, network, BlockState, NetworkConfig};
 use crate::crypto::transaction::*;
-use crate::crypto::verkle_tree::{VerkleTree, VerkleProof, VerklePoint};
+use crate::crypto::verkle_tree::{VerklePoint, VerkleProof, VerkleTree};
 use crate::Result;
 use bincode::serialize;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::time::SystemTime;
-use log::info;
 
 #[cfg(test)]
 pub const TEST_DIFFICULTY: usize = 1;
@@ -398,7 +398,8 @@ impl<N: NetworkConfig> BuildingBlock<N> {
     }
 }
 
-impl<N: NetworkConfig> MinedBlock<N> {    /// Validate the block completely
+impl<N: NetworkConfig> MinedBlock<N> {
+    /// Validate the block completely
     pub fn validate(mut self) -> Result<ValidatedBlock<N>> {
         // Validate proof of work
         if !self.validate_pow()? {
@@ -461,7 +462,8 @@ impl<N: NetworkConfig> ValidatedBlock<N> {
     }
 }
 
-impl<S: BlockState, N: NetworkConfig> Block<S, N> {    /// Validate proof of work
+impl<S: BlockState, N: NetworkConfig> Block<S, N> {
+    /// Validate proof of work
     fn validate_pow(&mut self) -> Result<bool> {
         let data = self.prepare_hash_data()?;
         let mut hasher = Sha256::new();
@@ -469,10 +471,11 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {    /// Validate proof of wor
         let hash_str = hasher.result_str();
         let prefix = "0".repeat(self.difficulty);
         Ok(hash_str.starts_with(&prefix))
-    }    /// Hash all transactions using Verkle tree
+    }
+    /// Hash all transactions using Verkle tree
     fn hash_transactions(&mut self) -> Result<Vec<u8>> {
         let root_commitment = self.get_verkle_root_commitment()?;
-        
+
         // Use Blake3 to hash the root commitment for block hashing
         let hash = blake3::hash(&root_commitment);
         Ok(hash.as_bytes().to_vec())
@@ -730,21 +733,22 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
     pub fn get_or_build_verkle_tree(&mut self) -> Result<&VerkleTree> {
         if self.verkle_tree.is_none() {
             let mut tree = VerkleTree::new();
-            
+
             // Insert all transactions into the Verkle tree
             for (i, tx) in self.transactions.iter().enumerate() {
                 let key = format!("tx_{:08x}", i);
                 let value = bincode::serialize(tx)?;
-                tree.insert(key.as_bytes(), &value)
-                    .map_err(|e| format_err!("Failed to insert transaction into Verkle tree: {}", e))?;
+                tree.insert(key.as_bytes(), &value).map_err(|e| {
+                    format_err!("Failed to insert transaction into Verkle tree: {}", e)
+                })?;
             }
-            
+
             // Store the root commitment
             let root_commitment = tree.get_root_commitment();
             self.verkle_root_commitment = Some(bincode::serialize(&root_commitment)?);
             self.verkle_tree = Some(tree);
         }
-        
+
         Ok(self.verkle_tree.as_ref().unwrap())
     }
 
@@ -762,7 +766,8 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
         let key = format!("tx_{:08x}", tx_index);
         tree.generate_proof(key.as_bytes())
             .map_err(|e| format_err!("Failed to generate proof: {}", e))
-    }    /// Verify a Verkle proof against this block's commitment
+    }
+    /// Verify a Verkle proof against this block's commitment
     pub fn verify_transaction_proof(&self, proof: &VerkleProof) -> bool {
         if let Some(ref commitment_bytes) = self.verkle_root_commitment {
             if let Ok(expected_commitment) = bincode::deserialize::<VerklePoint>(commitment_bytes) {
@@ -775,11 +780,13 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
 
 #[cfg(test)]
 mod verkle_integration_tests {
-    use super::*;    fn create_test_transaction(from: &str, to: &str, amount: i64) -> Transaction {
+    use super::*;
+    fn create_test_transaction(from: &str, to: &str, amount: i64) -> Transaction {
         Transaction::new_coinbase(
             to.to_string(),
             format!("transfer {} from {} to {}", amount, from, to),
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[test]
@@ -788,8 +795,8 @@ mod verkle_integration_tests {
         let tx1 = create_test_transaction("alice", "bob", 100);
         let tx2 = create_test_transaction("bob", "charlie", 50);
         let tx3 = create_test_transaction("charlie", "dave", 25);
-          let transactions = vec![tx1, tx2, tx3];
-        
+        let transactions = vec![tx1, tx2, tx3];
+
         // Create a building block
         let mut block = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions.clone(),
@@ -797,13 +804,13 @@ mod verkle_integration_tests {
             1,
             4,
         );
-        
+
         // Build the Verkle tree
         let tree = block.get_or_build_verkle_tree().unwrap();
-          // Verify the tree is not empty
+        // Verify the tree is not empty
         use ark_std::Zero;
         assert!(!tree.get_root_commitment().0.is_zero());
-        
+
         // Get the root commitment
         let root_commitment = block.get_verkle_root_commitment().unwrap();
         assert!(!root_commitment.is_empty());
@@ -814,8 +821,8 @@ mod verkle_integration_tests {
         // Create test transactions
         let tx1 = create_test_transaction("alice", "bob", 100);
         let tx2 = create_test_transaction("bob", "charlie", 50);
-          let transactions = vec![tx1.clone(), tx2.clone()];
-        
+        let transactions = vec![tx1.clone(), tx2.clone()];
+
         // Create a building block
         let mut block = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions,
@@ -823,35 +830,36 @@ mod verkle_integration_tests {
             1,
             4,
         );
-        
+
         // Generate proof for the first transaction
         let proof = block.generate_transaction_proof(0).unwrap();
-        
+
         // Verify the proof
         assert!(block.verify_transaction_proof(&proof));
-        
+
         // Generate proof for the second transaction
         let proof2 = block.generate_transaction_proof(1).unwrap();
-        
+
         // Verify the second proof
         assert!(block.verify_transaction_proof(&proof2));
-        
+
         // Verify that the proofs are different
         assert_ne!(proof.key, proof2.key);
     }
 
     #[test]
-    fn test_verkle_tree_with_empty_transactions() {        // Create a block with no transactions
+    fn test_verkle_tree_with_empty_transactions() {
+        // Create a block with no transactions
         let mut block = Block::<block_states::Building, network::Mainnet>::new_building(
             vec![],
             "prev_hash".to_string(),
             1,
             4,
         );
-        
+
         // Build the Verkle tree
         let tree = block.get_or_build_verkle_tree().unwrap();
-          // Verify the tree has identity root for empty tree
+        // Verify the tree has identity root for empty tree
         let root_commitment = tree.get_root_commitment();
         use crate::crypto::verkle_tree::VerklePoint;
         // The root should be the identity element for empty tree
@@ -863,27 +871,27 @@ mod verkle_integration_tests {
         // Create same transactions in two different blocks
         let tx1 = create_test_transaction("alice", "bob", 100);
         let tx2 = create_test_transaction("bob", "charlie", 50);
-        
+
         let transactions = vec![tx1.clone(), tx2.clone()];
-          // Create two identical blocks
+        // Create two identical blocks
         let mut block1 = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions.clone(),
             "prev_hash".to_string(),
             1,
             4,
         );
-        
+
         let mut block2 = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions,
             "prev_hash".to_string(),
             1,
             4,
         );
-        
+
         // Get commitments from both blocks
         let commitment1 = block1.get_verkle_root_commitment().unwrap();
         let commitment2 = block2.get_verkle_root_commitment().unwrap();
-        
+
         // Commitments should be identical for identical transaction sets
         assert_eq!(commitment1, commitment2);
     }
@@ -894,27 +902,25 @@ mod verkle_integration_tests {
         let tx1 = create_test_transaction("alice", "bob", 100);
         let tx2 = create_test_transaction("bob", "charlie", 50);
         let tx3 = create_test_transaction("charlie", "dave", 25);
-        
+
         let transactions = vec![tx1, tx2, tx3];
-          // Create a building block
+        // Create a building block
         let mut block = Block::<block_states::Building, network::Mainnet>::new_building(
             transactions,
             "prev_hash".to_string(),
             1,
             4,
         );
-        
+
         // Generate proof for a transaction
         let proof = block.generate_transaction_proof(0).unwrap();
-        
+
         // Check proof size (should be reasonably small)
         let proof_size = proof.size();
         assert!(proof_size > 0);
         println!("Verkle proof size: {} bytes", proof_size);
-        
+
         // Proof should be reasonably compact (less than 10KB for small trees)
         assert!(proof_size < 10_000);
     }
 }
-
-
