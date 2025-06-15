@@ -310,7 +310,7 @@ mod tests {
         // ダミーモードで高速開発
         let dummy_config = DiamondIOConfig::dummy();
         let mut dummy_engine = DiamondContractEngine::new(dummy_config)?;
-        
+
         // 基本機能テスト
         let contract_id = dummy_engine.deploy_contract(/*...*/).await?;
         let result = dummy_engine.execute_contract(/*...*/).await?;
@@ -322,13 +322,13 @@ mod tests {
         // テストモードで実パラメータ検証
         let test_config = DiamondIOConfig::testing();
         let mut test_engine = DiamondContractEngine::new(test_config)?;
-        
+
         // パフォーマンス検証
         let start = Instant::now();
         let contract_id = test_engine.deploy_contract(/*...*/).await?;
         test_engine.obfuscate_contract(&contract_id).await?;
         let elapsed = start.elapsed();
-        
+
         assert!(elapsed < Duration::from_millis(100));
     }
 }
@@ -456,7 +456,7 @@ init_tracing(); // 複数回呼ばれるとパニック
 fn safe_init_tracing() {
     use std::sync::Once;
     static INIT: Once = Once::new();
-    
+
     INIT.call_once(|| {
         if let Err(_) = std::panic::catch_unwind(|| {
             init_tracing();
@@ -505,7 +505,7 @@ async fn test_diamond_io_with_real_params() {
 
 #### Phase 3: 本番モード（最終検証）
 ```rust
-#[tokio::test] 
+#[tokio::test]
 #[ignore] // デフォルトでは実行しない
 async fn test_diamond_io_production() {
     let config = DiamondIOConfig::production(); // 本番パラメータ

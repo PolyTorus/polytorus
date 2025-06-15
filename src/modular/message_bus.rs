@@ -3,12 +3,17 @@
 //! This module provides a flexible message bus system for communication
 //! between different layers of the modular blockchain.
 
-use super::traits::*;
-use crate::Result;
-
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc, RwLock};
+
+use tokio::sync::{
+    broadcast,
+    mpsc,
+    RwLock,
+};
+
+use super::traits::*;
+use crate::Result;
 
 /// Message bus for inter-layer communication
 pub struct ModularMessageBus {
@@ -393,4 +398,39 @@ impl Default for MessageBuilder {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Simple message bus for layer communication
+pub struct MessageBus {
+    sender: broadcast::Sender<MessageBusMessage>,
+}
+
+impl Default for MessageBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MessageBus {
+    pub fn new() -> Self {
+        let (sender, _) = broadcast::channel(1000);
+        Self { sender }
+    }
+
+    pub async fn send(&self, message: MessageBusMessage) -> Result<()> {
+        let _ = self.sender.send(message);
+        Ok(())
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<MessageBusMessage> {
+        self.sender.subscribe()
+    }
+}
+
+/// Simple message structure for layer communication
+#[derive(Debug, Clone)]
+pub struct MessageBusMessage {
+    pub layer_type: String,
+    pub message: serde_json::Value,
+    pub timestamp: std::time::SystemTime,
 }

@@ -1,6 +1,11 @@
 // Legacy CLI command import removed in Phase 4 - using modular architecture
 // use crate::command::cil_startminer::cmd_start_miner_from_api;
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{
+    post,
+    web,
+    HttpResponse,
+    Responder,
+};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

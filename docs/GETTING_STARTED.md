@@ -372,7 +372,7 @@ polytorus mining start --address "your_address" --intensity medium
 
 1. **Explore the Documentation**: Read the other documentation files for detailed information about specific features.
 
-2. **Join the Community**: 
+2. **Join the Community**:
    - GitHub: https://github.com/quantumshiro/polytorus
    - Discord: [Community Discord Server]
    - Telegram: [Community Telegram Group]

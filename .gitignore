@@ -9,3 +9,4 @@ target/
 *.wasm
 modular_config.toml
 obfuscation_data
+why3find.json

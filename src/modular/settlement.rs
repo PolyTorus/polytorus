@@ -3,12 +3,18 @@
 //! This module implements the settlement layer for the modular blockchain,
 //! handling batch settlements and dispute resolution.
 
+use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    Mutex,
+};
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
 use super::traits::*;
 use crate::Result;
-
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Settlement layer implementation
 pub struct PolyTorusSettlementLayer {
@@ -50,7 +56,7 @@ impl PolyTorusSettlementLayer {
         })
     }
 
-    /// Calculate settlement root from batches  
+    /// Calculate settlement root from batches
     fn calculate_settlement_root(&self, batches: &[Hash]) -> Hash {
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;

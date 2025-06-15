@@ -1,5 +1,9 @@
 // Legacy command removed - print chain functionality not available in modern CLI
-use actix_web::{post, HttpResponse, Responder};
+use actix_web::{
+    post,
+    HttpResponse,
+    Responder,
+};
 
 #[post("/print-chain")]
 pub async fn print_chain() -> impl Responder {

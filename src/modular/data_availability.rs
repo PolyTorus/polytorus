@@ -3,13 +3,19 @@
 //! This module implements the data availability layer for the modular blockchain,
 //! handling data storage, retrieval, and network distribution.
 
+use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    Mutex,
+};
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
 use super::network::ModularNetwork;
 use super::traits::*;
 use crate::Result;
-
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Data availability layer implementation
 pub struct PolyTorusDataAvailabilityLayer {

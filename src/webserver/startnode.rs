@@ -1,5 +1,10 @@
 // Legacy CLI command removed - use modular architecture
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{
+    post,
+    web,
+    HttpResponse,
+    Responder,
+};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

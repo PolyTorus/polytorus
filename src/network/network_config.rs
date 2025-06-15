@@ -3,7 +3,10 @@
 //! This module provides configuration settings for P2P networking,
 //! including node discovery, connection management, and protocol settings.
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Network configuration for P2P nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]

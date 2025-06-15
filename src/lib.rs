@@ -10,9 +10,8 @@
 // Core modular blockchain - new primary architecture
 pub mod modular;
 
-// Diamond IO integration for advanced cryptographic operations
+// Diamond IO integration
 pub mod diamond_io_integration;
-pub mod diamond_smart_contracts;
 
 // Legacy modules - maintained for backward compatibility
 pub mod blockchain;
@@ -23,6 +22,16 @@ pub mod network;
 pub mod smart_contract;
 pub mod test_helpers;
 pub mod webserver;
+
+// Kani verification utilities
+#[cfg(kani)]
+pub mod kani_macros;
+
+#[cfg(kani)]
+pub mod simple_kani_tests;
+
+#[cfg(kani)]
+pub mod basic_kani_test;
 
 #[macro_use]
 extern crate log;

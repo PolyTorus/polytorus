@@ -1,8 +1,26 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use polytorus::blockchain::block::{Block, DifficultyAdjustmentConfig, MiningStats};
-use polytorus::blockchain::types::{block_states, network};
-use polytorus::crypto::transaction::{TXInput, TXOutput, Transaction};
 use std::time::Duration;
+
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    BenchmarkId,
+    Criterion,
+};
+use polytorus::blockchain::block::{
+    Block,
+    DifficultyAdjustmentConfig,
+    MiningStats,
+};
+use polytorus::blockchain::types::{
+    block_states,
+    network,
+};
+use polytorus::crypto::transaction::{
+    TXInput,
+    TXOutput,
+    Transaction,
+};
 
 /// Create a test transaction for benchmarking
 fn create_test_transaction() -> Transaction {

@@ -1,8 +1,15 @@
+use std::str::FromStr;
+
+use actix_web::{
+    post,
+    web,
+    HttpResponse,
+    Responder,
+};
+use serde::Deserialize;
+
 use crate::command::cli::ModernCli;
 use crate::crypto::types::EncryptionType;
-use actix_web::{post, web, HttpResponse, Responder};
-use serde::Deserialize;
-use std::str::FromStr;
 
 impl FromStr for EncryptionType {
     type Err = ();

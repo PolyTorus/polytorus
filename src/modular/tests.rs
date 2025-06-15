@@ -1,11 +1,12 @@
 //! Tests for the modular blockchain architecture
 
-use super::*;
-use crate::config::DataContext;
-
 use std::path::PathBuf;
 use std::sync::Arc;
+
 use uuid::Uuid;
+
+use super::*;
+use crate::config::DataContext;
 
 /// Test context with automatic cleanup
 pub struct TestContext {

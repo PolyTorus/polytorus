@@ -3,10 +3,14 @@
 //! This module defines the core interfaces for a modular blockchain architecture
 //! where different layers can be independently developed, tested, and deployed.
 
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 use crate::blockchain::block::Block;
 use crate::crypto::transaction::Transaction;
 use crate::Result;
-use serde::{Deserialize, Serialize};
 
 /// Hash type for blockchain data
 pub type Hash = String;
@@ -199,6 +203,33 @@ pub trait DataAvailabilityLayer: Send + Sync {
 
     /// Get data availability proof
     fn get_availability_proof(&self, hash: &Hash) -> Result<AvailabilityProof>;
+}
+
+/// Layer message trait for inter-layer communication
+pub trait LayerMessage: Clone + Send + Sync {
+    /// Get the message type for routing
+    fn message_type(&self) -> String;
+}
+
+/// Core layer trait for modular architecture
+#[async_trait::async_trait]
+pub trait Layer: Clone + Send + Sync {
+    /// Configuration type for this layer
+    type Config: Clone + Send + Sync;
+    /// Message type for this layer
+    type Message: LayerMessage;
+
+    /// Start the layer
+    async fn start(&mut self) -> anyhow::Result<()>;
+
+    /// Stop the layer
+    async fn stop(&mut self) -> anyhow::Result<()>;
+
+    /// Process a message
+    async fn process_message(&mut self, message: Self::Message) -> anyhow::Result<()>;
+
+    /// Get the layer type identifier
+    fn get_layer_type(&self) -> String;
 }
 
 /// Account state information

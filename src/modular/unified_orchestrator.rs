@@ -4,26 +4,37 @@
 //! from both the legacy and enhanced implementations, providing a clean
 //! trait-based architecture with comprehensive event handling.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use failure;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use tokio::sync::{
+    mpsc,
+    Mutex as AsyncMutex,
+    RwLock,
+};
+
 use super::config_manager::ModularConfigManager;
 use super::layer_factory::ModularLayerFactory;
 use super::message_bus::ModularMessageBus;
 use super::traits::*;
-
 use crate::blockchain::block::Block;
-use crate::blockchain::types::{block_states, network};
+use crate::blockchain::types::{
+    block_states,
+    network,
+};
+use crate::network::blockchain_integration::NetworkedBlockchainNode;
 use crate::Result;
 
-use failure;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex as AsyncMutex, RwLock};
-
-/// Unified Modular Blockchain Orchestrator
+/// Unified Modular Blockchain Orchestrator with P2P Network Integration
 ///
 /// This orchestrator provides a clean, trait-based architecture that supports
 /// pluggable layer implementations, sophisticated configuration management,
-/// and event-driven communication.
+/// event-driven communication, and integrated P2P networking.
 pub struct UnifiedModularOrchestrator {
     /// Execution layer (trait object)
     execution_layer: Arc<dyn ExecutionLayer + Send + Sync>,
@@ -38,6 +49,9 @@ pub struct UnifiedModularOrchestrator {
     message_bus: Arc<ModularMessageBus>,
     config_manager: Arc<RwLock<ModularConfigManager>>,
     layer_factory: Arc<ModularLayerFactory>,
+
+    /// P2P Network integration
+    network_node: Option<Arc<AsyncMutex<NetworkedBlockchainNode>>>,
 
     /// Event handling
     event_tx: mpsc::UnboundedSender<UnifiedEvent>,
@@ -263,6 +277,60 @@ impl UnifiedModularOrchestrator {
             message_bus,
             config_manager,
             layer_factory,
+            network_node: None,
+            event_tx,
+            event_rx: Arc::new(AsyncMutex::new(event_rx)),
+            state: Arc::new(RwLock::new(initial_state)),
+            metrics: Arc::new(RwLock::new(initial_metrics)),
+        })
+    }
+
+    /// Create a new unified orchestrator with network integration
+    pub async fn new_with_network(
+        execution_layer: Arc<dyn ExecutionLayer + Send + Sync>,
+        settlement_layer: Arc<dyn SettlementLayer + Send + Sync>,
+        consensus_layer: Arc<dyn ConsensusLayer + Send + Sync>,
+        data_availability_layer: Arc<dyn DataAvailabilityLayer + Send + Sync>,
+        message_bus: Arc<ModularMessageBus>,
+        config_manager: Arc<RwLock<ModularConfigManager>>,
+        layer_factory: Arc<ModularLayerFactory>,
+        listen_addr: std::net::SocketAddr,
+        bootstrap_peers: Vec<std::net::SocketAddr>,
+    ) -> Result<Self> {
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
+
+        // Create networked blockchain node
+        let network_node = NetworkedBlockchainNode::new(listen_addr, bootstrap_peers).await?;
+
+        let initial_state = OrchestratorState {
+            is_running: false,
+            current_block_height: 0,
+            last_finalized_block: None,
+            pending_transactions: 0,
+            active_layers: HashMap::new(),
+            last_health_check: 0,
+        };
+
+        let initial_metrics = OrchestratorMetrics {
+            total_blocks_processed: 0,
+            total_transactions_processed: 0,
+            average_block_time_ms: 0.0,
+            average_transaction_throughput: 0.0,
+            total_events_handled: 0,
+            error_rate: 0.0,
+            uptime_seconds: 0,
+            layer_metrics: HashMap::new(),
+        };
+
+        Ok(UnifiedModularOrchestrator {
+            execution_layer,
+            settlement_layer,
+            consensus_layer,
+            data_availability_layer,
+            message_bus,
+            config_manager,
+            layer_factory,
+            network_node: Some(Arc::new(AsyncMutex::new(network_node))),
             event_tx,
             event_rx: Arc::new(AsyncMutex::new(event_rx)),
             state: Arc::new(RwLock::new(initial_state)),
@@ -307,6 +375,34 @@ impl UnifiedModularOrchestrator {
         .await?;
 
         println!("🛑 Unified Modular Orchestrator stopped");
+        Ok(())
+    }
+
+    /// Start the orchestrator with network integration
+    pub async fn start_with_network(&self) -> Result<()> {
+        // Start the standard orchestrator
+        self.start().await?;
+
+        // Start the network node if available
+        if let Some(network_node) = &self.network_node {
+            let mut node = network_node.lock().await;
+            node.start().await?;
+            println!("🌐 Network layer started successfully");
+        }
+
+        Ok(())
+    }
+    /// Stop the orchestrator and network
+    pub async fn stop_with_network(&self) -> Result<()> {
+        // Stop the network first
+        if let Some(_network_node) = &self.network_node {
+            // Network node doesn't have a stop method, but we can indicate it's stopping
+            println!("🌐 Stopping network layer...");
+        }
+
+        // Stop the orchestrator
+        self.stop().await?;
+
         Ok(())
     }
 
@@ -920,6 +1016,77 @@ impl UnifiedModularOrchestrator {
 
         orchestrator.start().await?;
         Ok(orchestrator)
+    }
+    /// Broadcast a block through the network
+    pub async fn broadcast_block_to_network(
+        &self,
+        block: crate::blockchain::block::FinalizedBlock,
+    ) -> Result<()> {
+        if let Some(network_node) = &self.network_node {
+            let node = network_node.lock().await;
+            node.broadcast_block(block).await?;
+        } else {
+            log::warn!("No network node available for block broadcasting");
+        }
+        Ok(())
+    }
+
+    /// Broadcast a transaction through the network
+    pub async fn broadcast_transaction_to_network(
+        &self,
+        transaction: crate::crypto::transaction::Transaction,
+    ) -> Result<()> {
+        if let Some(network_node) = &self.network_node {
+            let node = network_node.lock().await;
+            node.broadcast_transaction(transaction).await?;
+        } else {
+            log::warn!("No network node available for transaction broadcasting");
+        }
+        Ok(())
+    }
+
+    /// Get network status
+    pub async fn get_network_status(&self) -> Result<Option<String>> {
+        if let Some(network_node) = &self.network_node {
+            let node = network_node.lock().await;
+            let stats = node.get_network_stats().await?;
+            Ok(Some(stats))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get connected peers
+    pub async fn get_connected_peers(&self) -> Result<Vec<String>> {
+        if let Some(network_node) = &self.network_node {
+            let node = network_node.lock().await;
+            let peers = node.get_connected_peers().await;
+            Ok(peers.into_iter().map(|p| p.to_string()).collect())
+        } else {
+            Ok(vec![])
+        }
+    }
+
+    /// Connect to a peer
+    pub async fn connect_to_peer(&self, addr: std::net::SocketAddr) -> Result<()> {
+        if let Some(network_node) = &self.network_node {
+            let node = network_node.lock().await;
+            node.connect_to_peer(addr).await?;
+        } else {
+            return Err(failure::format_err!("No network node available"));
+        }
+        Ok(())
+    }
+
+    /// Get blockchain synchronization status
+    pub async fn get_sync_status(&self) -> Result<Option<crate::network::SyncState>> {
+        if let Some(network_node) = &self.network_node {
+            let node = network_node.lock().await;
+            let sync_state = node.get_sync_state().await;
+            Ok(Some(sync_state))
+        } else {
+            Ok(None)
+        }
     }
 }
 

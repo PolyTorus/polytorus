@@ -6,6 +6,9 @@ fn main() {
     println!("cargo::rerun-if-changed=src/main.rs");
     println!("cargo::rerun-if-changed=build.rs");
 
+    // Enable Kani verification cfg
+    println!("cargo::rustc-check-cfg=cfg(kani)");
+
     // Check if OpenFHE is installed
     let openfhe_root = env::var("OPENFHE_ROOT").unwrap_or_else(|_| "/usr/local".to_string());
     let lib_path = format!("{openfhe_root}/lib");

@@ -3,18 +3,27 @@
 //! This module provides a factory system for creating and configuring
 //! different implementations of blockchain layers in a pluggable manner.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 use super::consensus::PolyTorusConsensusLayer;
 use super::data_availability::PolyTorusDataAvailabilityLayer;
 use super::execution::PolyTorusExecutionLayer;
-use super::message_bus::{HealthStatus, LayerInfo, LayerType, ModularMessageBus};
+use super::message_bus::{
+    HealthStatus,
+    LayerInfo,
+    LayerType,
+    ModularMessageBus,
+};
 use super::settlement::PolyTorusSettlementLayer;
 use super::traits::*;
 use crate::config::DataContext;
 use crate::Result;
-
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Factory for creating modular blockchain layers
 pub struct ModularLayerFactory {

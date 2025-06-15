@@ -222,35 +222,98 @@ GET /mining/status
 
 ### Network Operations
 
-#### Get Peer Information
+#### Get Network Health
 ```http
-GET /network/peers
+GET /network/health
 ```
 
 **Response:**
 ```json
 {
-  "peer_count": 8,
-  "peers": [
-    {
-      "address": "192.168.1.100:8333",
-      "version": "1.0.0",
-      "connected_time": 3600,
-      "last_seen": 1672531200000
-    }
-  ]
+  "status": "healthy",
+  "total_nodes": 25,
+  "healthy_peers": 23,
+  "degraded_peers": 2,
+  "disconnected_peers": 0,
+  "average_latency": 45,
+  "network_version": "1.0.0"
 }
 ```
 
-#### Add Peer
+#### Get Peer Information
 ```http
-POST /network/peers/add
+GET /network/peer/{peer_id}
+```
+
+**Parameters:**
+- `peer_id` (string): Peer identifier (UUID format)
+
+**Response:**
+```json
+{
+  "peer_id": "550e8400-e29b-41d4-a716-446655440000",
+  "address": "192.168.1.100:8333",
+  "status": "connected",
+  "health": "healthy",
+  "last_seen": 1672531200000,
+  "version": "1.0.0",
+  "latency": 35
+}
+```
+
+#### Get Message Queue Statistics
+```http
+GET /network/queue/stats
+```
+
+**Response:**
+```json
+{
+  "critical_queue_size": 0,
+  "high_queue_size": 5,
+  "normal_queue_size": 12,
+  "low_queue_size": 3,
+  "total_messages": 20,
+  "messages_per_second": 2.5,
+  "bandwidth_usage": "75%",
+  "rate_limit_status": "normal"
+}
+```
+
+#### Blacklist Peer
+```http
+POST /network/blacklist
 ```
 
 **Request Body:**
 ```json
 {
-  "address": "192.168.1.200:8333"
+  "peer_id": "550e8400-e29b-41d4-a716-446655440000",
+  "reason": "Malicious behavior detected"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Peer 550e8400-e29b-41d4-a716-446655440000 blacklisted for: Malicious behavior detected"
+}
+```
+
+#### Remove Peer from Blacklist
+```http
+DELETE /network/blacklist/{peer_id}
+```
+
+**Parameters:**
+- `peer_id` (string): Peer identifier to remove from blacklist
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Peer 550e8400-e29b-41d4-a716-446655440000 removed from blacklist"
 }
 ```
 
@@ -380,7 +443,7 @@ use polytorus_sdk::PolyTorusClient;
 #[tokio::main]
 async fn main() {
     let client = PolyTorusClient::new("http://localhost:8000/api/v1");
-    
+
     let balance = client.get_balance("address").await.unwrap();
     println!("Balance: {}", balance);
 }
@@ -399,9 +462,9 @@ Returns a reference to the contract execution engine for direct smart contract o
 #### Execute Contract with Engine
 ```rust
 pub fn execute_contract_with_engine(
-    &self, 
-    contract_address: &str, 
-    function_name: &str, 
+    &self,
+    contract_address: &str,
+    function_name: &str,
     args: &[u8]
 ) -> Result<Vec<u8>>
 ```
@@ -448,7 +511,7 @@ pub fn validate_execution_context(&self) -> Result<bool>
 ```
 Validates the current execution context, checking:
 - Context ID validity
-- State root integrity  
+- State root integrity
 - Gas usage within limits
 - Pending changes consistency
 

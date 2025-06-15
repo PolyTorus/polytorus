@@ -1,19 +1,31 @@
-use super::types::*;
-use crate::config::DataContext;
-use crate::Result;
-use bincode::{deserialize, serialize};
+use std::collections::HashMap;
+
+use bincode::{
+    deserialize,
+    serialize,
+};
 use bitcoincash_addr::*;
 use crypto::digest::Digest;
 use crypto::ripemd160::Ripemd160;
 use crypto::sha2::Sha256;
 use fn_dsa::{
-    sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
+    sign_key_size,
+    vrfy_key_size,
+    KeyPairGenerator,
+    KeyPairGeneratorStandard,
+    FN_DSA_LOGN_512,
 };
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::Secp256k1;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use sled;
-use std::collections::HashMap;
+
+use super::types::*;
+use crate::config::DataContext;
+use crate::Result;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Wallet {
@@ -173,11 +185,21 @@ impl Wallets {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::test_helpers::{cleanup_test_context, create_test_context, TestContextGuard};
     use fn_dsa::{
-        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
-        DOMAIN_NONE, HASH_ID_RAW,
+        signature_size,
+        SigningKey,
+        SigningKeyStandard,
+        VerifyingKey,
+        VerifyingKeyStandard,
+        DOMAIN_NONE,
+        HASH_ID_RAW,
+    };
+
+    use super::*;
+    use crate::test_helpers::{
+        cleanup_test_context,
+        create_test_context,
+        TestContextGuard,
     };
 
     #[test]

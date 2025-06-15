@@ -3,15 +3,27 @@
 //! This module integrates the eUTXO transaction model into the modular blockchain
 //! architecture, providing script validation, datum handling, and redeemer support.
 
-use crate::crypto::transaction::{TXOutput, Transaction};
+use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    Mutex,
+};
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::crypto::transaction::{
+    TXOutput,
+    Transaction,
+};
 use crate::modular::transaction_processor::{
-    ProcessorAccountState, TransactionEvent, TransactionResult,
+    ProcessorAccountState,
+    TransactionEvent,
+    TransactionResult,
 };
 use crate::Result;
-
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 /// UTXO state for tracking unspent outputs
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -367,10 +379,11 @@ impl EUtxoProcessor {
 
     /// Convert address to pub_key_hash for UTXO matching
     fn address_to_pub_key_hash(&self, address: &str) -> Result<Vec<u8>> {
-        use crate::crypto::wallets::extract_encryption_type;
         use bitcoincash_addr::Address;
         use crypto::digest::Digest;
         use crypto::sha2::Sha256;
+
+        use crate::crypto::wallets::extract_encryption_type;
 
         // Extract base address without encryption suffix
         let (base_address, _) = extract_encryption_type(address)?;

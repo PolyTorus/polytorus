@@ -6,5 +6,8 @@ pub mod types;
 pub mod verkle_tree;
 pub mod wallets;
 
+#[cfg(kani)]
+pub mod kani_verification;
+
 pub use transaction::*;
 pub use verkle_tree::*;

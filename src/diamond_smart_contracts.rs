@@ -334,7 +334,6 @@ impl DiamondContractEngine {
             }
         }
     }
-
     /// Calculate gas usage based on execution parameters
     fn calculate_gas_usage(
         &self,

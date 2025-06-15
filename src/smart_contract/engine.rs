@@ -1,15 +1,23 @@
 //! WASM contract execution engine - simplified and stable version
 
+use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    Mutex,
+};
+
+use failure::format_err;
+use wasmtime::*;
+
 use crate::smart_contract::contract::SmartContract;
 use crate::smart_contract::state::ContractState;
 use crate::smart_contract::types::{
-    ContractExecution, ContractMetadata, ContractResult, GasConfig,
+    ContractExecution,
+    ContractMetadata,
+    ContractResult,
+    GasConfig,
 };
 use crate::Result;
-use failure::format_err;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use wasmtime::*;
 
 /// WASM contract execution engine
 pub struct ContractEngine {

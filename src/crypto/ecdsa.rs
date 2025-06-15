@@ -1,6 +1,12 @@
-use super::traits::CryptoProvider;
 use secp256k1::ecdsa::Signature;
-use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
+use secp256k1::{
+    Message,
+    PublicKey,
+    Secp256k1,
+    SecretKey,
+};
+
+use super::traits::CryptoProvider;
 
 pub struct EcdsaCrypto;
 
