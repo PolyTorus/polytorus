@@ -196,6 +196,13 @@ kani-check:
 		echo "$(YELLOW)⚠️ Kani config file not found$(NC)"; \
 	fi
 
+# Check dependency resolution
+dep-check:
+	@echo "$(BLUE)Checking dependency resolution...$(NC)"
+	@cargo check --workspace
+	@cargo test --no-run --workspace
+	@echo "$(GREEN)All dependencies resolved successfully!$(NC)"
+
 # Continuous integration target
 kani-ci: kani-setup
 	@echo "$(BLUE)Running CI verification suite...$(NC)"

@@ -106,6 +106,3 @@ reqwest = { version = "0.12", features = ["blocking"] }
 [[bench]]
 name = "blockchain_bench"
 harness = false
-
-[patch.crates-io]
-creusot-contracts = { path = "/home/shiro/setting/creusot/creusot-contracts" }

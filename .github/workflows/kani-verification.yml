@@ -13,6 +13,7 @@ jobs:
   kani-verification:
     name: Kani Formal Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     
     steps:
     - name: Checkout repository
@@ -38,6 +39,24 @@ jobs:
       run: |
         cargo install --locked kani-verifier
         cargo kani setup
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config
+
+    - name: Check dependency resolution
+      run: |
+        echo "🔍 Checking dependency resolution..."
+        cargo check --workspace
+        cargo test --no-run --workspace
+        echo "✅ All dependencies resolved successfully"
+
+    - name: Run standard tests first
+      run: |
+        echo "🧪 Running standard test suite..."
+        cargo test --workspace
+        echo "✅ Standard tests passed"
 
     - name: Run basic Kani verification tests
       working-directory: ./kani-verification
@@ -92,7 +111,11 @@ jobs:
       run: |
         echo "🎯 Running comprehensive verification suite..."
         chmod +x run_verification.sh
-        timeout 1800 ./run_verification.sh || echo "Some verifications timed out"
+        timeout 1800 ./run_verification.sh || {
+          echo "Some verifications timed out or failed"
+          exit_code=$?
+          echo "exit_code=$exit_code" >> $GITHUB_ENV
+        }
 
     - name: Upload verification results
       uses: actions/upload-artifact@v3
@@ -145,6 +168,7 @@ jobs:
   security-analysis:
     name: Security Analysis with Kani
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: kani-verification
     
     steps:
@@ -180,32 +204,42 @@ jobs:
         timeout 300 cargo kani --harness verify_invalid_block_rejection || true
         timeout 300 cargo kani --harness verify_invalid_communication_rejection || true
 
-    - name: Check for verification failures
+    - name: Check for verification failures and create issue
       working-directory: ./kani-verification
       run: |
         if [ -d kani_results ]; then
           failed_count=$(find kani_results -name "*.log" -exec grep -l "VERIFICATION:- FAILED" {} \; | wc -l)
           if [ $failed_count -gt 0 ]; then
             echo "⚠️ $failed_count verification(s) failed"
-            echo "failed_verifications=$failed_count" >> $GITHUB_ENV
+            # Create a failure marker file
+            echo "$failed_count" > verification_failures.txt
           else
             echo "✅ All security verifications passed successfully"
-            echo "failed_verifications=0" >> $GITHUB_ENV
+            echo "0" > verification_failures.txt
           fi
+        else
+          echo "0" > verification_failures.txt
         fi
 
     - name: Create security issue if verifications failed
-      if: env.failed_verifications != '0'
+      if: always()
       uses: actions/github-script@v6
       with:
         script: |
-          github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: '🚨 Kani Formal Verification Detected Security Issues',
-            body: `## Security Verification Error
+          const fs = require('fs');
+          const path = 'kani-verification/verification_failures.txt';
+          
+          if (fs.existsSync(path)) {
+            const failedCount = parseInt(fs.readFileSync(path, 'utf8').trim());
             
-            Kani formal verification detected ${{ env.failed_verifications }} security-related verification failure(s).
+            if (failedCount > 0) {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Kani Formal Verification Detected Security Issues',
+                body: `## Security Verification Error
+                
+                Kani formal verification detected ${failedCount} security-related verification failure(s).
             
             **Failed Verifications:**
             - See Actions execution logs for details
