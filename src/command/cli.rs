@@ -109,7 +109,8 @@ impl ModernCli {
                     .help("Deploy a smart contract")
                     .takes_value(true)
                     .value_name("CONTRACT_PATH"),
-            )            .arg(
+            )
+            .arg(
                 Arg::with_name("smart-contract-call")
                     .long("smart-contract-call")
                     .help("Call a smart contract function")
@@ -257,7 +258,8 @@ impl ModernCli {
         } else if matches.is_present("modular-config") {
             self.cmd_modular_config().await?;
         } else if let Some(contract_path) = matches.value_of("smart-contract-deploy") {
-            self.cmd_smart_contract_deploy(contract_path).await?;        } else if let Some(contract_address) = matches.value_of("smart-contract-call") {
+            self.cmd_smart_contract_deploy(contract_path).await?;
+        } else if let Some(contract_address) = matches.value_of("smart-contract-call") {
             self.cmd_smart_contract_call(contract_address).await?;
         } else if let Some(params) = matches.value_of("erc20-deploy") {
             self.cmd_erc20_deploy(params).await?;
@@ -712,10 +714,13 @@ impl ModernCli {
     }
 
     // ERC20 Command Handlers
-    
+
     pub async fn cmd_erc20_deploy(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 5 {
             println!("Error: Invalid parameters. Expected: NAME,SYMBOL,DECIMALS,SUPPLY,OWNER");
@@ -732,7 +737,8 @@ impl ModernCli {
         println!("Name: {}", name);
         println!("Symbol: {}", symbol);
         println!("Decimals: {}", decimals);
-        println!("Initial Supply: {}", initial_supply);        println!("Owner: {}", owner);
+        println!("Initial Supply: {}", initial_supply);
+        println!("Owner: {}", owner);
 
         // Initialize contract engine
         let data_context = DataContext::default();
@@ -765,8 +771,11 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_transfer(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 3 {
             println!("Error: Invalid parameters. Expected: CONTRACT,TO,AMOUNT");
@@ -810,7 +819,10 @@ impl ModernCli {
                         println!("📝 {}", log);
                     }
                 } else {
-                    println!("❌ Transfer failed: {}", String::from_utf8_lossy(&result.return_value));
+                    println!(
+                        "❌ Transfer failed: {}",
+                        String::from_utf8_lossy(&result.return_value)
+                    );
                 }
             }
             Err(e) => {
@@ -822,8 +834,11 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_balance(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 2 {
             println!("Error: Invalid parameters. Expected: CONTRACT,ADDRESS");
@@ -854,7 +869,10 @@ impl ModernCli {
                     let balance = String::from_utf8_lossy(&result.return_value);
                     println!("💰 Balance: {} tokens", balance);
                 } else {
-                    println!("❌ Failed to get balance: {}", String::from_utf8_lossy(&result.return_value));
+                    println!(
+                        "❌ Failed to get balance: {}",
+                        String::from_utf8_lossy(&result.return_value)
+                    );
                 }
             }
             Err(e) => {
@@ -866,8 +884,11 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_approve(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 3 {
             println!("Error: Invalid parameters. Expected: CONTRACT,SPENDER,AMOUNT");
@@ -911,7 +932,10 @@ impl ModernCli {
                         println!("📝 {}", log);
                     }
                 } else {
-                    println!("❌ Approval failed: {}", String::from_utf8_lossy(&result.return_value));
+                    println!(
+                        "❌ Approval failed: {}",
+                        String::from_utf8_lossy(&result.return_value)
+                    );
                 }
             }
             Err(e) => {
@@ -923,8 +947,11 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_allowance(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 3 {
             println!("Error: Invalid parameters. Expected: CONTRACT,OWNER,SPENDER");
@@ -957,7 +984,10 @@ impl ModernCli {
                     let allowance = String::from_utf8_lossy(&result.return_value);
                     println!("🔓 Allowance: {} tokens", allowance);
                 } else {
-                    println!("❌ Failed to get allowance: {}", String::from_utf8_lossy(&result.return_value));
+                    println!(
+                        "❌ Failed to get allowance: {}",
+                        String::from_utf8_lossy(&result.return_value)
+                    );
                 }
             }
             Err(e) => {
@@ -969,8 +999,11 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_info(&self, contract_address: &str) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         println!("Getting ERC20 contract information...");
         println!("Contract: {}", contract_address);
 
@@ -1000,8 +1033,11 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_list(&self) -> Result<()> {
-        use crate::smart_contract::{ContractEngine, ContractState};
-        
+        use crate::smart_contract::{
+            ContractEngine,
+            ContractState,
+        };
+
         println!("Listing all deployed ERC20 contracts...");
 
         // Initialize contract engine
@@ -1018,10 +1054,11 @@ impl ModernCli {
                     println!("📋 Deployed ERC20 contracts:");
                     for contract_address in contracts {
                         println!("  📄 {}", contract_address);
-                        
+
                         // Get additional info for each contract
-                        if let Ok(Some((name, symbol, decimals, total_supply))) = 
-                            engine.get_erc20_contract_info(&contract_address) {
+                        if let Ok(Some((name, symbol, decimals, total_supply))) =
+                            engine.get_erc20_contract_info(&contract_address)
+                        {
                             println!("     Name: {}, Symbol: {}", name, symbol);
                             println!("     Decimals: {}, Supply: {}", decimals, total_supply);
                         }

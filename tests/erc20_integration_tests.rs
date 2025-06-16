@@ -2,15 +2,26 @@
 //!
 //! Tests for ERC20 token functionality integration with the blockchain
 
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
 use polytorus::config::DataContext;
-use polytorus::smart_contract::{ContractEngine, ContractState, ERC20Contract};
+use polytorus::smart_contract::{
+    ContractEngine,
+    ContractState,
+    ERC20Contract,
+};
 use polytorus::Result;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::test]
 async fn test_erc20_full_workflow() -> Result<()> {
     // Initialize the contract engine with a temporary directory
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
     let temp_dir = format!("./data/test_erc20_full_{}", timestamp);
     let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
     data_context.ensure_directories()?;
@@ -134,7 +145,10 @@ async fn test_erc20_full_workflow() -> Result<()> {
 #[tokio::test]
 async fn test_erc20_error_cases() -> Result<()> {
     // Initialize the contract engine with a temporary directory
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
     let temp_dir = format!("./data/test_erc20_error_{}", timestamp);
     let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
     data_context.ensure_directories()?;
@@ -193,7 +207,10 @@ async fn test_erc20_error_cases() -> Result<()> {
 #[tokio::test]
 async fn test_multiple_erc20_contracts() -> Result<()> {
     // Initialize the contract engine with a temporary directory
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
     let temp_dir = format!("./data/test_erc20_multi_{}", timestamp);
     let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
     data_context.ensure_directories()?;
@@ -266,7 +283,9 @@ fn test_erc20_standalone() {
     assert!(approve_result.success);
     assert_eq!(contract.allowance("owner", "user2"), 200);
 
-    let transfer_from_result = contract.transfer_from("user2", "owner", "user1", 50).unwrap();
+    let transfer_from_result = contract
+        .transfer_from("user2", "owner", "user1", 50)
+        .unwrap();
     assert!(transfer_from_result.success);
     assert_eq!(contract.balance_of("owner"), 999850);
     assert_eq!(contract.balance_of("user1"), 150);

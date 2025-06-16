@@ -3,7 +3,10 @@
 //! This example demonstrates how to use ERC20 tokens in the PolyTorus blockchain
 
 use polytorus::config::DataContext;
-use polytorus::smart_contract::{ContractEngine, ContractState};
+use polytorus::smart_contract::{
+    ContractEngine,
+    ContractState,
+};
 use polytorus::Result;
 
 #[tokio::main]
@@ -33,13 +36,14 @@ async fn main() -> Result<()> {
         "alice".to_string(),
         "erc20_poly".to_string(),
     )?;
-    
+
     println!("✅ Contract deployed at: {}", contract_address);
 
     // Get contract information
     println!("\n📄 Contract Information:");
-    if let Some((name, symbol, decimals, total_supply)) = 
-        engine.get_erc20_contract_info(&contract_address)? {
+    if let Some((name, symbol, decimals, total_supply)) =
+        engine.get_erc20_contract_info(&contract_address)?
+    {
         println!("  Name: {}", name);
         println!("  Symbol: {}", symbol);
         println!("  Decimals: {}", decimals);
@@ -85,7 +89,10 @@ async fn main() -> Result<()> {
             println!("  📝 {}", log);
         }
     } else {
-        println!("❌ Transfer failed: {}", String::from_utf8_lossy(&transfer_result.return_value));
+        println!(
+            "❌ Transfer failed: {}",
+            String::from_utf8_lossy(&transfer_result.return_value)
+        );
     }
 
     // Check balances after transfer
@@ -116,7 +123,7 @@ async fn main() -> Result<()> {
     println!("\n🔐 Setting up approval...");
     let approve_result = engine.execute_erc20_contract(
         &contract_address,
-        "approve", 
+        "approve",
         "alice",
         vec!["charlie".to_string(), "500".to_string()],
     )?;
@@ -155,7 +162,10 @@ async fn main() -> Result<()> {
             println!("  📝 {}", log);
         }
     } else {
-        println!("❌ TransferFrom failed: {}", String::from_utf8_lossy(&transfer_from_result.return_value));
+        println!(
+            "❌ TransferFrom failed: {}",
+            String::from_utf8_lossy(&transfer_from_result.return_value)
+        );
     }
 
     // Final balances
@@ -199,12 +209,12 @@ async fn main() -> Result<()> {
     let contract2_address = engine.deploy_erc20_contract(
         "Utility Token".to_string(),
         "UTIL".to_string(),
-        8, // Different decimals
+        8,          // Different decimals
         10_000_000, // 10 million tokens
         "dave".to_string(),
         "erc20_util".to_string(),
     )?;
-    
+
     println!("✅ Second contract deployed at: {}", contract2_address);
 
     // List all ERC20 contracts
@@ -212,10 +222,13 @@ async fn main() -> Result<()> {
     let contracts = engine.list_erc20_contracts()?;
     for (i, addr) in contracts.iter().enumerate() {
         println!("  {}. {}", i + 1, addr);
-        if let Some((name, symbol, decimals, total_supply)) = 
-            engine.get_erc20_contract_info(addr)? {
-            println!("     {} ({}) - {} decimals, {} total supply", 
-                name, symbol, decimals, total_supply);
+        if let Some((name, symbol, decimals, total_supply)) =
+            engine.get_erc20_contract_info(addr)?
+        {
+            println!(
+                "     {} ({}) - {} decimals, {} total supply",
+                name, symbol, decimals, total_supply
+            );
         }
     }
 

@@ -5,8 +5,14 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
-use ark_std::rand::{CryptoRng, RngCore};
+use ark_std::rand::{
+    CryptoRng,
+    RngCore,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::crypto::privacy::{
     PrivacyConfig,
@@ -15,10 +21,10 @@ use crate::crypto::privacy::{
     UtxoValidityProof,
 };
 use crate::crypto::real_diamond_io::{
-    RealDiamondIOProvider,
+    DiamondIOCircuit,
     RealDiamondIOConfig,
     RealDiamondIOProof,
-    DiamondIOCircuit,
+    RealDiamondIOProvider,
 };
 use crate::crypto::transaction::Transaction;
 use crate::Result;
@@ -128,10 +134,8 @@ impl EnhancedPrivacyProvider {
     /// Create a new enhanced privacy provider
     pub async fn new(config: EnhancedPrivacyConfig) -> Result<Self> {
         let privacy_provider = PrivacyProvider::new(config.privacy_config.clone());
-          let diamond_io_provider = if config.enable_real_diamond_io {
-            Some(RealDiamondIOProvider::new(
-                config.diamond_io_config.clone(),
-            ).await?)
+        let diamond_io_provider = if config.enable_real_diamond_io {
+            Some(RealDiamondIOProvider::new(config.diamond_io_config.clone()).await?)
         } else {
             None
         };
@@ -176,18 +180,16 @@ impl EnhancedPrivacyProvider {
 
                 // Now borrow diamond provider mutably
                 let diamond_provider = self.diamond_io_provider.as_mut().unwrap();
-                
+
                 // Create Diamond IO circuit
-                let circuit = diamond_provider.create_privacy_circuit(
-                    circuit_id.clone(),
-                    &input.validity_proof,
-                ).await?;
+                let circuit = diamond_provider
+                    .create_privacy_circuit(circuit_id.clone(), &input.validity_proof)
+                    .await?;
 
                 // Evaluate circuit
-                let evaluation_result = diamond_provider.evaluate_circuit(
-                    &circuit,
-                    circuit_inputs,
-                ).await?;
+                let evaluation_result = diamond_provider
+                    .evaluate_circuit(&circuit, circuit_inputs)
+                    .await?;
 
                 // Collect performance metrics after releasing the mutable borrow
                 let performance_metrics = self.collect_performance_metrics(&circuit);
@@ -223,13 +225,17 @@ impl EnhancedPrivacyProvider {
             circuit_ids,
             enhanced_metadata,
         })
-    }    /// Verify an enhanced private transaction
+    }
+    /// Verify an enhanced private transaction
     pub async fn verify_enhanced_private_transaction(
         &mut self,
         enhanced_tx: &EnhancedPrivateTransaction,
     ) -> Result<bool> {
         // Verify base private transaction
-        if !self.privacy_provider.verify_private_transaction(&enhanced_tx.base_private_transaction)? {
+        if !self
+            .privacy_provider
+            .verify_private_transaction(&enhanced_tx.base_private_transaction)?
+        {
             return Ok(false);
         }
 
@@ -240,21 +246,27 @@ impl EnhancedPrivacyProvider {
             for diamond_proof in enhanced_tx.diamond_io_proofs.iter() {
                 if let Some(circuit) = self.get_circuit_by_id(&diamond_proof.circuit_id).await? {
                     let circuit_inputs = self.derive_circuit_inputs(&diamond_proof.base_proof)?;
-                    verification_data.push((circuit, circuit_inputs, diamond_proof.evaluation_result.clone().into()));
+                    verification_data.push((
+                        circuit,
+                        circuit_inputs,
+                        diamond_proof.evaluation_result.clone().into(),
+                    ));
                 } else {
                     // Circuit not found - this could be normal if it was cleaned up
-                    tracing::warn!("Circuit {} not found for verification", diamond_proof.circuit_id);
+                    tracing::warn!(
+                        "Circuit {} not found for verification",
+                        diamond_proof.circuit_id
+                    );
                 }
             }
-            
+
             // Now verify with mutable reference
             if let Some(ref mut diamond_provider) = self.diamond_io_provider {
                 for (circuit, circuit_inputs, expected_result) in verification_data {
-                    if !diamond_provider.verify_evaluation(
-                        &circuit,
-                        &circuit_inputs,
-                        &expected_result,
-                    ).await? {
+                    if !diamond_provider
+                        .verify_evaluation(&circuit, &circuit_inputs, &expected_result)
+                        .await?
+                    {
                         return Ok(false);
                     }
                 }
@@ -269,7 +281,10 @@ impl EnhancedPrivacyProvider {
 
     /// Derive circuit inputs from validity proof
     fn derive_circuit_inputs(&self, proof: &UtxoValidityProof) -> Result<Vec<bool>> {
-        use sha2::{Digest, Sha256};
+        use sha2::{
+            Digest,
+            Sha256,
+        };
 
         let mut hasher = Sha256::new();
         hasher.update(&proof.commitment_proof);
@@ -278,37 +293,71 @@ impl EnhancedPrivacyProvider {
 
         // Convert hash bytes to boolean inputs
         let mut inputs = Vec::new();
-        for byte in &hash[..8] { // Use first 8 bytes
+        for byte in &hash[..8] {
+            // Use first 8 bytes
             for bit in 0..8 {
                 inputs.push((byte >> bit) & 1 == 1);
             }
         }
 
         Ok(inputs)
-    }    /// Collect performance metrics from a circuit
+    }
+    /// Collect performance metrics from a circuit
     fn collect_performance_metrics(&self, circuit: &DiamondIOCircuit) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert("input_size".to_string(), circuit.metadata.input_size as f64);
-        metrics.insert("output_size".to_string(), circuit.metadata.output_size as f64);
-        metrics.insert("obfuscated_size".to_string(), circuit.obfuscated_data.len() as f64);        metrics.insert("obfuscation_time".to_string(), circuit.metadata.obfuscation_time as f64);
-        metrics.insert("complexity".to_string(), circuit.metadata.complexity.parse().unwrap_or(0.0));
-        metrics.insert("security_level".to_string(), circuit.metadata.security_level as f64);
+        metrics.insert(
+            "output_size".to_string(),
+            circuit.metadata.output_size as f64,
+        );
+        metrics.insert(
+            "obfuscated_size".to_string(),
+            circuit.obfuscated_data.len() as f64,
+        );
+        metrics.insert(
+            "obfuscation_time".to_string(),
+            circuit.metadata.obfuscation_time as f64,
+        );
+        metrics.insert(
+            "complexity".to_string(),
+            circuit.metadata.complexity.parse().unwrap_or(0.0),
+        );
+        metrics.insert(
+            "security_level".to_string(),
+            circuit.metadata.security_level as f64,
+        );
         metrics
-    }    /// Collect Diamond IO statistics
+    }
+    /// Collect Diamond IO statistics
     fn collect_diamond_io_stats(&self) -> HashMap<String, f64> {
         let mut stats = HashMap::new();
-        
+
         if let Some(ref diamond_provider) = self.diamond_io_provider {
             let provider_stats = diamond_provider.get_statistics();
-            stats.insert("active_circuits".to_string(), provider_stats.active_circuits as f64);
-            stats.insert("security_level".to_string(), provider_stats.security_level as f64);
-            stats.insert("max_circuits".to_string(), provider_stats.max_circuits as f64);
-            stats.insert("disk_storage_enabled".to_string(), provider_stats.disk_storage_enabled as u8 as f64);
+            stats.insert(
+                "active_circuits".to_string(),
+                provider_stats.active_circuits as f64,
+            );
+            stats.insert(
+                "security_level".to_string(),
+                provider_stats.security_level as f64,
+            );
+            stats.insert(
+                "max_circuits".to_string(),
+                provider_stats.max_circuits as f64,
+            );
+            stats.insert(
+                "disk_storage_enabled".to_string(),
+                provider_stats.disk_storage_enabled as u8 as f64,
+            );
         }
 
         stats.insert("circuit_counter".to_string(), self.circuit_counter as f64);
-        stats.insert("hybrid_mode".to_string(), self.config.use_hybrid_mode as u8 as f64);
-        
+        stats.insert(
+            "hybrid_mode".to_string(),
+            self.config.use_hybrid_mode as u8 as f64,
+        );
+
         stats
     }
 
@@ -372,12 +421,19 @@ impl EnhancedPrivacyProvider {
             .as_secs();
 
         let time_diff = current_time.saturating_sub(metadata.created_at);
-        if time_diff > 86400 { // 24 hours
+        if time_diff > 86400 {
+            // 24 hours
             return Ok(false);
         }
 
         // Verify privacy level is valid
-        let valid_levels = ["basic", "confidential", "zero_knowledge", "indistinguishable_obfuscation", "maximum_privacy"];
+        let valid_levels = [
+            "basic",
+            "confidential",
+            "zero_knowledge",
+            "indistinguishable_obfuscation",
+            "maximum_privacy",
+        ];
         if !valid_levels.contains(&metadata.privacy_level.as_str()) {
             return Ok(false);
         }
@@ -429,18 +485,19 @@ pub struct EnhancedPrivacyStatistics {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rand_core::OsRng;
+
+    use super::*;
     use crate::crypto::transaction::Transaction;
 
     #[tokio::test]
     async fn test_enhanced_privacy_provider_creation() {
         let config = EnhancedPrivacyConfig::testing();
         let provider = EnhancedPrivacyProvider::new(config).await;
-        
+
         assert!(provider.is_ok());
         let provider = provider.unwrap();
-        
+
         let stats = provider.get_enhanced_statistics();
         assert!(stats.real_diamond_io_enabled);
         assert!(stats.hybrid_mode_enabled);
@@ -454,25 +511,38 @@ mod tests {
         let mut rng = OsRng;
 
         // Create a test coinbase transaction
-        let base_tx = Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
+        let base_tx =
+            Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
 
         // Create enhanced private transaction
-        let enhanced_tx = provider.create_enhanced_private_transaction(
-            base_tx,
-            vec![100u64],            // Input amount 
-            vec![50u64],             // One output (50 coins, 50 fee)
-            vec![vec![1, 2, 3]],     // Dummy secret key
-            &mut rng,
-        ).await.unwrap();
+        let enhanced_tx = provider
+            .create_enhanced_private_transaction(
+                base_tx,
+                vec![100u64],        // Input amount
+                vec![50u64],         // One output (50 coins, 50 fee)
+                vec![vec![1, 2, 3]], // Dummy secret key
+                &mut rng,
+            )
+            .await
+            .unwrap();
 
         assert_eq!(enhanced_tx.base_private_transaction.private_inputs.len(), 1);
-        assert_eq!(enhanced_tx.base_private_transaction.private_outputs.len(), 1);
+        assert_eq!(
+            enhanced_tx.base_private_transaction.private_outputs.len(),
+            1
+        );
         assert_eq!(enhanced_tx.diamond_io_proofs.len(), 1);
         assert_eq!(enhanced_tx.circuit_ids.len(), 1);
-        assert_eq!(enhanced_tx.enhanced_metadata.privacy_level, "maximum_privacy");
+        assert_eq!(
+            enhanced_tx.enhanced_metadata.privacy_level,
+            "maximum_privacy"
+        );
 
         // Verify the enhanced transaction
-        let verification = provider.verify_enhanced_private_transaction(&enhanced_tx).await.unwrap();
+        let verification = provider
+            .verify_enhanced_private_transaction(&enhanced_tx)
+            .await
+            .unwrap();
         assert!(verification);
     }
 
@@ -482,16 +552,22 @@ mod tests {
         let production_config = EnhancedPrivacyConfig::production();
 
         // Production should have stronger parameters
-        assert!(production_config.privacy_config.range_proof_bits >= testing_config.privacy_config.range_proof_bits);
+        assert!(
+            production_config.privacy_config.range_proof_bits
+                >= testing_config.privacy_config.range_proof_bits
+        );
         assert!(production_config.cleanup_interval >= testing_config.cleanup_interval);
-        assert!(production_config.diamond_io_config.security_level >= testing_config.diamond_io_config.security_level);
+        assert!(
+            production_config.diamond_io_config.security_level
+                >= testing_config.diamond_io_config.security_level
+        );
     }
 
     #[tokio::test]
     async fn test_privacy_level_determination() {
         let config = EnhancedPrivacyConfig::testing();
         let provider = EnhancedPrivacyProvider::new(config).await.unwrap();
-        
+
         let level = provider.determine_privacy_level();
         assert_eq!(level, "maximum_privacy");
     }

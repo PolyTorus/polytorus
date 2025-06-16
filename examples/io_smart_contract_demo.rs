@@ -1,8 +1,8 @@
-use polytorus::{
-    diamond_smart_contracts::DiamondContractEngine,
-    diamond_io_integration_new::DiamondIOConfig,
-};
 use anyhow::Result;
+use polytorus::{
+    diamond_io_integration_new::DiamondIOConfig,
+    diamond_smart_contracts::DiamondContractEngine,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     // 3. Obfuscate contract
     println!("  Obfuscating contract...");
     engine.obfuscate_contract(&contract_id).await?;
-    
+
     let contract = engine.get_contract(&contract_id).unwrap();
     println!("  Obfuscation status: {}", contract.is_obfuscated);
 
@@ -69,9 +69,16 @@ async fn main() -> Result<()> {
     testing_engine.obfuscate_contract(&test_contract_id).await?;
 
     // Execute in test mode
-    let test_inputs = vec![true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    let test_inputs = vec![
+        true, false, false, false, false, false, false, false, false, false, false, false, false,
+        false, false, false,
+    ];
     let test_result = testing_engine
-        .execute_contract(&test_contract_id, test_inputs.clone(), "test_executor".to_string())
+        .execute_contract(
+            &test_contract_id,
+            test_inputs.clone(),
+            "test_executor".to_string(),
+        )
         .await?;
 
     println!("  Input: {:?}", &test_inputs[0..2]);
@@ -83,10 +90,12 @@ async fn main() -> Result<()> {
     println!("\n3. Execution History:");
     println!("  Number of executions: {}", history.len());
     for (i, exec) in history.iter().enumerate() {
-        println!("  Execution {}: gas used = {}, execution time = {:?}ms", 
-                 i + 1, 
-                 exec.gas_used, 
-                 exec.execution_time.unwrap_or(0));
+        println!(
+            "  Execution {}: gas used = {}, execution time = {:?}ms",
+            i + 1,
+            exec.gas_used,
+            exec.execution_time.unwrap_or(0)
+        );
     }
 
     println!("\n=== iO Test Complete ===");

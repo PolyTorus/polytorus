@@ -7,17 +7,44 @@
 //! - Nullifier-based double-spend prevention
 
 use std::collections::HashMap;
-
-use ark_ed_on_bls12_381::{EdwardsAffine, EdwardsProjective, Fr};
-use ark_ff::UniformRand;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{Zero, rand::{CryptoRng, RngCore}};
-use ark_ec::{CurveGroup, PrimeGroup, AdditiveGroup};
 use std::ops::Mul;
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
-use crate::crypto::transaction::{TXInput, TXOutput, Transaction};
+use ark_ec::{
+    AdditiveGroup,
+    CurveGroup,
+    PrimeGroup,
+};
+use ark_ed_on_bls12_381::{
+    EdwardsAffine,
+    EdwardsProjective,
+    Fr,
+};
+use ark_ff::UniformRand;
+use ark_serialize::{
+    CanonicalDeserialize,
+    CanonicalSerialize,
+};
+use ark_std::{
+    rand::{
+        CryptoRng,
+        RngCore,
+    },
+    Zero,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use sha2::{
+    Digest,
+    Sha256,
+};
+
+use crate::crypto::transaction::{
+    TXInput,
+    TXOutput,
+    Transaction,
+};
 use crate::Result;
 
 /// Privacy configuration for eUTXO transactions
@@ -129,7 +156,7 @@ impl PrivacyProvider {
         // Use different generators to enable proper commitment verification
         // In production, these would be properly set up as different curve points
         let generator_g = EdwardsProjective::generator(); // Standard generator for amount
-        // Create a different generator H by doubling the standard generator
+                                                          // Create a different generator H by doubling the standard generator
         let generator_h = EdwardsProjective::generator().double(); // Different point for blinding
 
         Self {
@@ -152,18 +179,22 @@ impl PrivacyProvider {
 
         // Generate random blinding factor
         let blinding_factor = Fr::rand(rng);
-        
+
         // Create commitment: C = amount * G + blinding_factor * H
         let amount_scalar = Fr::from(amount);
-        let commitment = self.generator_g.mul(amount_scalar) + self.generator_h.mul(blinding_factor);
+        let commitment =
+            self.generator_g.mul(amount_scalar) + self.generator_h.mul(blinding_factor);
 
         // Serialize commitment and blinding factor
         let mut commitment_bytes = Vec::new();
-        commitment.into_affine().serialize_compressed(&mut commitment_bytes)
+        commitment
+            .into_affine()
+            .serialize_compressed(&mut commitment_bytes)
             .map_err(|e| failure::format_err!("Failed to serialize commitment: {}", e))?;
 
         let mut blinding_bytes = Vec::new();
-        blinding_factor.serialize_compressed(&mut blinding_bytes)
+        blinding_factor
+            .serialize_compressed(&mut blinding_bytes)
             .map_err(|e| failure::format_err!("Failed to serialize blinding factor: {}", e))?;
 
         Ok(PedersenCommitment {
@@ -183,7 +214,8 @@ impl PrivacyProvider {
 
         // Recompute commitment and compare
         let amount_scalar = Fr::from(amount);
-        let expected_commitment = self.generator_g.mul(amount_scalar) + self.generator_h.mul(blinding_factor);
+        let expected_commitment =
+            self.generator_g.mul(amount_scalar) + self.generator_h.mul(blinding_factor);
 
         Ok(commitment_point == expected_commitment.into_affine())
     }
@@ -214,12 +246,12 @@ impl PrivacyProvider {
 
         // Simplified range proof using bit decomposition
         let mut proof = Vec::new();
-        
+
         // Commit to each bit of the amount
         for i in 0..self.config.range_proof_bits {
             let bit = (amount >> i) & 1;
             let bit_commitment = self.commit_amount(bit, rng)?;
-            
+
             // Serialize bit commitment
             proof.extend_from_slice(&bit_commitment.commitment);
             proof.extend_from_slice(&bit_commitment.blinding_factor);
@@ -276,7 +308,7 @@ impl PrivacyProvider {
         hasher.update(secret_key);
         hasher.update(input.txid.as_bytes());
         hasher.update(input.vout.to_le_bytes());
-        
+
         // Add randomness to prevent nullifier linkability
         let mut random_bytes = vec![0u8; 32];
         rng.fill_bytes(&mut random_bytes);
@@ -284,7 +316,7 @@ impl PrivacyProvider {
 
         let mut nullifier = hasher.finalize().to_vec();
         nullifier.extend_from_slice(&random_bytes); // Include randomness for verification
-        
+
         Ok(nullifier)
     }
 
@@ -303,7 +335,9 @@ impl PrivacyProvider {
         }
 
         if self.used_nullifiers.contains_key(&nullifier) {
-            return Err(failure::format_err!("Nullifier already used (double spend attempt)"));
+            return Err(failure::format_err!(
+                "Nullifier already used (double spend attempt)"
+            ));
         }
 
         self.used_nullifiers.insert(nullifier, true);
@@ -475,22 +509,29 @@ impl PrivacyProvider {
         // Sum input commitments
         let mut input_sum = EdwardsProjective::zero();
         for input in &private_tx.private_inputs {
-            let commitment_point = EdwardsAffine::deserialize_compressed(&input.amount_commitment.commitment[..])
-                .map_err(|e| failure::format_err!("Failed to deserialize input commitment: {}", e))?;
+            let commitment_point =
+                EdwardsAffine::deserialize_compressed(&input.amount_commitment.commitment[..])
+                    .map_err(|e| {
+                        failure::format_err!("Failed to deserialize input commitment: {}", e)
+                    })?;
             input_sum += commitment_point;
         }
 
         // Sum output commitments
         let mut output_sum = EdwardsProjective::zero();
         for output in &private_tx.private_outputs {
-            let commitment_point = EdwardsAffine::deserialize_compressed(&output.amount_commitment.commitment[..])
-                .map_err(|e| failure::format_err!("Failed to deserialize output commitment: {}", e))?;
+            let commitment_point =
+                EdwardsAffine::deserialize_compressed(&output.amount_commitment.commitment[..])
+                    .map_err(|e| {
+                        failure::format_err!("Failed to deserialize output commitment: {}", e)
+                    })?;
             output_sum += commitment_point;
         }
 
         // Add fee commitment to outputs
-        let fee_commitment_point = EdwardsAffine::deserialize_compressed(&private_tx.fee_commitment.commitment[..])
-            .map_err(|e| failure::format_err!("Failed to deserialize fee commitment: {}", e))?;
+        let fee_commitment_point =
+            EdwardsAffine::deserialize_compressed(&private_tx.fee_commitment.commitment[..])
+                .map_err(|e| failure::format_err!("Failed to deserialize fee commitment: {}", e))?;
         output_sum += fee_commitment_point;
 
         // Check balance: input_sum == output_sum + fee_sum
@@ -506,14 +547,14 @@ impl PrivacyProvider {
         // Simplified transaction proof - hash of transaction with randomness
         let mut hasher = Sha256::new();
         hasher.update(transaction.id.as_bytes());
-        
+
         let mut random_bytes = vec![0u8; 32];
         rng.fill_bytes(&mut random_bytes);
         hasher.update(&random_bytes);
-        
+
         let mut proof = hasher.finalize().to_vec();
         proof.extend_from_slice(&random_bytes);
-        
+
         Ok(proof)
     }
 
@@ -540,11 +581,11 @@ impl PrivacyProvider {
         let mut hasher = Sha256::new();
         let mut key = vec![0u8; 32];
         rng.fill_bytes(&mut key);
-        
+
         hasher.update(&key);
         hasher.update(amount.to_le_bytes());
         let encrypted = hasher.finalize().to_vec();
-        
+
         // Prepend key for simplicity
         let mut result = key;
         result.extend_from_slice(&encrypted);
@@ -554,7 +595,8 @@ impl PrivacyProvider {
     /// Get parameters hash for proof consistency
     fn get_params_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
-        hasher.update(b"POLYTORUS_PRIVACY_PARAMS_V1");        hasher.update([self.config.range_proof_bits]);
+        hasher.update(b"POLYTORUS_PRIVACY_PARAMS_V1");
+        hasher.update([self.config.range_proof_bits]);
         hasher.update(self.config.commitment_randomness_size.to_le_bytes());
         hasher.finalize().to_vec()
     }
@@ -588,7 +630,7 @@ mod tests {
     fn test_privacy_provider_creation() {
         let config = PrivacyConfig::default();
         let provider = PrivacyProvider::new(config);
-        
+
         let stats = provider.get_privacy_stats();
         assert!(stats.zk_proofs_enabled);
         assert!(stats.confidential_amounts_enabled);
@@ -604,13 +646,13 @@ mod tests {
 
         let amount = 100u64;
         let commitment = provider.commit_amount(amount, &mut rng).unwrap();
-        
+
         assert!(!commitment.commitment.is_empty());
         assert!(!commitment.blinding_factor.is_empty());
-        
+
         // Verify commitment opens to correct amount
         assert!(provider.verify_commitment(&commitment, amount).unwrap());
-        
+
         // Verify commitment doesn't open to incorrect amount
         assert!(!provider.verify_commitment(&commitment, amount + 1).unwrap());
     }
@@ -623,10 +665,14 @@ mod tests {
 
         let amount = 1000u64;
         let commitment = provider.commit_amount(amount, &mut rng).unwrap();
-        let range_proof = provider.generate_range_proof(amount, &commitment, &mut rng).unwrap();
-        
+        let range_proof = provider
+            .generate_range_proof(amount, &commitment, &mut rng)
+            .unwrap();
+
         assert!(!range_proof.is_empty());
-        assert!(provider.verify_range_proof(&range_proof, &commitment).unwrap());
+        assert!(provider
+            .verify_range_proof(&range_proof, &commitment)
+            .unwrap());
     }
 
     #[test]
@@ -644,14 +690,16 @@ mod tests {
         };
 
         let secret_key = vec![1, 2, 3, 4, 5];
-        let nullifier = provider.generate_nullifier(&input, &secret_key, &mut rng).unwrap();
-        
+        let nullifier = provider
+            .generate_nullifier(&input, &secret_key, &mut rng)
+            .unwrap();
+
         assert!(!nullifier.is_empty());
         assert!(!provider.is_nullifier_used(&nullifier));
-        
+
         provider.mark_nullifier_used(nullifier.clone()).unwrap();
         assert!(provider.is_nullifier_used(&nullifier));
-        
+
         // Test double spend prevention
         assert!(provider.mark_nullifier_used(nullifier).is_err());
     }
@@ -663,21 +711,24 @@ mod tests {
         let mut rng = rand_core::OsRng;
 
         // Create a simple coinbase transaction
-        let base_tx = Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
-        
-        let input_amounts = vec![0u64];  // Coinbase has 1 input with zero value
-        let output_amounts = vec![10u64];  // One output with value 10
-        let secret_keys = vec![vec![1, 2, 3]];  // Dummy secret key for coinbase
+        let base_tx =
+            Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
 
-        let private_tx = provider.create_private_transaction(
-            base_tx,
-            input_amounts,
-            output_amounts,
-            secret_keys,
-            &mut rng,
-        ).unwrap();
+        let input_amounts = vec![0u64]; // Coinbase has 1 input with zero value
+        let output_amounts = vec![10u64]; // One output with value 10
+        let secret_keys = vec![vec![1, 2, 3]]; // Dummy secret key for coinbase
 
-        assert_eq!(private_tx.private_inputs.len(), 1);  // Coinbase has 1 input
+        let private_tx = provider
+            .create_private_transaction(
+                base_tx,
+                input_amounts,
+                output_amounts,
+                secret_keys,
+                &mut rng,
+            )
+            .unwrap();
+
+        assert_eq!(private_tx.private_inputs.len(), 1); // Coinbase has 1 input
         assert_eq!(private_tx.private_outputs.len(), 1);
         assert!(!private_tx.transaction_proof.is_empty());
         assert!(!private_tx.fee_commitment.commitment.is_empty());

@@ -10,6 +10,7 @@ use failure::format_err;
 use wasmtime::*;
 
 use crate::smart_contract::contract::SmartContract;
+use crate::smart_contract::erc20::ERC20Contract;
 use crate::smart_contract::state::ContractState;
 use crate::smart_contract::types::{
     ContractExecution,
@@ -17,7 +18,6 @@ use crate::smart_contract::types::{
     ContractResult,
     GasConfig,
 };
-use crate::smart_contract::erc20::ERC20Contract;
 use crate::Result;
 
 /// WASM contract execution engine
@@ -51,16 +51,16 @@ impl ContractEngine {
         contract_address: String,
     ) -> Result<String> {
         let contract = ERC20Contract::new(name, symbol, decimals, initial_supply, initial_owner);
-        
+
         // Save to persistent storage
         let state = self.state.lock().unwrap();
         let contract_data = bincode::serialize(&contract.state)?;
         state.store_data(&format!("erc20:{}", contract_address), &contract_data)?;
-        
+
         // Also keep in memory
         let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
         erc20_contracts.insert(contract_address.clone(), contract);
-        
+
         println!("ERC20 contract deployed at address: {}", contract_address);
         Ok(contract_address)
     }
@@ -74,21 +74,22 @@ impl ContractEngine {
                 return Ok(Some(contract.clone()));
             }
         }
-        
+
         // Then check persistent storage
         let state = self.state.lock().unwrap();
         if let Some(contract_data) = state.get_data(&format!("erc20:{}", contract_address))? {
-            let erc20_state: crate::smart_contract::erc20::ERC20State = bincode::deserialize(&contract_data)?;
+            let erc20_state: crate::smart_contract::erc20::ERC20State =
+                bincode::deserialize(&contract_data)?;
             let contract = ERC20Contract {
                 state: erc20_state,
                 events: Vec::new(), // Events are not persisted
             };
-            
+
             // Cache in memory
             drop(state);
             let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
             erc20_contracts.insert(contract_address.to_string(), contract.clone());
-            
+
             Ok(Some(contract))
         } else {
             Ok(None)
@@ -116,7 +117,7 @@ impl ContractEngine {
                 });
             }
         };
-        
+
         let result = match function_name {
             "name" => Ok(ContractResult {
                 success: true,
@@ -164,7 +165,7 @@ impl ContractEngine {
                     logs: vec![],
                     state_changes: HashMap::new(),
                 })
-            },
+            }
             "allowance" => {
                 if args.len() < 2 {
                     return Ok(ContractResult {
@@ -183,7 +184,7 @@ impl ContractEngine {
                     logs: vec![],
                     state_changes: HashMap::new(),
                 })
-            },
+            }
             "transfer" => {
                 if args.len() < 2 {
                     Ok(ContractResult {
@@ -198,7 +199,7 @@ impl ContractEngine {
                     let amount: u64 = args[1].parse().unwrap_or(0);
                     contract.transfer(caller, to, amount)
                 }
-            },
+            }
             "approve" => {
                 if args.len() < 2 {
                     Ok(ContractResult {
@@ -213,14 +214,17 @@ impl ContractEngine {
                     let amount: u64 = args[1].parse().unwrap_or(0);
                     contract.approve(caller, spender, amount)
                 }
-            },
+            }
             "transferFrom" => {
                 if args.len() < 3 {
                     Ok(ContractResult {
                         success: false,
                         return_value: b"Missing from address, to address, or amount".to_vec(),
                         gas_used: 500,
-                        logs: vec!["Missing from address, to address, or amount for transferFrom".to_string()],
+                        logs: vec![
+                            "Missing from address, to address, or amount for transferFrom"
+                                .to_string(),
+                        ],
                         state_changes: HashMap::new(),
                     })
                 } else {
@@ -229,7 +233,7 @@ impl ContractEngine {
                     let amount: u64 = args[2].parse().unwrap_or(0);
                     contract.transfer_from(caller, from, to, amount)
                 }
-            },
+            }
             "mint" => {
                 if args.len() < 2 {
                     Ok(ContractResult {
@@ -244,7 +248,7 @@ impl ContractEngine {
                     let amount: u64 = args[1].parse().unwrap_or(0);
                     contract.mint(to, amount)
                 }
-            },
+            }
             "burn" => {
                 if args.is_empty() {
                     Ok(ContractResult {
@@ -258,10 +262,12 @@ impl ContractEngine {
                     let amount: u64 = args[0].parse().unwrap_or(0);
                     contract.burn(caller, amount)
                 }
-            },
+            }
             _ => Ok(ContractResult {
                 success: false,
-                return_value: format!("Unknown function: {}", function_name).as_bytes().to_vec(),
+                return_value: format!("Unknown function: {}", function_name)
+                    .as_bytes()
+                    .to_vec(),
                 gas_used: 500,
                 logs: vec![format!("Unknown ERC20 function: {}", function_name)],
                 state_changes: HashMap::new(),
@@ -274,7 +280,7 @@ impl ContractEngine {
                 let state = self.state.lock().unwrap();
                 let contract_data = bincode::serialize(&contract.state)?;
                 state.store_data(&format!("erc20:{}", contract_address), &contract_data)?;
-                
+
                 // Update memory cache
                 let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
                 erc20_contracts.insert(contract_address.to_string(), contract);
@@ -285,7 +291,10 @@ impl ContractEngine {
     }
 
     /// Get ERC20 contract information
-    pub fn get_erc20_contract_info(&self, contract_address: &str) -> Result<Option<(String, String, u8, u64)>> {
+    pub fn get_erc20_contract_info(
+        &self,
+        contract_address: &str,
+    ) -> Result<Option<(String, String, u8, u64)>> {
         if let Some(contract) = self.load_erc20_contract(contract_address)? {
             Ok(Some((
                 contract.name().to_string(),
@@ -302,7 +311,7 @@ impl ContractEngine {
     pub fn list_erc20_contracts(&self) -> Result<Vec<String>> {
         let state = self.state.lock().unwrap();
         let mut contracts = Vec::new();
-        
+
         // Scan for ERC20 contracts in storage
         let keys = state.scan_prefix("erc20:")?;
         for key_str in keys {
@@ -310,7 +319,7 @@ impl ContractEngine {
                 contracts.push(contract_address.to_string());
             }
         }
-        
+
         Ok(contracts)
     }
 

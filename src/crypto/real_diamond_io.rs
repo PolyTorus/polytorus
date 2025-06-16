@@ -7,15 +7,21 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::fs;
 use tracing::info;
 
-use crate::diamond_io_integration_new::{DiamondIOIntegration, DiamondIOConfig, DiamondIOResult};
-
 use crate::crypto::privacy::{
-    UtxoValidityProof,
     PedersenCommitment,
+    UtxoValidityProof,
+};
+use crate::diamond_io_integration_new::{
+    DiamondIOConfig,
+    DiamondIOIntegration,
+    DiamondIOResult,
 };
 use crate::Result;
 
@@ -75,8 +81,10 @@ impl RealDiamondIOConfig {
             security_level: 128,
             input_size: 16,
             work_dir: "diamond_io_production".to_string(),
-            enable_disk_storage: true,        }
-    }    /// Convert to Diamond IO integration config
+            enable_disk_storage: true,
+        }
+    }
+    /// Convert to Diamond IO integration config
     pub fn to_diamond_io_config(&self) -> DiamondIOConfig {
         // Map old config structure to new Diamond IO parameters
         if self.proof_system == "dummy" {
@@ -117,8 +125,6 @@ pub struct CircuitMetadata {
     pub security_level: u32,
 }
 
-
-
 /// Real Diamond IO provider using actual implementation
 pub struct RealDiamondIOProvider {
     /// Configuration
@@ -131,15 +137,15 @@ pub struct RealDiamondIOProvider {
     work_dir: String,
 }
 
-impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
-    pub async fn new(
-        config: RealDiamondIOConfig,
-    ) -> Result<Self> {
+impl RealDiamondIOProvider {
+    /// Create a new real Diamond IO provider
+    pub async fn new(config: RealDiamondIOConfig) -> Result<Self> {
         let work_dir = config.work_dir.clone();
-        
+
         // Create working directory
         if !Path::new(&work_dir).exists() {
-            fs::create_dir_all(&work_dir).await
+            fs::create_dir_all(&work_dir)
+                .await
                 .map_err(|e| failure::format_err!("Failed to create work directory: {}", e))?;
         }
 
@@ -154,7 +160,8 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
             circuits: HashMap::new(),
             work_dir,
         })
-    }/// Create and obfuscate a privacy circuit using real Diamond IO
+    }
+    /// Create and obfuscate a privacy circuit using real Diamond IO
     pub async fn create_privacy_circuit(
         &mut self,
         circuit_id: String,
@@ -164,7 +171,8 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
 
         // Create circuit-specific working directory
         let circuit_work_dir = format!("{}/{}", self.work_dir, circuit_id);
-        fs::create_dir_all(&circuit_work_dir).await
+        fs::create_dir_all(&circuit_work_dir)
+            .await
             .map_err(|e| failure::format_err!("Failed to create circuit directory: {}", e))?;
 
         // Create Diamond IO circuit and register it
@@ -173,9 +181,9 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
             description: "Privacy validation circuit".to_string(),
             input_size: self.config.input_size,
             output_size: self.derive_output_size_from_proof(proof),
-        };        // Register the circuit with Diamond IO (handled internally by new implementation)
-        // self.diamond_io.register_circuit(diamond_circuit)
-        //     .map_err(|e| failure::format_err!("Failed to register circuit: {}", e))?;
+        }; // Register the circuit with Diamond IO (handled internally by new implementation)
+           // self.diamond_io.register_circuit(diamond_circuit)
+           //     .map_err(|e| failure::format_err!("Failed to register circuit: {}", e))?;
 
         // Create circuit metadata
         let metadata = CircuitMetadata {
@@ -187,7 +195,8 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
                 .as_secs(),
             complexity: "privacy_circuit".to_string(),
             security_level: self.config.security_level,
-        };        let circuit = DiamondIOCircuit {
+        };
+        let circuit = DiamondIOCircuit {
             circuit_id: circuit_id.clone(),
             obfuscated_data: vec![], // Empty for now, will be populated by Diamond IO
             metadata,
@@ -195,10 +204,13 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
         };
 
         // Cache the circuit
-        self.circuits.insert(circuit_id, circuit.clone());        Ok(circuit)
-    }    /// Evaluate an obfuscated circuit with given inputs
+        self.circuits.insert(circuit_id, circuit.clone());
+        Ok(circuit)
+    }
+    /// Evaluate an obfuscated circuit with given inputs
     pub async fn evaluate_circuit(
-        &mut self,circuit: &DiamondIOCircuit,
+        &mut self,
+        circuit: &DiamondIOCircuit,
         inputs: Vec<bool>,
     ) -> Result<DiamondIOResult> {
         info!("Evaluating circuit: {}", circuit.circuit_id);
@@ -209,7 +221,9 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
         }
 
         // Use the actual Diamond IO integration for evaluation
-        let result = self.evaluate_circuit_with_diamond_io(circuit, &inputs).await?;
+        let result = self
+            .evaluate_circuit_with_diamond_io(circuit, &inputs)
+            .await?;
 
         Ok(result)
     }
@@ -227,12 +241,16 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
             let mut padded_inputs = inputs.to_vec();
             padded_inputs.resize(circuit.metadata.input_size, false);
             padded_inputs
-        };        // Execute circuit through Diamond IO integration
-        let result = self.diamond_io.execute_circuit_detailed(&circuit_inputs).await
+        }; // Execute circuit through Diamond IO integration
+        let result = self
+            .diamond_io
+            .execute_circuit_detailed(&circuit_inputs)
+            .await
             .map_err(|e| failure::format_err!("Circuit execution failed: {}", e))?;
 
         Ok(result)
-    }/// Verify a Diamond IO circuit evaluation result
+    }
+    /// Verify a Diamond IO circuit evaluation result
     pub async fn verify_evaluation(
         &mut self,
         circuit: &DiamondIOCircuit,
@@ -241,13 +259,14 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
     ) -> Result<bool> {
         // Re-evaluate and compare
         let actual_result = self.evaluate_circuit(circuit, inputs.to_vec()).await?;
-        
+
         // Compare results
         Ok(actual_result.outputs == expected_result.outputs)
     }
 
     /// Get statistics about the Diamond IO provider
-    pub fn get_statistics(&self) -> DiamondIOStatistics {        DiamondIOStatistics {
+    pub fn get_statistics(&self) -> DiamondIOStatistics {
+        DiamondIOStatistics {
             active_circuits: self.circuits.len(),
             security_level: self.config.security_level,
             max_circuits: self.config.max_circuits,
@@ -260,8 +279,12 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
     pub async fn cleanup_circuit(&mut self, circuit_id: &str) -> Result<()> {
         if let Some(circuit) = self.circuits.remove(circuit_id) {
             // Remove circuit directory
-            if Path::new(&circuit.work_dir).exists() {                tokio::fs::remove_dir_all(&circuit.work_dir).await
-                    .map_err(|e| failure::format_err!("Failed to remove circuit directory: {}", e))?;
+            if Path::new(&circuit.work_dir).exists() {
+                tokio::fs::remove_dir_all(&circuit.work_dir)
+                    .await
+                    .map_err(|e| {
+                        failure::format_err!("Failed to remove circuit directory: {}", e)
+                    })?;
             }
         }
         Ok(())
@@ -274,22 +297,31 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
         base_proof: UtxoValidityProof,
     ) -> Result<RealDiamondIOProof> {
         // Create circuit for this proof
-        let circuit = self.create_privacy_circuit(proof_id.clone(), &base_proof).await?;
-        
+        let circuit = self
+            .create_privacy_circuit(proof_id.clone(), &base_proof)
+            .await?;
+
         // Derive circuit inputs from the proof
         let circuit_inputs = self.derive_circuit_inputs_from_proof(&base_proof)?;
-        
+
         // Evaluate the circuit
         let evaluation_result = self.evaluate_circuit(&circuit, circuit_inputs).await?;
-        
+
         // Create parameters commitment
         let params_commitment = self.create_params_commitment(&base_proof)?;
-        
+
         // Collect performance metrics
         let mut performance_metrics = HashMap::new();
-        performance_metrics.insert("security_level".to_string(), self.config.security_level as f64);
+        performance_metrics.insert(
+            "security_level".to_string(),
+            self.config.security_level as f64,
+        );
         performance_metrics.insert("input_size".to_string(), circuit.metadata.input_size as f64);
-        performance_metrics.insert("output_size".to_string(), circuit.metadata.output_size as f64);        Ok(RealDiamondIOProof {
+        performance_metrics.insert(
+            "output_size".to_string(),
+            circuit.metadata.output_size as f64,
+        );
+        Ok(RealDiamondIOProof {
             base_proof,
             circuit_id: circuit.circuit_id.clone(),
             evaluation_result: evaluation_result.into(),
@@ -307,22 +339,27 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
 
         // Re-derive inputs from base proof
         let circuit_inputs = self.derive_circuit_inputs_from_proof(&proof.base_proof)?;
-        
+
         // Get the circuit
-        let circuit = self.circuits.get(&proof.circuit_id)
+        let circuit = self
+            .circuits
+            .get(&proof.circuit_id)
             .ok_or_else(|| failure::format_err!("Circuit not found"))?
             .clone();
-        
+
         // Re-evaluate and compare
         let verification_result = self.evaluate_circuit(&circuit, circuit_inputs).await?;
-        
+
         // Compare outputs
         Ok(verification_result.outputs == proof.evaluation_result.outputs)
     }
 
     /// Derive circuit inputs from UTXO validity proof
     fn derive_circuit_inputs_from_proof(&self, proof: &UtxoValidityProof) -> Result<Vec<bool>> {
-        use sha2::{Digest, Sha256};
+        use sha2::{
+            Digest,
+            Sha256,
+        };
 
         let mut hasher = Sha256::new();
         hasher.update(&proof.commitment_proof);
@@ -348,9 +385,11 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
     /// Derive output size from proof complexity
     fn derive_output_size_from_proof(&self, proof: &UtxoValidityProof) -> usize {
         // Simple heuristic: larger proofs need more outputs
-        let proof_size = proof.commitment_proof.len() + proof.range_proof.len() + proof.nullifier.len();
+        let proof_size =
+            proof.commitment_proof.len() + proof.range_proof.len() + proof.nullifier.len();
         std::cmp::min(proof_size / 16, 8).max(2) // At least 2, at most 8
-    }    /// Create commitment to proof parameters
+    }
+    /// Create commitment to proof parameters
     fn create_params_commitment(&self, proof: &UtxoValidityProof) -> Result<PedersenCommitment> {
         // Simplified commitment using proof parameters
         Ok(PedersenCommitment {
@@ -385,7 +424,7 @@ impl From<DiamondIOResult> for SerializableDiamondIOResult {
             outputs: result.outputs,
             execution_time: result.execution_time_ms as f64 / 1000.0,
             circuit_id: "unknown".to_string(), // DiamondIOResult doesn't have circuit_id
-            metadata: HashMap::new(), // DiamondIOResult doesn't have metadata
+            metadata: HashMap::new(),          // DiamondIOResult doesn't have metadata
         }
     }
 }
@@ -416,24 +455,27 @@ pub struct RealDiamondIOProof {
 }
 
 #[cfg(test)]
-mod tests {    use super::*;#[tokio::test]
+mod tests {
+    use super::*;
+    #[tokio::test]
     async fn test_real_diamond_io_provider_creation() {
         let config = RealDiamondIOConfig::testing();
-        
+
         let provider = RealDiamondIOProvider::new(config).await;
         assert!(provider.is_ok());
-        
+
         let provider = provider.unwrap();
         let stats = provider.get_statistics();
         assert_eq!(stats.active_circuits, 0);
         assert_eq!(stats.security_level, 64);
     }
 
-    #[tokio::test]    async fn test_circuit_creation_and_evaluation() {
+    #[tokio::test]
+    async fn test_circuit_creation_and_evaluation() {
         let config = RealDiamondIOConfig::testing();
-        
+
         let mut provider = RealDiamondIOProvider::new(config).await.unwrap();
-        
+
         // Create a test proof
         let test_proof = UtxoValidityProof {
             commitment_proof: vec![1, 2, 3, 4],
@@ -443,26 +485,35 @@ mod tests {    use super::*;#[tokio::test]
         };
 
         // Create circuit
-        let circuit = provider.create_privacy_circuit(
-            "test_circuit".to_string(),
-            &test_proof,
-        ).await.unwrap();        assert_eq!(circuit.circuit_id, "test_circuit");
+        let circuit = provider
+            .create_privacy_circuit("test_circuit".to_string(), &test_proof)
+            .await
+            .unwrap();
+        assert_eq!(circuit.circuit_id, "test_circuit");
         // Note: obfuscated_data is initially empty and populated by Diamond IO
         assert_eq!(circuit.metadata.input_size, 4);
 
         // Evaluate circuit
         let inputs = vec![true, false, true];
-        let result = provider.evaluate_circuit(&circuit, inputs.clone()).await.unwrap();        assert!(!result.outputs.is_empty());
+        let result = provider
+            .evaluate_circuit(&circuit, inputs.clone())
+            .await
+            .unwrap();
+        assert!(!result.outputs.is_empty());
 
         // Verify evaluation
-        let verification = provider.verify_evaluation(&circuit, &inputs, &result).await.unwrap();
+        let verification = provider
+            .verify_evaluation(&circuit, &inputs, &result)
+            .await
+            .unwrap();
         assert!(verification);
 
         // Cleanup
         provider.cleanup_circuit("test_circuit").await.unwrap();
         let stats = provider.get_statistics();
         assert_eq!(stats.active_circuits, 0);
-    }    #[test]
+    }
+    #[test]
     fn test_diamond_io_config_levels() {
         let testing_config = RealDiamondIOConfig::testing();
         let production_config = RealDiamondIOConfig::production();
@@ -481,7 +532,8 @@ mod tests {    use super::*;#[tokio::test]
             range_proof: vec![4, 5, 6],
             nullifier: vec![7, 8, 9],
             params_hash: vec![10, 11, 12],
-        };        let diamond_proof = RealDiamondIOProof {
+        };
+        let diamond_proof = RealDiamondIOProof {
             base_proof: test_proof,
             circuit_id: "test".to_string(),
             evaluation_result: SerializableDiamondIOResult {

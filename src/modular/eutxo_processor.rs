@@ -17,8 +17,8 @@ use serde::{
 use crate::crypto::privacy::{
     PrivacyConfig,
     PrivacyProvider,
-    PrivateTransaction,
     PrivacyStats,
+    PrivateTransaction,
 };
 use crate::crypto::transaction::{
     TXOutput,
@@ -349,7 +349,10 @@ impl EUtxoProcessor {
     }
 
     /// Process a private transaction with confidential amounts and ZK proofs
-    pub fn process_private_transaction(&self, private_tx: &PrivateTransaction) -> Result<TransactionResult> {
+    pub fn process_private_transaction(
+        &self,
+        private_tx: &PrivateTransaction,
+    ) -> Result<TransactionResult> {
         let mut result = TransactionResult {
             success: false,
             gas_used: self.config.utxo_base_gas,
@@ -359,7 +362,8 @@ impl EUtxoProcessor {
         };
 
         // Verify the private transaction
-        let privacy_provider = self.privacy_provider
+        let privacy_provider = self
+            .privacy_provider
             .lock()
             .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
 
@@ -370,12 +374,12 @@ impl EUtxoProcessor {
 
         // Additional gas for privacy features
         result.gas_used += private_tx.private_inputs.len() as u64 * 1000; // ZK proof verification cost
-        result.gas_used += private_tx.private_outputs.len() as u64 * 500;  // Range proof verification cost
+        result.gas_used += private_tx.private_outputs.len() as u64 * 500; // Range proof verification cost
 
         // Process the underlying transaction
         drop(privacy_provider); // Release lock before processing base transaction
         let base_result = self.process_transaction(&private_tx.base_transaction)?;
-        
+
         if !base_result.success {
             result.error = base_result.error;
             return Ok(result);
@@ -386,8 +390,11 @@ impl EUtxoProcessor {
             result.events.push(TransactionEvent {
                 address: format!("private_input_{}", i),
                 topics: vec!["confidential_spend".to_string()],
-                data: format!("Private input with nullifier hash: {}", 
-                             hex::encode(&input.validity_proof.nullifier[..8])).into_bytes(),
+                data: format!(
+                    "Private input with nullifier hash: {}",
+                    hex::encode(&input.validity_proof.nullifier[..8])
+                )
+                .into_bytes(),
             });
         }
 
@@ -395,8 +402,11 @@ impl EUtxoProcessor {
             result.events.push(TransactionEvent {
                 address: format!("private_output_{}", i),
                 topics: vec!["confidential_output".to_string()],
-                data: format!("Private output with commitment: {}", 
-                             hex::encode(&output.amount_commitment.commitment[..8])).into_bytes(),
+                data: format!(
+                    "Private output with commitment: {}",
+                    hex::encode(&output.amount_commitment.commitment[..8])
+                )
+                .into_bytes(),
             });
         }
 
@@ -415,8 +425,9 @@ impl EUtxoProcessor {
     ) -> Result<PrivateTransaction> {
         use rand_core::OsRng;
         let mut rng = OsRng;
-        
-        let mut privacy_provider = self.privacy_provider
+
+        let mut privacy_provider = self
+            .privacy_provider
             .lock()
             .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
 
@@ -431,7 +442,8 @@ impl EUtxoProcessor {
 
     /// Get privacy statistics
     pub fn get_privacy_stats(&self) -> Result<PrivacyStats> {
-        let privacy_provider = self.privacy_provider
+        let privacy_provider = self
+            .privacy_provider
             .lock()
             .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
 
@@ -440,13 +452,14 @@ impl EUtxoProcessor {
 
     /// Check if privacy features are enabled
     pub fn is_privacy_enabled(&self) -> bool {
-        self.config.privacy_config.enable_zk_proofs || 
-        self.config.privacy_config.enable_confidential_amounts
+        self.config.privacy_config.enable_zk_proofs
+            || self.config.privacy_config.enable_confidential_amounts
     }
 
     /// Validate a private UTXO for spending
     pub fn validate_private_spending(&self, nullifier: &[u8]) -> Result<bool> {
-        let privacy_provider = self.privacy_provider
+        let privacy_provider = self
+            .privacy_provider
             .lock()
             .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
 
@@ -595,7 +608,7 @@ mod tests {
         let mut config = EUtxoProcessorConfig::default();
         config.privacy_config.enable_zk_proofs = true;
         config.privacy_config.enable_confidential_amounts = true;
-        
+
         let processor = EUtxoProcessor::new(config);
         assert!(processor.is_privacy_enabled());
 
@@ -610,20 +623,18 @@ mod tests {
         let processor = EUtxoProcessor::new(config);
 
         // Create a simple coinbase transaction
-        let base_tx = Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
-        
-        let input_amounts = vec![0u64];  // Coinbase has 1 input with zero value
-        let output_amounts = vec![10u64];  // One output with value 10
-        let secret_keys = vec![vec![1, 2, 3]];  // Dummy secret key for coinbase
+        let base_tx =
+            Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
 
-        let private_tx = processor.create_private_transaction(
-            base_tx,
-            input_amounts,
-            output_amounts,
-            secret_keys,
-        ).unwrap();
+        let input_amounts = vec![0u64]; // Coinbase has 1 input with zero value
+        let output_amounts = vec![10u64]; // One output with value 10
+        let secret_keys = vec![vec![1, 2, 3]]; // Dummy secret key for coinbase
 
-        assert_eq!(private_tx.private_inputs.len(), 1);  // Coinbase has 1 input
+        let private_tx = processor
+            .create_private_transaction(base_tx, input_amounts, output_amounts, secret_keys)
+            .unwrap();
+
+        assert_eq!(private_tx.private_inputs.len(), 1); // Coinbase has 1 input
         assert_eq!(private_tx.private_outputs.len(), 1);
         assert!(!private_tx.transaction_proof.is_empty());
     }
@@ -634,21 +645,26 @@ mod tests {
         let processor = EUtxoProcessor::new(config);
 
         // Create a simple coinbase transaction
-        let base_tx = Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
-        
-        let private_tx = processor.create_private_transaction(
-            base_tx,
-            vec![0u64],      // Coinbase input with zero value
-            vec![10u64], // One output
-            vec![vec![1, 2, 3]],      // Dummy secret key for coinbase
-        ).unwrap();
+        let base_tx =
+            Transaction::new_coinbase("test_address".to_string(), "test_data".to_string()).unwrap();
+
+        let private_tx = processor
+            .create_private_transaction(
+                base_tx,
+                vec![0u64],          // Coinbase input with zero value
+                vec![10u64],         // One output
+                vec![vec![1, 2, 3]], // Dummy secret key for coinbase
+            )
+            .unwrap();
 
         let result = processor.process_private_transaction(&private_tx).unwrap();
         assert!(result.success);
         assert!(result.gas_used > 0);
-        
+
         // Should have privacy-specific events
-        let privacy_events: Vec<_> = result.events.iter()
+        let privacy_events: Vec<_> = result
+            .events
+            .iter()
             .filter(|e| e.topics.contains(&"confidential_output".to_string()))
             .collect();
         assert!(!privacy_events.is_empty());
@@ -660,8 +676,10 @@ mod tests {
         let processor = EUtxoProcessor::new(config);
 
         let test_nullifier = vec![1, 2, 3, 4, 5];
-        
+
         // Initially, nullifier should be valid (not used)
-        assert!(processor.validate_private_spending(&test_nullifier).unwrap());
+        assert!(processor
+            .validate_private_spending(&test_nullifier)
+            .unwrap());
     }
 }

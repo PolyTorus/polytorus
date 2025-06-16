@@ -4,17 +4,23 @@
 //! and the real Diamond IO library from MachinaIO.
 
 use std::collections::HashMap;
-use tokio;
 
-use polytorus::crypto::privacy::{UtxoValidityProof, PedersenCommitment};
-use polytorus::crypto::real_diamond_io::{
-    RealDiamondIOProvider, RealDiamondIOConfig, RealDiamondIOProof, SerializableDiamondIOResult
+use polytorus::crypto::privacy::{
+    PedersenCommitment,
+    UtxoValidityProof,
 };
+use polytorus::crypto::real_diamond_io::{
+    RealDiamondIOConfig,
+    RealDiamondIOProof,
+    RealDiamondIOProvider,
+    SerializableDiamondIOResult,
+};
+use tokio;
 
 #[tokio::test]
 async fn test_real_diamond_io_provider_creation() {
     let config = RealDiamondIOConfig::testing();
-    
+
     // Create provider
     let provider = RealDiamondIOProvider::new(config)
         .await
@@ -88,7 +94,10 @@ async fn test_privacy_proof_creation() {
 
     // Verify proof structure
     assert_eq!(diamond_proof.circuit_id, "test_proof");
-    assert_eq!(diamond_proof.base_proof.commitment_proof, test_proof.commitment_proof);
+    assert_eq!(
+        diamond_proof.base_proof.commitment_proof,
+        test_proof.commitment_proof
+    );
     assert!(!diamond_proof.evaluation_result.outputs.is_empty());
     assert!(!diamond_proof.performance_metrics.is_empty());
 }
@@ -125,15 +134,18 @@ async fn test_proof_serialization() {
     };
 
     // Test JSON serialization
-    let json_serialized = serde_json::to_string(&diamond_proof)
-        .expect("Failed to serialize proof to JSON");
+    let json_serialized =
+        serde_json::to_string(&diamond_proof).expect("Failed to serialize proof to JSON");
     assert!(!json_serialized.is_empty());
 
-    let json_deserialized: RealDiamondIOProof = serde_json::from_str(&json_serialized)
-        .expect("Failed to deserialize proof from JSON");
-    
+    let json_deserialized: RealDiamondIOProof =
+        serde_json::from_str(&json_serialized).expect("Failed to deserialize proof from JSON");
+
     assert_eq!(json_deserialized.circuit_id, "test");
-    assert_eq!(json_deserialized.evaluation_result.outputs, vec![true, false, true]);
+    assert_eq!(
+        json_deserialized.evaluation_result.outputs,
+        vec![true, false, true]
+    );
     assert_eq!(json_deserialized.evaluation_result.execution_time, 123.45);
 }
 

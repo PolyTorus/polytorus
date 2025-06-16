@@ -1,17 +1,19 @@
-use diamond_io::{
-    bgg::circuit::PolyCircuit,
-    poly::{
-        dcrt::{
-            DCRTPolyParams,
-        },
-    },
-    // utils::init_tracing, // コメントアウトして、独自のトレーシング管理を使用
+use std::{
+    fs,
+    path::Path,
 };
 
+use diamond_io::{
+    bgg::circuit::PolyCircuit,
+    poly::dcrt::DCRTPolyParams,
+    // utils::init_tracing, // コメントアウトして、独自のトレーシング管理を使用
+};
 use num_bigint::BigUint;
 use num_traits::Num;
-use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,7 +152,8 @@ pub struct DiamondIOIntegration {
     obfuscation_dir: String,
 }
 
-impl DiamondIOIntegration {    /// Create a new Diamond IO integration instance
+impl DiamondIOIntegration {
+    /// Create a new Diamond IO integration instance
     pub fn new(config: DiamondIOConfig) -> anyhow::Result<Self> {
         // Note: Tracing initialization is handled externally to avoid conflicts
 
@@ -209,10 +212,7 @@ impl DiamondIOIntegration {    /// Create a new Diamond IO integration instance
     }
 
     /// Obfuscate a circuit using real Diamond IO
-    pub async fn obfuscate_circuit(
-        &self,
-        circuit: PolyCircuit,
-    ) -> anyhow::Result<()> {
+    pub async fn obfuscate_circuit(&self, circuit: PolyCircuit) -> anyhow::Result<()> {
         if self.config.dummy_mode {
             info!("Circuit obfuscation simulated (dummy mode)");
             return Ok(());
@@ -223,7 +223,10 @@ impl DiamondIOIntegration {    /// Create a new Diamond IO integration instance
         let dir = Path::new(&self.obfuscation_dir);
         if dir.exists() {
             fs::remove_dir_all(dir).unwrap_or_else(|e| {
-                eprintln!("Warning: Failed to remove existing obfuscation directory: {}", e);
+                eprintln!(
+                    "Warning: Failed to remove existing obfuscation directory: {}",
+                    e
+                );
             });
         }
         fs::create_dir_all(dir)?;
@@ -232,19 +235,19 @@ impl DiamondIOIntegration {    /// Create a new Diamond IO integration instance
 
         // Validate circuit
         if circuit.num_input() == 0 || circuit.num_output() == 0 {
-            return Err(anyhow::anyhow!("Invalid circuit: must have at least one input and one output"));
-        }        // For now, use placeholder implementation until Diamond IO API is fully stable
+            return Err(anyhow::anyhow!(
+                "Invalid circuit: must have at least one input and one output"
+            ));
+        } // For now, use placeholder implementation until Diamond IO API is fully stable
         info!("Diamond IO obfuscation - using placeholder implementation");
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         let obfuscation_time = start_time.elapsed();
         info!("Obfuscation completed in: {:?}", obfuscation_time);
         Ok(())
-    }/// Evaluate an obfuscated circuit using Diamond IO
-    pub async fn evaluate_circuit(
-        &self,
-        inputs: &[bool],
-    ) -> anyhow::Result<Vec<bool>> {
+    }
+    /// Evaluate an obfuscated circuit using Diamond IO
+    pub async fn evaluate_circuit(&self, inputs: &[bool]) -> anyhow::Result<Vec<bool>> {
         if self.config.dummy_mode {
             return self.simulate_circuit_evaluation(inputs);
         }
@@ -254,7 +257,9 @@ impl DiamondIOIntegration {    /// Create a new Diamond IO integration instance
 
         let dir = Path::new(&self.obfuscation_dir);
         if !dir.exists() {
-            return Err(anyhow::anyhow!("Obfuscation data not found. Please run obfuscate_circuit first."));
+            return Err(anyhow::anyhow!(
+                "Obfuscation data not found. Please run obfuscate_circuit first."
+            ));
         }
 
         // Pad or truncate inputs to match expected size
@@ -276,10 +281,10 @@ impl DiamondIOIntegration {    /// Create a new Diamond IO integration instance
         inputs: &[bool],
     ) -> anyhow::Result<DiamondIOResult> {
         let start_time = std::time::Instant::now();
-        
+
         let outputs = self.evaluate_circuit(inputs).await?;
         let execution_time = start_time.elapsed().as_millis() as u64;
-        
+
         Ok(DiamondIOResult {
             success: true,
             outputs,

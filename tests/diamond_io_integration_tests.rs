@@ -31,7 +31,7 @@ async fn test_circuit_execution() {
     let inputs = vec![true, false, true, false];
     let result = integration.execute_circuit_detailed(&inputs).await;
     assert!(result.is_ok());
-    
+
     let result = result.unwrap();
     assert!(result.success);
     assert!(!result.outputs.is_empty());

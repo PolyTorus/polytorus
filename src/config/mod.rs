@@ -36,7 +36,11 @@ impl Default for DataContext {
         Self {
             wallet_dir: data_dir.join("wallets"),
             blockchain_dir: data_dir.join("blockchain"),
-            contracts_db_path: data_dir.join("contracts").join("db").to_string_lossy().to_string(),
+            contracts_db_path: data_dir
+                .join("contracts")
+                .join("db")
+                .to_string_lossy()
+                .to_string(),
             data_dir,
         }
     }
@@ -47,7 +51,11 @@ impl DataContext {
         Self {
             wallet_dir: data_dir.join("wallets"),
             blockchain_dir: data_dir.join("blockchain"),
-            contracts_db_path: data_dir.join("contracts").join("db").to_string_lossy().to_string(),
+            contracts_db_path: data_dir
+                .join("contracts")
+                .join("db")
+                .to_string_lossy()
+                .to_string(),
             data_dir,
         }
     }
