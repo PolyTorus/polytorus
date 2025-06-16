@@ -6,12 +6,9 @@
 //! - Diamond IO integration for enhanced privacy
 //! - End-to-end privacy workflows
 
-use std::sync::Arc;
-
 use polytorus::crypto::privacy::{
     PrivacyConfig,
     PrivacyProvider,
-    PrivateTransaction,
 };
 use polytorus::crypto::diamond_privacy::{
     DiamondPrivacyConfig,
@@ -145,14 +142,14 @@ fn test_private_transaction_creation_and_verification() {
     // Create private transaction
     let private_tx = provider.create_private_transaction(
         base_tx,
-        vec![], // No inputs for coinbase
+        vec![0u64], // Coinbase has 1 input with 0 value
         vec![50u64], // One output with 50 units
-        vec![], // No secret keys for coinbase
+        vec![vec![1, 2, 3]], // Dummy secret key for coinbase
         &mut rng,
     ).unwrap();
 
     // Verify private transaction structure
-    assert_eq!(private_tx.private_inputs.len(), 0); // Coinbase has no inputs
+    assert_eq!(private_tx.private_inputs.len(), 1); // Coinbase has 1 input
     assert_eq!(private_tx.private_outputs.len(), 1);
     assert!(!private_tx.transaction_proof.is_empty());
     assert!(!private_tx.fee_commitment.commitment.is_empty());
@@ -191,9 +188,9 @@ fn test_private_transaction_processing_in_eutxo() {
     // Create private transaction
     let private_tx = processor.create_private_transaction(
         base_tx,
-        vec![], // No inputs
+        vec![0u64], // Coinbase has 1 input with 0 value
         vec![25u64], // One output
-        vec![], // No secret keys
+        vec![vec![1, 2, 3]], // Dummy secret key for coinbase
     ).unwrap();
 
     // Process the private transaction
@@ -313,9 +310,9 @@ fn test_multiple_inputs_outputs_private_transaction() {
     // Create private transaction with multiple outputs
     let private_tx = provider.create_private_transaction(
         base_tx,
-        vec![], // Still no inputs for coinbase
+        vec![0u64], // Coinbase has 1 input with 0 value
         vec![10u64, 25u64, 25u64], // Three outputs
-        vec![], // No secret keys
+        vec![vec![1, 2, 3]], // Dummy secret key for coinbase
         &mut rng,
     ).unwrap();
 
@@ -403,9 +400,9 @@ fn test_end_to_end_privacy_workflow() {
     // Step 2: Create private transaction from coinbase
     let private_tx = processor.create_private_transaction(
         coinbase_tx,
-        vec![], // No inputs
+        vec![0u64], // Coinbase has 1 input with 0 value
         vec![10u64], // One output
-        vec![], // No secret keys
+        vec![vec![1, 2, 3]], // Dummy secret key for coinbase
     ).unwrap();
 
     // Step 3: Process private transaction

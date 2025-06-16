@@ -90,7 +90,7 @@ toml = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 
 # Diamond IO dependencies
-diamond-io = { git = "https://github.com/MachinaIO/diamond-io", default-features = false, features = ["debug"] }
+diamond-io = { git = "https://github.com/MachinaIO/diamond-io" }
 openfhe = { git = "https://github.com/MachinaIO/openfhe-rs.git", branch = "exp/reimpl_trapdoor" }
 num-bigint = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
