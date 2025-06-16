@@ -56,8 +56,16 @@ services:
       POLYTORUS_DATA_DIR: /app/data
       POLYTORUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
       POLYTORUS_BOOTSTRAP_PEERS: ""
-      DATABASE_URL: postgresql://polytorus:${DB_PASSWORD:-polytorus_dev}@postgres:5432/polytorus
-      REDIS_URL: redis://:${REDIS_PASSWORD:-polytorus_dev}@redis:6379
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: polytorus
+      DB_USER: polytorus
+      DB_PASSWORD: ${DB_PASSWORD:-polytorus_dev}
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-polytorus_dev}
     volumes:
       - ./data/simulation/node-0:/app/data
       - ./config:/app/config:ro
@@ -96,8 +104,16 @@ services:
       POLYTORUS_DATA_DIR: /app/data
       POLYTORUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
       POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000"
-      DATABASE_URL: postgresql://polytorus:${DB_PASSWORD:-polytorus_dev}@postgres:5432/polytorus
-      REDIS_URL: redis://:${REDIS_PASSWORD:-polytorus_dev}@redis:6379
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: polytorus
+      DB_USER: polytorus
+      DB_PASSWORD: ${DB_PASSWORD:-polytorus_dev}
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-polytorus_dev}
     volumes:
       - ./data/simulation/node-1:/app/data
       - ./config:/app/config:ro
@@ -138,8 +154,16 @@ services:
       POLYTORUS_DATA_DIR: /app/data
       POLYTORUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
       POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000,node-1:8000"
-      DATABASE_URL: postgresql://polytorus:${DB_PASSWORD:-polytorus_dev}@postgres:5432/polytorus
-      REDIS_URL: redis://:${REDIS_PASSWORD:-polytorus_dev}@redis:6379
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: polytorus
+      DB_USER: polytorus
+      DB_PASSWORD: ${DB_PASSWORD:-polytorus_dev}
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-polytorus_dev}
     volumes:
       - ./data/simulation/node-2:/app/data
       - ./config:/app/config:ro

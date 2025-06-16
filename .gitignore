@@ -10,3 +10,13 @@ target/
 modular_config.toml
 obfuscation_data
 why3find.json
+
+# Environment and secrets
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Database and Redis data
+postgres_data/
+redis_data/

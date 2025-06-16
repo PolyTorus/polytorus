@@ -3,6 +3,7 @@
 //! This module provides configuration management for the PolyTorus blockchain,
 //! including network settings, execution parameters, and environment variable support.
 
+pub mod database;
 pub mod enhanced_config;
 
 // Re-export commonly used types
