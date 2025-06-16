@@ -1,31 +1,21 @@
 //! Type-safe block implementation with compile-time guarantees and Verkle tree support
 
-use std::marker::PhantomData;
-use std::time::SystemTime;
+use std::{marker::PhantomData, time::SystemTime};
 
 use bincode::serialize;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
+use crypto::{digest::Digest, sha2::Sha256};
 use failure::format_err;
 use log::info;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::blockchain::types::{
-    block_states,
-    network,
-    BlockState,
-    NetworkConfig,
+use crate::{
+    blockchain::types::{block_states, network, BlockState, NetworkConfig},
+    crypto::{
+        transaction::*,
+        verkle_tree::{VerklePoint, VerkleProof, VerkleTree},
+    },
+    Result,
 };
-use crate::crypto::transaction::*;
-use crate::crypto::verkle_tree::{
-    VerklePoint,
-    VerkleProof,
-    VerkleTree,
-};
-use crate::Result;
 
 #[cfg(test)]
 pub const TEST_DIFFICULTY: usize = 1;

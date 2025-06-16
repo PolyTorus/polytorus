@@ -1,7 +1,6 @@
 use anyhow::Result;
 use polytorus::{
-    diamond_io_integration_new::DiamondIOConfig,
-    diamond_smart_contracts::DiamondContractEngine,
+    diamond_io_integration_new::DiamondIOConfig, diamond_smart_contracts::DiamondContractEngine,
 };
 
 #[tokio::main]

@@ -4,26 +4,17 @@
 //! from MachinaIO, implementing indistinguishability obfuscation for privacy-preserving
 //! smart contracts and eUTXO transactions.
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::info;
 
-use crate::crypto::privacy::{
-    PedersenCommitment,
-    UtxoValidityProof,
+use crate::{
+    crypto::privacy::{PedersenCommitment, UtxoValidityProof},
+    diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration, DiamondIOResult},
+    Result,
 };
-use crate::diamond_io_integration_new::{
-    DiamondIOConfig,
-    DiamondIOIntegration,
-    DiamondIOResult,
-};
-use crate::Result;
 
 /// Real Diamond IO configuration based on actual implementation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -356,10 +347,7 @@ impl RealDiamondIOProvider {
 
     /// Derive circuit inputs from UTXO validity proof
     fn derive_circuit_inputs_from_proof(&self, proof: &UtxoValidityProof) -> Result<Vec<bool>> {
-        use sha2::{
-            Digest,
-            Sha256,
-        };
+        use sha2::{Digest, Sha256};
 
         let mut hasher = Sha256::new();
         hasher.update(&proof.commitment_proof);

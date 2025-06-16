@@ -2,15 +2,13 @@
 //! This module contains verification proofs for the core cryptographic functions
 //! used in the Polytorus blockchain.
 
-use crate::crypto::ecdsa::EcdsaCrypto;
-use crate::crypto::fndsa::FnDsaCrypto;
-use crate::crypto::traits::CryptoProvider;
-use crate::crypto::transaction::{
-    TXInput,
-    TXOutput,
-    Transaction,
+use crate::crypto::{
+    ecdsa::EcdsaCrypto,
+    fndsa::FnDsaCrypto,
+    traits::CryptoProvider,
+    transaction::{TXInput, TXOutput, Transaction},
+    types::EncryptionType,
 };
-use crate::crypto::types::EncryptionType;
 
 /// Helper function to determine encryption type (moved here for verification)
 fn determine_encryption_type_local(pub_key: &[u8]) -> EncryptionType {

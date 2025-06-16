@@ -3,38 +3,20 @@
 //! This example demonstrates how to run multiple PolyTorus nodes locally
 //! and simulate transaction propagation across the network.
 
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use actix_web::{
-    web,
-    App,
-    HttpServer,
-    Result as ActixResult,
+use actix_web::{web, App, HttpServer, Result as ActixResult};
+use clap::{App as ClapApp, Arg};
+use polytorus::{
+    config::{ConfigManager, DataContext},
+    modular::{default_modular_config, UnifiedModularOrchestrator},
+    Result,
 };
-use clap::{
-    App as ClapApp,
-    Arg,
-};
-use polytorus::config::{
-    ConfigManager,
-    DataContext,
-};
-use polytorus::modular::{
-    default_modular_config,
-    UnifiedModularOrchestrator,
-};
-use polytorus::Result;
 use reqwest::Client;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use tokio::sync::Mutex;
-use tokio::time::{
-    interval,
-    sleep,
+use serde::{Deserialize, Serialize};
+use tokio::{
+    sync::Mutex,
+    time::{interval, sleep},
 };
 use uuid::Uuid;
 

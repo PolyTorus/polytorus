@@ -3,12 +3,11 @@
 //! This module provides network functionality specifically for the modular blockchain,
 //! independent of legacy network components.
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+    time::SystemTime,
 };
-use std::time::SystemTime;
 
 use crate::Result;
 

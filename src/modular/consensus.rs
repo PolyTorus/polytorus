@@ -3,19 +3,13 @@
 //! This module implements the consensus layer for the modular blockchain,
 //! handling block validation and chain management.
 
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::sync::{Arc, Mutex};
 
-use super::storage::{
-    ModularStorage,
-    StorageLayer,
+use super::{
+    storage::{ModularStorage, StorageLayer},
+    traits::*,
 };
-use super::traits::*;
-use crate::blockchain::block::Block;
-use crate::config::DataContext;
-use crate::Result;
+use crate::{blockchain::block::Block, config::DataContext, Result};
 
 /// Consensus layer implementation using Proof of Work
 pub struct PolyTorusConsensusLayer {

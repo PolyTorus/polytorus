@@ -1,7 +1,4 @@
-use polytorus::diamond_io_integration_new::{
-    DiamondIOConfig,
-    DiamondIOIntegration,
-};
+use polytorus::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

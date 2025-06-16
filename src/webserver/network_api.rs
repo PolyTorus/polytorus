@@ -5,24 +5,11 @@
 
 use std::sync::Arc;
 
-use actix_web::{
-    delete,
-    get,
-    post,
-    web,
-    HttpResponse,
-    Result as ActixResult,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use actix_web::{delete, get, post, web, HttpResponse, Result as ActixResult};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
-use crate::network::{
-    NetworkCommand,
-    PeerId,
-};
+use crate::network::{NetworkCommand, PeerId};
 
 /// Network health response
 #[derive(Debug, Serialize, Deserialize)]

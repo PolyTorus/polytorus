@@ -2,19 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use diamond_io::bgg::circuit::PolyCircuit;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use tracing::{
-    info,
-    warn,
-};
+use serde::{Deserialize, Serialize};
+use tracing::{info, warn};
 
-use crate::diamond_io_integration_new::{
-    DiamondIOConfig,
-    DiamondIOIntegration,
-};
+use crate::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondContract {

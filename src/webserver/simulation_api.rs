@@ -2,15 +2,8 @@
 
 use std::sync::Arc;
 
-use actix_web::{
-    web,
-    HttpResponse,
-    Result,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use actix_web::{web, HttpResponse, Result};
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 

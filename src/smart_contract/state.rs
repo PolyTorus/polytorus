@@ -2,14 +2,10 @@
 
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use sled;
 
-use crate::smart_contract::types::ContractMetadata;
-use crate::Result;
+use crate::{smart_contract::types::ContractMetadata, Result};
 
 /// Contract state storage
 #[derive(Debug, Clone)]

@@ -2,18 +2,13 @@
 //!
 //! Tests for ERC20 token functionality integration with the blockchain
 
-use std::time::{
-    SystemTime,
-    UNIX_EPOCH,
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use polytorus::config::DataContext;
-use polytorus::smart_contract::{
-    ContractEngine,
-    ContractState,
-    ERC20Contract,
+use polytorus::{
+    config::DataContext,
+    smart_contract::{ContractEngine, ContractState, ERC20Contract},
+    Result,
 };
-use polytorus::Result;
 
 #[tokio::test]
 async fn test_erc20_full_workflow() -> Result<()> {

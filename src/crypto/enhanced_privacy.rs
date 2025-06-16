@@ -5,29 +5,19 @@
 
 use std::collections::HashMap;
 
-use ark_std::rand::{
-    CryptoRng,
-    RngCore,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use ark_std::rand::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 
-use crate::crypto::privacy::{
-    PrivacyConfig,
-    PrivacyProvider,
-    PrivateTransaction,
-    UtxoValidityProof,
+use crate::{
+    crypto::{
+        privacy::{PrivacyConfig, PrivacyProvider, PrivateTransaction, UtxoValidityProof},
+        real_diamond_io::{
+            DiamondIOCircuit, RealDiamondIOConfig, RealDiamondIOProof, RealDiamondIOProvider,
+        },
+        transaction::Transaction,
+    },
+    Result,
 };
-use crate::crypto::real_diamond_io::{
-    DiamondIOCircuit,
-    RealDiamondIOConfig,
-    RealDiamondIOProof,
-    RealDiamondIOProvider,
-};
-use crate::crypto::transaction::Transaction;
-use crate::Result;
 
 /// Enhanced privacy configuration combining traditional privacy with real Diamond IO
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -281,10 +271,7 @@ impl EnhancedPrivacyProvider {
 
     /// Derive circuit inputs from validity proof
     fn derive_circuit_inputs(&self, proof: &UtxoValidityProof) -> Result<Vec<bool>> {
-        use sha2::{
-            Digest,
-            Sha256,
-        };
+        use sha2::{Digest, Sha256};
 
         let mut hasher = Sha256::new();
         hasher.update(&proof.commitment_proof);

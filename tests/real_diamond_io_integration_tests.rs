@@ -5,15 +5,11 @@
 
 use std::collections::HashMap;
 
-use polytorus::crypto::privacy::{
-    PedersenCommitment,
-    UtxoValidityProof,
-};
-use polytorus::crypto::real_diamond_io::{
-    RealDiamondIOConfig,
-    RealDiamondIOProof,
-    RealDiamondIOProvider,
-    SerializableDiamondIOResult,
+use polytorus::crypto::{
+    privacy::{PedersenCommitment, UtxoValidityProof},
+    real_diamond_io::{
+        RealDiamondIOConfig, RealDiamondIOProof, RealDiamondIOProvider, SerializableDiamondIOResult,
+    },
 };
 
 #[tokio::test]

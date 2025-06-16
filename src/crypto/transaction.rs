@@ -1,29 +1,19 @@
 // Legacy utxoset import removed in Phase 4 - using modular storage
 // use crate::blockchain::utxoset::*;
-use std::collections::HashMap;
-use std::vec;
+use std::{collections::HashMap, vec};
 
 use bincode::serialize_into;
 use bitcoincash_addr::Address;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
+use crypto::{digest::Digest, sha2::Sha256};
 use failure::format_err;
-use fn_dsa::{
-    VerifyingKey,
-    VerifyingKeyStandard,
-    DOMAIN_NONE,
-    HASH_ID_RAW,
-};
+use fn_dsa::{VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE, HASH_ID_RAW};
 use rand::Rng;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::crypto::traits::CryptoProvider;
-use crate::crypto::types::EncryptionType;
-use crate::crypto::wallets::*;
-use crate::Result;
+use crate::{
+    crypto::{traits::CryptoProvider, types::EncryptionType, wallets::*},
+    Result,
+};
 
 const SUBSIDY: i32 = 10;
 
@@ -777,21 +767,15 @@ fn hash_pub_key_clone(pub_key: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod test {
     use fn_dsa::{
-        signature_size,
-        SigningKey,
-        SigningKeyStandard,
-        VerifyingKey,
-        VerifyingKeyStandard,
-        DOMAIN_NONE,
-        HASH_ID_RAW,
+        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
+        DOMAIN_NONE, HASH_ID_RAW,
     };
     use rand_core::OsRng;
 
     use super::*;
-    use crate::crypto::types::EncryptionType;
-    use crate::test_helpers::{
-        cleanup_test_context,
-        create_test_context,
+    use crate::{
+        crypto::types::EncryptionType,
+        test_helpers::{cleanup_test_context, create_test_context},
     };
 
     #[test]

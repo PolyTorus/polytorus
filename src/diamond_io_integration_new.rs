@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::Path,
-};
+use std::{fs, path::Path};
 
 use diamond_io::{
     bgg::circuit::PolyCircuit,
@@ -10,10 +7,7 @@ use diamond_io::{
 };
 use num_bigint::BigUint;
 use num_traits::Num;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

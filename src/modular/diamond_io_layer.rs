@@ -2,29 +2,19 @@
 //!
 //! This layer provides Diamond IO cryptographic operations integration.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use tracing::{
-    error,
-    info,
-    warn,
-};
+use tracing::{error, info, warn};
 
-use crate::diamond_io_integration_new::{
-    DiamondIOConfig,
-    DiamondIOIntegration,
-};
-use crate::modular::message_bus::MessageBus;
-use crate::modular::traits::{
-    Layer,
-    LayerMessage,
+use crate::{
+    diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration},
+    modular::{
+        message_bus::MessageBus,
+        traits::{Layer, LayerMessage},
+    },
 };
 
 /// Diamond IO Layer message types

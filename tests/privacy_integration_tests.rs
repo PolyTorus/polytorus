@@ -6,19 +6,13 @@
 //! - Diamond IO integration for enhanced privacy
 //! - End-to-end privacy workflows
 
-use polytorus::crypto::diamond_privacy::{
-    DiamondCircuitComplexity,
-    DiamondPrivacyConfig,
-    DiamondPrivacyProvider,
-};
-use polytorus::crypto::privacy::{
-    PrivacyConfig,
-    PrivacyProvider,
-};
-use polytorus::crypto::transaction::Transaction;
-use polytorus::modular::eutxo_processor::{
-    EUtxoProcessor,
-    EUtxoProcessorConfig,
+use polytorus::{
+    crypto::{
+        diamond_privacy::{DiamondCircuitComplexity, DiamondPrivacyConfig, DiamondPrivacyProvider},
+        privacy::{PrivacyConfig, PrivacyProvider},
+        transaction::Transaction,
+    },
+    modular::eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig},
 };
 
 /// Test helper for creating test transactions

@@ -4,31 +4,24 @@
 //! from both the legacy and enhanced implementations, providing a clean
 //! trait-based architecture with comprehensive event handling.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use failure;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use tokio::sync::{
-    mpsc,
-    Mutex as AsyncMutex,
-    RwLock,
-};
+use serde::{Deserialize, Serialize};
+use tokio::sync::{mpsc, Mutex as AsyncMutex, RwLock};
 
-use super::config_manager::ModularConfigManager;
-use super::layer_factory::ModularLayerFactory;
-use super::message_bus::ModularMessageBus;
-use super::traits::*;
-use crate::blockchain::block::Block;
-use crate::blockchain::types::{
-    block_states,
-    network,
+use super::{
+    config_manager::ModularConfigManager, layer_factory::ModularLayerFactory,
+    message_bus::ModularMessageBus, traits::*,
 };
-use crate::network::blockchain_integration::NetworkedBlockchainNode;
-use crate::Result;
+use crate::{
+    blockchain::{
+        block::Block,
+        types::{block_states, network},
+    },
+    network::blockchain_integration::NetworkedBlockchainNode,
+    Result,
+};
 
 /// Unified Modular Blockchain Orchestrator with P2P Network Integration
 ///
@@ -964,11 +957,11 @@ impl UnifiedModularOrchestrator {
         config: ModularConfig,
         data_context: crate::config::DataContext,
     ) -> Result<Self> {
-        use super::consensus::PolyTorusConsensusLayer;
-        use super::data_availability::PolyTorusDataAvailabilityLayer;
-        use super::execution::PolyTorusExecutionLayer;
-        use super::network::ModularNetwork;
-        use super::settlement::PolyTorusSettlementLayer;
+        use super::{
+            consensus::PolyTorusConsensusLayer, data_availability::PolyTorusDataAvailabilityLayer,
+            execution::PolyTorusExecutionLayer, network::ModularNetwork,
+            settlement::PolyTorusSettlementLayer,
+        };
 
         // Create infrastructure components first
         let message_bus = Arc::new(ModularMessageBus::new());

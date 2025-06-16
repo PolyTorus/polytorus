@@ -3,17 +3,10 @@
 //! This module provides comprehensive configuration management including
 //! network settings, environment variable overrides, and dynamic updates.
 
-use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::net::SocketAddr;
-use std::path::Path;
+use std::{collections::HashMap, env, fs, net::SocketAddr, path::Path};
 
 use failure::format_err;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::Result;
 

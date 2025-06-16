@@ -10,12 +10,7 @@ pub mod enhanced_config;
 use std::path::PathBuf;
 
 pub use enhanced_config::{
-    CompleteConfig,
-    ConfigManager,
-    ConsensusConfig,
-    ExecutionConfig,
-    LoggingConfig,
-    NetworkConfig,
+    CompleteConfig, ConfigManager, ConsensusConfig, ExecutionConfig, LoggingConfig, NetworkConfig,
     StorageConfig,
 };
 

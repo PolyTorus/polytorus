@@ -1,7 +1,6 @@
 //! Integration test for eUTXO functionality in the modular blockchain architecture
 
-use polytorus::config::DataContext;
-use polytorus::modular::*;
+use polytorus::{config::DataContext, modular::*};
 
 #[tokio::test]
 async fn test_eutxo_integration() {

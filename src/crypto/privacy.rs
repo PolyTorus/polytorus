@@ -6,46 +6,23 @@
 //! - Range proofs for amount validation
 //! - Nullifier-based double-spend prevention
 
-use std::collections::HashMap;
-use std::ops::Mul;
+use std::{collections::HashMap, ops::Mul};
 
-use ark_ec::{
-    AdditiveGroup,
-    CurveGroup,
-    PrimeGroup,
-};
-use ark_ed_on_bls12_381::{
-    EdwardsAffine,
-    EdwardsProjective,
-    Fr,
-};
+use ark_ec::{AdditiveGroup, CurveGroup, PrimeGroup};
+use ark_ed_on_bls12_381::{EdwardsAffine, EdwardsProjective, Fr};
 use ark_ff::UniformRand;
-use ark_serialize::{
-    CanonicalDeserialize,
-    CanonicalSerialize,
-};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{
-    rand::{
-        CryptoRng,
-        RngCore,
-    },
+    rand::{CryptoRng, RngCore},
     Zero,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use sha2::{
-    Digest,
-    Sha256,
-};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-use crate::crypto::transaction::{
-    TXInput,
-    TXOutput,
-    Transaction,
+use crate::{
+    crypto::transaction::{TXInput, TXOutput, Transaction},
+    Result,
 };
-use crate::Result;
 
 /// Privacy configuration for eUTXO transactions
 #[derive(Debug, Clone, Serialize, Deserialize)]

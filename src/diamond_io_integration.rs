@@ -5,10 +5,7 @@
 
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// Diamond IO configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

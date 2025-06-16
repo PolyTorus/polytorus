@@ -1,32 +1,17 @@
 //! Modern CLI - Unified Modular Architecture Only
 
-use actix_web::{
-    web,
-    App as ActixApp,
-    HttpServer,
-};
-use clap::{
-    App,
-    Arg,
-};
+use actix_web::{web, App as ActixApp, HttpServer};
+use clap::{App, Arg};
 
-use crate::config::ConfigManager;
-use crate::config::DataContext;
-use crate::crypto::types::EncryptionType;
-use crate::crypto::wallets::*;
-use crate::modular::{
-    default_modular_config,
-    UnifiedModularOrchestrator,
+use crate::{
+    config::{ConfigManager, DataContext},
+    crypto::{types::EncryptionType, wallets::*},
+    modular::{default_modular_config, UnifiedModularOrchestrator},
+    webserver::simulation_api::{
+        get_stats, get_status, health_check, send_transaction, submit_transaction, SimulationState,
+    },
+    Result,
 };
-use crate::webserver::simulation_api::{
-    get_stats,
-    get_status,
-    health_check,
-    send_transaction,
-    submit_transaction,
-    SimulationState,
-};
-use crate::Result;
 
 pub struct ModernCli {}
 
@@ -716,10 +701,7 @@ impl ModernCli {
     // ERC20 Command Handlers
 
     pub async fn cmd_erc20_deploy(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 5 {
@@ -771,10 +753,7 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_transfer(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 3 {
@@ -834,10 +813,7 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_balance(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 2 {
@@ -884,10 +860,7 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_approve(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 3 {
@@ -947,10 +920,7 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_allowance(&self, params: &str) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         let parts: Vec<&str> = params.split(',').collect();
         if parts.len() != 3 {
@@ -999,10 +969,7 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_info(&self, contract_address: &str) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         println!("Getting ERC20 contract information...");
         println!("Contract: {}", contract_address);
@@ -1033,10 +1000,7 @@ impl ModernCli {
     }
 
     pub async fn cmd_erc20_list(&self) -> Result<()> {
-        use crate::smart_contract::{
-            ContractEngine,
-            ContractState,
-        };
+        use crate::smart_contract::{ContractEngine, ContractState};
 
         println!("Listing all deployed ERC20 contracts...");
 

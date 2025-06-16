@@ -3,8 +3,7 @@
 //! A simplified demo showcasing the core modular components working together
 //! without potentially blocking async operations.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use polytorus::modular::{
     create_config_templates,

@@ -3,23 +3,17 @@
 //! This module provides transaction processing capabilities for the modular blockchain
 //! architecture, independent of legacy UTXO systems.
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::crypto::transaction::{
-    ContractTransactionData,
-    ContractTransactionType,
-    Transaction,
+use crate::{
+    crypto::transaction::{ContractTransactionData, ContractTransactionType, Transaction},
+    Result,
 };
-use crate::Result;
 
 /// Account-based state for modular transaction processing
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

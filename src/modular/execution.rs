@@ -3,34 +3,28 @@
 //! This module implements the execution layer for the modular blockchain,
 //! handling transaction execution and state management.
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
-use super::eutxo_processor::{
-    EUtxoProcessor,
-    EUtxoProcessorConfig,
+use super::{
+    eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig},
+    traits::*,
+    transaction_processor::{
+        ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
+    },
 };
-use super::traits::*;
-use super::transaction_processor::{
-    ModularTransactionProcessor,
-    ProcessorAccountState,
-    TransactionProcessorConfig,
+use crate::{
+    blockchain::block::Block,
+    config::DataContext,
+    crypto::transaction::Transaction,
+    smart_contract::{
+        types::{ContractDeployment, ContractExecution},
+        ContractEngine, ContractState,
+    },
+    Result,
 };
-use crate::blockchain::block::Block;
-use crate::config::DataContext;
-use crate::crypto::transaction::Transaction;
-use crate::smart_contract::types::{
-    ContractDeployment,
-    ContractExecution,
-};
-use crate::smart_contract::{
-    ContractEngine,
-    ContractState,
-};
-use crate::Result;
 
 /// Execution layer implementation
 pub struct PolyTorusExecutionLayer {
@@ -196,8 +190,7 @@ impl PolyTorusExecutionLayer {
 
     /// Calculate new state root based on executed transactions
     fn calculate_state_root(&self, receipts: &[TransactionReceipt]) -> Hash {
-        use crypto::digest::Digest;
-        use crypto::sha2::Sha256;
+        use crypto::{digest::Digest, sha2::Sha256};
 
         let mut hasher = Sha256::new();
         let current_root = self.state_root.lock().unwrap().clone();
@@ -317,8 +310,7 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
             balance: processor_state.balance,
             nonce: processor_state.nonce,
             code_hash: processor_state.code.as_ref().map(|code| {
-                use crypto::digest::Digest;
-                use crypto::sha2::Sha256;
+                use crypto::{digest::Digest, sha2::Sha256};
                 let mut hasher = Sha256::new();
                 hasher.input(code);
                 hasher.result_str()

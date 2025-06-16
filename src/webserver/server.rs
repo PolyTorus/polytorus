@@ -1,27 +1,19 @@
 use std::sync::Arc;
 
-use actix_web::{
-    web,
-    App,
-    HttpServer,
-};
+use actix_web::{web, App, HttpServer};
 use tokio::sync::mpsc;
 
-use crate::network::NetworkCommand;
-use crate::webserver::createwallet;
-use crate::webserver::listaddresses;
-use crate::webserver::network_api::{
-    blacklist_peer,
-    get_message_queue_stats,
-    get_network_health,
-    get_peer_info,
-    unblacklist_peer,
-    NetworkApiState,
+use crate::{
+    network::NetworkCommand,
+    webserver::{
+        createwallet, listaddresses,
+        network_api::{
+            blacklist_peer, get_message_queue_stats, get_network_health, get_peer_info,
+            unblacklist_peer, NetworkApiState,
+        },
+        printchain, reindex, startminer, startnode,
+    },
 };
-use crate::webserver::printchain;
-use crate::webserver::reindex;
-use crate::webserver::startminer;
-use crate::webserver::startnode;
 
 pub struct WebServer {}
 

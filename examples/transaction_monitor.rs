@@ -2,19 +2,12 @@
 //!
 //! A simple monitoring tool to observe transaction flow between nodes
 
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
-use clap::{
-    App,
-    Arg,
-};
+use clap::{App, Arg};
 use reqwest::Client;
 use serde_json::Value;
-use tokio::time::{
-    interval,
-    sleep,
-};
+use tokio::time::{interval, sleep};
 
 #[derive(Debug, Clone)]
 pub struct NodeStats {

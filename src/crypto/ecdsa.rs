@@ -1,10 +1,4 @@
-use secp256k1::ecdsa::Signature;
-use secp256k1::{
-    Message,
-    PublicKey,
-    Secp256k1,
-    SecretKey,
-};
+use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1, SecretKey};
 
 use super::traits::CryptoProvider;
 

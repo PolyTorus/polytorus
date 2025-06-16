@@ -6,27 +6,17 @@
 
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use sha2::{
-    Digest,
-    Sha256,
-};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid;
 
-use crate::crypto::privacy::{
-    PedersenCommitment,
-    PrivacyConfig,
-    PrivateTransaction,
-    UtxoValidityProof,
+use crate::{
+    crypto::{
+        privacy::{PedersenCommitment, PrivacyConfig, PrivateTransaction, UtxoValidityProof},
+        real_diamond_io::{RealDiamondIOConfig, RealDiamondIOProvider},
+    },
+    Result,
 };
-use crate::crypto::real_diamond_io::{
-    RealDiamondIOConfig,
-    RealDiamondIOProvider,
-};
-use crate::Result;
 
 /// Enhanced privacy configuration that combines traditional privacy with Diamond IO
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -302,10 +292,7 @@ impl DiamondPrivacyProvider {
         private_tx: &PrivateTransaction,
         diamond_proofs: &[DiamondPrivacyProof],
     ) -> Result<Vec<u8>> {
-        use sha2::{
-            Digest,
-            Sha256,
-        };
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
 
         // Hash transaction ID
@@ -328,10 +315,7 @@ impl DiamondPrivacyProvider {
         }
 
         // Simplified verification - check hash structure
-        use sha2::{
-            Digest,
-            Sha256,
-        };
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(private_tx.base_transaction.id.as_bytes());
         hasher.update(self.get_obfuscation_params_hash());
@@ -365,10 +349,7 @@ impl DiamondPrivacyProvider {
 
     /// Get obfuscation parameters hash
     fn get_obfuscation_params_hash(&self) -> Vec<u8> {
-        use sha2::{
-            Digest,
-            Sha256,
-        };
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(b"POLYTORUS_DIAMOND_PRIVACY_V1");
         hasher.update(format!("{:?}", self.config.circuit_complexity));

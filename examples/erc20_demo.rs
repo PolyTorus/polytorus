@@ -2,12 +2,11 @@
 //!
 //! This example demonstrates how to use ERC20 tokens in the PolyTorus blockchain
 
-use polytorus::config::DataContext;
-use polytorus::smart_contract::{
-    ContractEngine,
-    ContractState,
+use polytorus::{
+    config::DataContext,
+    smart_contract::{ContractEngine, ContractState},
+    Result,
 };
-use polytorus::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {

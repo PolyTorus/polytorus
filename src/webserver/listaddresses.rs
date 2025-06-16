@@ -1,9 +1,5 @@
 // Modern CLI integration
-use actix_web::{
-    post,
-    HttpResponse,
-    Responder,
-};
+use actix_web::{post, HttpResponse, Responder};
 
 use crate::command::cli::ModernCli;
 

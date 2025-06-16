@@ -5,13 +5,9 @@
 
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::smart_contract::types::ContractResult;
-use crate::Result;
+use crate::{smart_contract::types::ContractResult, Result};
 
 /// ERC20 token events
 #[derive(Debug, Clone, Serialize, Deserialize)]

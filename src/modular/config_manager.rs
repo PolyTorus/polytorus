@@ -3,21 +3,15 @@
 //! This module provides a sophisticated configuration system for the modular blockchain,
 //! supporting layer-specific configurations, environment variables, and runtime updates.
 
-use std::env;
-use std::path::Path;
+use std::{env, path::Path};
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use super::layer_factory::{
-    EnhancedModularConfig,
-    LayerConfig,
-    PerformanceMode,
+use super::{
+    layer_factory::{EnhancedModularConfig, LayerConfig, PerformanceMode},
+    message_bus::LayerType,
+    traits::*,
 };
-use super::message_bus::LayerType;
-use super::traits::*;
 use crate::Result;
 
 /// Type alias for configuration change watchers

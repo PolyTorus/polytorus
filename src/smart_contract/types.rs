@@ -2,10 +2,7 @@
 
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// Smart contract execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]

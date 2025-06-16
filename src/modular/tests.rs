@@ -1,7 +1,6 @@
 //! Tests for the modular blockchain architecture
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use uuid::Uuid;
 
