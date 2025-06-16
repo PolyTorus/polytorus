@@ -1,6 +1,6 @@
 # Makefile for Polytorus Kani Verification
 
-.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify kani-dev kani-list kani-check dep-check kani-ci help
+.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify kani-dev kani-list kani-check dep-check kani-ci fmt fmt-check clippy help
 
 # Colors for output
 BLUE := \033[0;34m
@@ -12,8 +12,7 @@ NC := \033[0m # No Color
 # Default target
 help:
 	@echo "$(BLUE)Polytorus Kani Verification Makefile$(NC)"
-	@echo ""
-	@echo "Available targets:"
+	@echo ""	@echo "Available targets:"
 	@echo "  $(GREEN)kani-install$(NC)     - Install Kani verifier"
 	@echo "  $(GREEN)kani-setup$(NC)       - Setup Kani for this project"
 	@echo "  $(GREEN)kani-verify$(NC)      - Run all Kani verifications"
@@ -24,6 +23,11 @@ help:
 	@echo "  $(GREEN)kani-security$(NC)    - Run security-focused verifications"
 	@echo "  $(GREEN)kani-performance$(NC) - Run performance-oriented verifications"
 	@echo "  $(GREEN)kani-clean$(NC)       - Clean verification results"
+	@echo "  $(GREEN)pre-commit$(NC)       - Run pre-commit checks (fmt + clippy + kani-quick)"
+	@echo "  $(GREEN)fmt$(NC)              - Format code with rustfmt"
+	@echo "  $(GREEN)fmt-check$(NC)        - Check code formatting"
+	@echo "  $(GREEN)clippy$(NC)           - Run clippy linter"
+	@echo "  $(GREEN)ci-verify$(NC)        - Run full CI verification pipeline"
 	@echo "  $(GREEN)help$(NC)             - Show this help message"
 
 # Install Kani
@@ -124,11 +128,28 @@ kani-report: kani-verify
 	fi
 
 # Development workflow - quick check before commit
-pre-commit: kani-quick
+pre-commit: fmt clippy kani-quick
 	@echo "$(GREEN)Pre-commit verification passed!$(NC)"
 
+# Format code
+fmt:
+	@echo "$(BLUE)Running cargo fmt...$(NC)"
+	cargo fmt --all
+	@echo "$(GREEN)Code formatting completed!$(NC)"
+
+# Check formatting
+fmt-check:
+	@echo "$(BLUE)Checking code formatting...$(NC)"
+	cargo fmt --all -- --check
+
+# Run clippy
+clippy:
+	@echo "$(BLUE)Running cargo clippy...$(NC)"
+	cargo clippy --all-targets --all-features -- -D warnings
+	@echo "$(GREEN)Clippy checks passed!$(NC)"
+
 # CI workflow - comprehensive verification
-ci-verify: kani-verify kani-report
+ci-verify: fmt-check clippy kani-verify kani-report
 	@echo "$(GREEN)CI verification workflow complete!$(NC)"
 
 # Development targets

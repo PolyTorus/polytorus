@@ -1,0 +1,49 @@
+# Pre-commit configuration for Polytorus
+# Install pre-commit: pip install pre-commit
+# Setup hooks: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Rust formatting
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+        name: Rust fmt
+        description: Format Rust code with rustfmt
+        entry: cargo fmt
+        language: system
+        files: \.rs$
+        args: ['--all', '--']
+      
+      - id: clippy
+        name: Rust clippy
+        description: Lint Rust code with clippy
+        entry: cargo clippy
+        language: system
+        files: \.rs$
+        args: ['--all-targets', '--all-features', '--', '-D', 'warnings']
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+  # Security checks
+  - repo: https://github.com/rustsec/rustsec
+    rev: main
+    hooks:
+      - id: cargo-audit
+        name: Cargo audit
+        description: Check for security vulnerabilities
+        entry: cargo audit
+        language: system
+        files: Cargo\.(toml|lock)$
+        pass_filenames: false
