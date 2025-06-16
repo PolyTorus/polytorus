@@ -136,7 +136,7 @@ impl DiamondPrivacyProvider {    /// Create a new Diamond privacy provider
         // Create obfuscated circuit representation
         let mut obfuscated_circuit = Vec::new();
         obfuscated_circuit.extend_from_slice(circuit_inputs);
-        obfuscated_circuit.extend_from_slice(&real_proof.circuit_id.as_bytes());
+        obfuscated_circuit.extend_from_slice(real_proof.circuit_id.as_bytes());
 
         // Create evaluation result
         let evaluation_result = real_proof.evaluation_result.outputs.iter()
@@ -163,14 +163,11 @@ impl DiamondPrivacyProvider {    /// Create a new Diamond privacy provider
         // Simplified verification for Diamond IO
         if proof.obfuscated_circuit.is_empty() || proof.evaluation_result.is_empty() {
             return Ok(false);
-        }
-
-        // If hybrid privacy is enabled, also verify traditional proof
-        if self.config.enable_hybrid_privacy {
-            if !self.verify_traditional_proof(&proof.backup_proof)? {
+        }        // If hybrid privacy is enabled, also verify traditional proof
+        if self.config.enable_hybrid_privacy
+            && !self.verify_traditional_proof(&proof.backup_proof)? {
                 return Ok(false);
             }
-        }
 
         // Verify parameters commitment
         self.verify_params_commitment(&proof.params_commitment, &proof.backup_proof)
@@ -280,9 +277,8 @@ impl DiamondPrivacyProvider {    /// Create a new Diamond privacy provider
         for proof in diamond_proofs {
             hasher.update(&proof.evaluation_result);
         }
-        
-        // Add configuration hash
-        hasher.update(&self.get_obfuscation_params_hash());
+          // Add configuration hash
+        hasher.update(self.get_obfuscation_params_hash());
         
         Ok(hasher.finalize().to_vec())
     }
@@ -297,7 +293,7 @@ impl DiamondPrivacyProvider {    /// Create a new Diamond privacy provider
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(private_tx.base_transaction.id.as_bytes());
-        hasher.update(&self.get_obfuscation_params_hash());
+        hasher.update(self.get_obfuscation_params_hash());
         let expected_prefix = &hasher.finalize()[..16];
         
         Ok(&proof[..16] == expected_prefix)
@@ -331,7 +327,7 @@ impl DiamondPrivacyProvider {    /// Create a new Diamond privacy provider
         let mut hasher = Sha256::new();
         hasher.update(b"POLYTORUS_DIAMOND_PRIVACY_V1");
         hasher.update(format!("{:?}", self.config.circuit_complexity));
-        hasher.update(&[self.config.enable_diamond_obfuscation as u8]);
+        hasher.update([self.config.enable_diamond_obfuscation as u8]);
         hasher.finalize().to_vec()
     }
 

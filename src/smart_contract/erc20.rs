@@ -182,7 +182,7 @@ impl ERC20Contract {
         self.state
             .allowances
             .entry(owner.to_string())
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(spender.to_string(), value);
 
         // Emit approval event

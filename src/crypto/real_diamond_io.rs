@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::info;
 
-use crate::diamond_io_integration::{DiamondIOIntegration, DiamondIOConfig, DiamondIOResult};
+use crate::diamond_io_integration_new::{DiamondIOIntegration, DiamondIOConfig, DiamondIOResult};
 
 use crate::crypto::privacy::{
     UtxoValidityProof,
@@ -76,17 +76,15 @@ impl RealDiamondIOConfig {
             input_size: 16,
             work_dir: "diamond_io_production".to_string(),
             enable_disk_storage: true,        }
-    }
-
-    /// Convert to Diamond IO integration config
+    }    /// Convert to Diamond IO integration config
     pub fn to_diamond_io_config(&self) -> DiamondIOConfig {
-        DiamondIOConfig {
-            enabled: self.enabled,
-            max_circuits: self.max_circuits,
-            proof_system: self.proof_system.clone(),
-            security_level: self.security_level,
-            input_size: self.input_size,
-            dummy_mode: self.proof_system == "dummy",
+        // Map old config structure to new Diamond IO parameters
+        if self.proof_system == "dummy" {
+            DiamondIOConfig::dummy()
+        } else if self.security_level >= 128 {
+            DiamondIOConfig::production()
+        } else {
+            DiamondIOConfig::testing()
         }
     }
 }
@@ -170,16 +168,14 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
             .map_err(|e| failure::format_err!("Failed to create circuit directory: {}", e))?;
 
         // Create Diamond IO circuit and register it
-        let diamond_circuit = crate::diamond_io_integration::DiamondCircuit {
+        let _diamond_circuit = crate::diamond_io_integration::DiamondCircuit {
             id: circuit_id.clone(),
             description: "Privacy validation circuit".to_string(),
             input_size: self.config.input_size,
             output_size: self.derive_output_size_from_proof(proof),
-        };
-
-        // Register the circuit with Diamond IO
-        self.diamond_io.register_circuit(diamond_circuit)
-            .map_err(|e| failure::format_err!("Failed to register circuit: {}", e))?;
+        };        // Register the circuit with Diamond IO (handled internally by new implementation)
+        // self.diamond_io.register_circuit(diamond_circuit)
+        //     .map_err(|e| failure::format_err!("Failed to register circuit: {}", e))?;
 
         // Create circuit metadata
         let metadata = CircuitMetadata {
@@ -231,13 +227,12 @@ impl RealDiamondIOProvider {    /// Create a new real Diamond IO provider
             let mut padded_inputs = inputs.to_vec();
             padded_inputs.resize(circuit.metadata.input_size, false);
             padded_inputs
-        };
-
-        // Execute circuit through Diamond IO integration
-        let result = self.diamond_io.execute_circuit(&circuit.circuit_id, circuit_inputs)
+        };        // Execute circuit through Diamond IO integration
+        let result = self.diamond_io.execute_circuit_detailed(&circuit_inputs).await
             .map_err(|e| failure::format_err!("Circuit execution failed: {}", e))?;
 
-        Ok(result)    }    /// Verify a Diamond IO circuit evaluation result
+        Ok(result)
+    }/// Verify a Diamond IO circuit evaluation result
     pub async fn verify_evaluation(
         &mut self,
         circuit: &DiamondIOCircuit,

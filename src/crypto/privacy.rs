@@ -275,7 +275,7 @@ impl PrivacyProvider {
         let mut hasher = Sha256::new();
         hasher.update(secret_key);
         hasher.update(input.txid.as_bytes());
-        hasher.update(&input.vout.to_le_bytes());
+        hasher.update(input.vout.to_le_bytes());
         
         // Add randomness to prevent nullifier linkability
         let mut random_bytes = vec![0u8; 32];
@@ -542,7 +542,7 @@ impl PrivacyProvider {
         rng.fill_bytes(&mut key);
         
         hasher.update(&key);
-        hasher.update(&amount.to_le_bytes());
+        hasher.update(amount.to_le_bytes());
         let encrypted = hasher.finalize().to_vec();
         
         // Prepend key for simplicity
@@ -554,9 +554,8 @@ impl PrivacyProvider {
     /// Get parameters hash for proof consistency
     fn get_params_hash(&self) -> Vec<u8> {
         let mut hasher = Sha256::new();
-        hasher.update(b"POLYTORUS_PRIVACY_PARAMS_V1");
-        hasher.update(&[self.config.range_proof_bits]);
-        hasher.update(&self.config.commitment_randomness_size.to_le_bytes());
+        hasher.update(b"POLYTORUS_PRIVACY_PARAMS_V1");        hasher.update([self.config.range_proof_bits]);
+        hasher.update(self.config.commitment_randomness_size.to_le_bytes());
         hasher.finalize().to_vec()
     }
 

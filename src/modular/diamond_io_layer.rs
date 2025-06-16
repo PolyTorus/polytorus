@@ -17,7 +17,7 @@ use tracing::{
     warn,
 };
 
-use crate::diamond_io_integration::{
+use crate::diamond_io_integration_new::{
     DiamondIOConfig,
     DiamondIOIntegration,
 };

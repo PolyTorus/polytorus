@@ -246,7 +246,7 @@ impl ContractEngine {
                 }
             },
             "burn" => {
-                if args.len() < 1 {
+                if args.is_empty() {
                     Ok(ContractResult {
                         success: false,
                         return_value: b"Missing amount".to_vec(),

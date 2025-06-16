@@ -10,7 +10,7 @@ use polytorus::crypto::privacy::{UtxoValidityProof, PedersenCommitment};
 use polytorus::crypto::real_diamond_io::{
     RealDiamondIOProvider, RealDiamondIOConfig, RealDiamondIOProof, SerializableDiamondIOResult
 };
-use polytorus::diamond_io_integration::DiamondIOResult;
+use polytorus::diamond_io_integration_new::DiamondIOResult;
 
 #[tokio::test]
 async fn test_real_diamond_io_provider_creation() {

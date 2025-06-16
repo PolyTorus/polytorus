@@ -1,4 +1,4 @@
-use polytorus::diamond_io_integration::{
+use polytorus::diamond_io_integration_new::{
     DiamondIOConfig,
     DiamondIOIntegration,
 };
@@ -29,9 +29,9 @@ async fn main() -> anyhow::Result<()> {
 
 async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyhow::Result<()> {
     println!("Testing {} Mode:", mode_name);
-    println!("  Enabled: {}", config.enabled);
-    println!("  Max circuits: {}", config.max_circuits);
-    println!("  Input size: {}", config.input_size);
+    println!("  Ring dimension: {}", config.ring_dimension);
+    println!("  CRT depth: {}", config.crt_depth);
+    println!("  Base bits: {}", config.base_bits);
     println!("  Dummy mode: {}", config.dummy_mode);
 
     let integration = DiamondIOIntegration::new(config)?;
@@ -44,12 +44,11 @@ async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyho
     );
 
     // Test evaluation with sample inputs
-    let mut integration = integration;
     let inputs = vec![true, false, true, false];
     let truncated_inputs = &inputs[..std::cmp::min(inputs.len(), integration.config().input_size)];
 
     let start = std::time::Instant::now();
-    match integration.evaluate_circuit(truncated_inputs).await {
+    match integration.execute_circuit_detailed(truncated_inputs).await {
         Ok(output) => {
             let elapsed = start.elapsed();
             println!("  Evaluation successful in {:?}", elapsed);
@@ -68,7 +67,7 @@ async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
     println!("Testing End-to-End Obfuscation and Evaluation:");
 
     let config = DiamondIOConfig::testing();
-    let mut integration = DiamondIOIntegration::new(config)?;
+    let integration = DiamondIOIntegration::new(config)?;
     let circuit = integration.create_demo_circuit();
 
     println!(
@@ -80,19 +79,15 @@ async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
     // Test obfuscation
     let obf_start = std::time::Instant::now();
     match integration.obfuscate_circuit(circuit).await {
-        Ok(result) => {
+        Ok(_result) => {
             let obf_elapsed = obf_start.elapsed();
             println!("  Obfuscation successful in {:?}", obf_elapsed);
-            println!(
-                "  Obfuscation execution time: {}ms",
-                result.execution_time_ms
-            );
 
             // Test evaluation after obfuscation
             let inputs = vec![true, false, true, true];
             let eval_start = std::time::Instant::now();
 
-            match integration.evaluate_circuit(&inputs).await {
+            match integration.execute_circuit_detailed(&inputs).await {
                 Ok(eval_result) => {
                     let eval_elapsed = eval_start.elapsed();
                     println!("  Evaluation successful in {:?}", eval_elapsed);
@@ -125,7 +120,7 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
     ];
 
     for (name, config) in configs {
-        let mut integration = DiamondIOIntegration::new(config)?;
+        let integration = DiamondIOIntegration::new(config)?;
         let circuit = integration.create_demo_circuit();
 
         let start = std::time::Instant::now();
@@ -143,7 +138,7 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
     println!("\nDifferent Input Size Performance:");
     for input_size in [2, 4, 8] {
         let config = DiamondIOConfig::testing();
-        let mut integration = DiamondIOIntegration::new(config)?;
+        let integration = DiamondIOIntegration::new(config)?;
 
         let inputs = vec![true; input_size];
         let start = std::time::Instant::now();
