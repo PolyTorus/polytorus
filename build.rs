@@ -25,19 +25,15 @@ fn main() {
         }
     }
 
-    if !missing_libs.is_empty() {
-        panic!(
+    assert!(missing_libs.is_empty(),
             "OpenFHE libraries not found at {lib_path}: {missing_libs:?}. Please install OpenFHE from https://github.com/MachinaIO/openfhe-development (feat/improve_determinant branch) to /usr/local"
         );
-    }
 
     // Verify OpenFHE headers
     let openfhe_include = format!("{include_path}/openfhe");
-    if !Path::new(&openfhe_include).exists() {
-        panic!(
+    assert!(Path::new(&openfhe_include).exists(),
             "OpenFHE headers not found at {openfhe_include}. Please install OpenFHE development headers."
         );
-    }
 
     // Set C++ compiler flags for cc-rs and cxx crates
     println!("cargo::rustc-env=CXXFLAGS=-std=c++17 -O2 -DNDEBUG");

@@ -150,7 +150,7 @@ fmt-check:
 # Run clippy
 clippy:
 	@echo "$(BLUE)Running cargo clippy...$(NC)"
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --all-targets --all-features -- -D warnings -W clippy::all
 	@echo "$(GREEN)Clippy checks passed!$(NC)"
 
 # CI workflow - comprehensive verification
