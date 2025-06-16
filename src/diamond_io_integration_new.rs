@@ -109,7 +109,7 @@ impl DiamondIOConfig {
             hardcoded_key_sigma: 2.0,
             p_sigma: 2.0,
             trapdoor_sigma: Some(4.578),
-            dummy_mode: false,
+            dummy_mode: false, // Use real OpenFHE for testing
         }
     }
 
@@ -150,6 +150,7 @@ impl DiamondIOIntegration {
     /// Create a new Diamond IO integration instance
     pub fn new(config: DiamondIOConfig) -> anyhow::Result<Self> {
         // Note: Tracing initialization is handled externally to avoid conflicts
+        info!("Creating DiamondIOIntegration with config: {:?}", config);
 
         // Create polynomial parameters
         let params = DCRTPolyParams::new(
@@ -158,8 +159,33 @@ impl DiamondIOIntegration {
             config.crt_bits,
             config.base_bits,
         );
+        info!("Successfully created DCRTPolyParams");
 
         let obfuscation_dir = "obfuscation_data".to_string();
+        info!("Using obfuscation directory: {}", obfuscation_dir);
+
+        // Test basic OpenFHE functionality in non-dummy mode
+        if !config.dummy_mode {
+            info!("Testing OpenFHE basic functionality...");
+            // Try to create a simple circuit to verify OpenFHE is working
+            match std::panic::catch_unwind(|| {
+                let mut circuit = PolyCircuit::new();
+                let inputs = circuit.input(2);
+                if !inputs.is_empty() {
+                    let _ =
+                        circuit.add_gate(inputs[0], inputs.get(1).copied().unwrap_or(inputs[0]));
+                }
+                info!("OpenFHE basic test successful");
+            }) {
+                Ok(_) => info!("OpenFHE functionality test passed"),
+                Err(e) => {
+                    error!("OpenFHE functionality test failed: {:?}", e);
+                    return Err(anyhow::anyhow!(
+                        "OpenFHE basic functionality test failed. This may indicate library linking issues."
+                    ));
+                }
+            }
+        }
 
         Ok(Self {
             config,

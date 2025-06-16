@@ -36,12 +36,74 @@ async fn test_circuit_execution() {
 
 #[tokio::test]
 async fn test_circuit_evaluation() {
+    // Initialize logging
+    env_logger::init();
+
+    // Check environment variables
+    println!("Environment diagnostics:");
+    println!("OPENFHE_ROOT: {:?}", std::env::var("OPENFHE_ROOT"));
+    println!("LD_LIBRARY_PATH: {:?}", std::env::var("LD_LIBRARY_PATH"));
+    println!("PKG_CONFIG_PATH: {:?}", std::env::var("PKG_CONFIG_PATH"));
+
+    // Check if OpenFHE libraries are accessible
+    let lib_paths = vec![
+        "/usr/local/lib/libOPENFHEcore.so",
+        "/usr/local/lib/libOPENFHEpke.so",
+        "/usr/local/lib/libOPENFHEbinfhe.so",
+    ];
+
+    for lib_path in &lib_paths {
+        if std::path::Path::new(lib_path).exists() {
+            println!("✓ Found library: {lib_path}");
+        } else {
+            println!("✗ Missing library: {lib_path}");
+        }
+    }
+
     let config = DiamondIOConfig::testing();
-    let integration = DiamondIOIntegration::new(config).unwrap();
+
+    // Try to create the integration with detailed error handling
+    let integration = match DiamondIOIntegration::new(config) {
+        Ok(integration) => {
+            println!("✓ Successfully created DiamondIOIntegration");
+            integration
+        }
+        Err(e) => {
+            eprintln!("Failed to create DiamondIOIntegration: {e:?}");
+            eprintln!("Error message: {e}");
+            if let Some(source) = e.source() {
+                eprintln!("Error source: {source}");
+            }
+            panic!("Failed to create DiamondIOIntegration: {e}");
+        }
+    };
 
     let inputs = vec![true, false, true, true];
+    println!("Testing circuit evaluation with inputs: {inputs:?}");
+
     let outputs = integration.execute_circuit_detailed(&inputs).await;
-    assert!(outputs.is_ok());
+
+    // Print error details if the result is an error
+    if let Err(ref e) = outputs {
+        eprintln!("Circuit evaluation failed with error: {e:?}");
+        eprintln!("Error message: {e}");
+        eprintln!("Error chain:");
+        let mut source = e.source();
+        let mut level = 0;
+        while let Some(err) = source {
+            eprintln!("  {level}: {err}");
+            source = err.source();
+            level += 1;
+        }
+    } else {
+        println!("✓ Circuit evaluation successful: {outputs:?}");
+    }
+
+    assert!(
+        outputs.is_ok(),
+        "Circuit evaluation failed: {:?}",
+        outputs.as_ref().err()
+    );
 
     let outputs = outputs.unwrap();
     assert!(outputs.success);

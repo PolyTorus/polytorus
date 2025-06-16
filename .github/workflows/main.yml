@@ -119,10 +119,34 @@ jobs:
           echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
+      - name: Verify OpenFHE installation
+        run: |
+          echo "=== OpenFHE Installation Verification ==="
+          echo "OPENFHE_ROOT: $OPENFHE_ROOT"
+          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+          echo ""
+          echo "--- Library files ---"
+          ls -la /usr/local/lib/libOPENFHE* || echo "No OpenFHE libraries found in /usr/local/lib"
+          echo ""
+          echo "--- Header files ---"
+          find /usr/local/include -name "*openfhe*" -type d || echo "No OpenFHE headers found"
+          echo ""
+          echo "--- Environment check ---"
+          ldconfig -p | grep -i openfhe || echo "OpenFHE libraries not in ldconfig cache"
+          echo ""
+          echo "--- PKG_CONFIG check ---"
+          pkg-config --exists openfhe && echo "OpenFHE pkg-config found" || echo "OpenFHE pkg-config not found"
+          
       - name: Run tests
+        env:
+          RUST_LOG: info
+          RUST_BACKTRACE: full
         run: cargo test --verbose
 
       - name: Run integration tests
+        env:
+          RUST_LOG: info
+          RUST_BACKTRACE: full
         run: cargo test --test '*' --verbose
 
   # カバレッジレポート（Linuxのみ）
