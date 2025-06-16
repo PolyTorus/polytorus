@@ -1,0 +1,10 @@
+{
+    "rust-analyzer.rustc.source": "discover",
+    "rust-analyzer.checkOnSave.command": "clippy",
+    "rust-analyzer.cargo.allFeatures": true,
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.procMacro.attributes.enable": true,
+    "rust-analyzer.server.extraEnv": {
+        "RUSTUP_TOOLCHAIN": "nightly-2025-06-15"
+    }
+}

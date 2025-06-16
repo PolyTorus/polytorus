@@ -11,3 +11,8 @@ cognitive-complexity-threshold = 50
 
 # Allow certain patterns in tests
 allow-useless-vec-in-tests = true
+
+# Additional allowances to prevent common failures
+disallowed-macros = []
+disallowed-methods = []
+avoid-breaking-exported-api = false

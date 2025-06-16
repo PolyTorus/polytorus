@@ -84,18 +84,18 @@ pub type EventHandler = Box<dyn Fn(&NetworkEvent) -> Result<()> + Send + Sync>;
 /// Network synchronization events
 #[derive(Debug, Clone)]
 pub enum SyncEvent {
-    SyncStarted {
+    Started {
         target_height: i32,
         peer: PeerId,
     },
-    SyncProgress {
+    Progress {
         current_height: i32,
         target_height: i32,
     },
-    SyncCompleted {
+    Completed {
         final_height: i32,
     },
-    SyncFailed {
+    Failed {
         error: String,
     },
 }

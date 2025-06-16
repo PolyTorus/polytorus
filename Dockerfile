@@ -72,7 +72,8 @@ RUN ldconfig
 
 # Install Rust nightly
 RUN apt-get update && apt-get install -y curl && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2025-01-01 && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2025-01-15 && \
+    rustup component add clippy && \
     rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/root/.cargo/bin:${PATH}"
@@ -110,6 +111,10 @@ COPY contracts/ ./contracts/
 
 # Verify source files are copied correctly
 RUN ls -la src/ && ls -la src/command/ && ls -la src/diamond_io_integration.rs
+
+# Run clippy checks before building
+RUN echo "Running clippy checks..." && \
+    cargo clippy --all-targets --all-features -- -D warnings -W clippy::all
 
 # Build and verify the application
 RUN cargo build --release && \

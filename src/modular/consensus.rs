@@ -211,7 +211,7 @@ impl ConsensusLayerBuilder {
         self
     }
 
-    pub fn as_validator(mut self) -> Self {
+    pub fn into_validator(mut self) -> Self {
         self.is_validator = true;
         self
     }
