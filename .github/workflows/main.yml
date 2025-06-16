@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.82
+        uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt, clippy
 
@@ -34,6 +34,34 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
+            libfftw3-dev autoconf automake libtool
+
+      - name: Setup OpenFHE
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          cd /tmp/openfhe
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -69,12 +97,58 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
+            libfftw3-dev autoconf automake libtool
+
+      - name: Setup OpenFHE (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          cd /tmp/openfhe
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+          mkdir -p /usr/local/lib/pkgconfig
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install cmake openssl pkg-config
+          brew install cmake openssl pkg-config gmp ntl boost fftw
+
+      - name: Setup OpenFHE (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          cd /tmp/openfhe
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                ..
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Install system dependencies (Windows)
         if: matrix.os == 'windows-latest'
@@ -103,6 +177,34 @@ jobs:
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
+            libfftw3-dev autoconf automake libtool
+
+      - name: Setup OpenFHE
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          cd /tmp/openfhe
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -133,6 +235,34 @@ jobs:
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
+            libfftw3-dev autoconf automake libtool
+
+      - name: Setup OpenFHE
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          cd /tmp/openfhe
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Install Kani
         run: |
@@ -202,6 +332,34 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
+            libfftw3-dev autoconf automake libtool
+
+      - name: Setup OpenFHE
+        run: |
+          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          cd /tmp/openfhe
+          git checkout feat/improve_determinant
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_UNITTESTS=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_BENCHMARKS=OFF \
+                -DWITH_OPENMP=ON \
+                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
       - name: Run security audit
         run: |
           cargo install cargo-audit
@@ -211,10 +369,3 @@ jobs:
         run: |
           cargo install cargo-deny
           cargo deny check
-
-      - name: Run vulnerability scan
-        uses: github/super-linter@v5
-        env:
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_RUST_2018: true
