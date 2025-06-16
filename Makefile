@@ -1,6 +1,6 @@
 # Makefile for Polytorus Kani Verification
 
-.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify ci-verify-quick kani-dev kani-list kani-check dep-check kani-ci fmt fmt-check clippy help
+.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify ci-verify-quick kani-dev kani-list kani-check dep-check kani-ci fmt fmt-check clippy docker docker-dev docker-clean help
 
 # Colors for output
 BLUE := \033[0;34m
@@ -25,9 +25,14 @@ help:
 	@echo "  $(GREEN)kani-clean$(NC)       - Clean verification results"
 	@echo "  $(GREEN)pre-commit$(NC)       - Run pre-commit checks (fmt + clippy)"	@echo "  $(GREEN)fmt$(NC)              - Format code with rustfmt"
 	@echo "  $(GREEN)fmt-check$(NC)        - Check code formatting"
-	@echo "  $(GREEN)clippy$(NC)           - Run clippy linter"
-	@echo "  $(GREEN)ci-verify$(NC)        - Run full CI verification pipeline"
+	@echo "  $(GREEN)clippy$(NC)           - Run clippy linter"	@echo "  $(GREEN)ci-verify$(NC)        - Run full CI verification pipeline"
 	@echo "  $(GREEN)ci-verify-quick$(NC)  - Run quick CI verification (no Kani)"
+	@echo "  $(GREEN)docker$(NC)           - Build Docker image"
+	@echo "  $(GREEN)docker-dev$(NC)       - Start development environment"
+	@echo "  $(GREEN)docker-clean$(NC)     - Clean Docker resources"
+	@echo "  $(GREEN)deps-check$(NC)       - Check dependency status"
+	@echo "  $(GREEN)security-audit$(NC)   - Run security audit"
+	@echo "  $(GREEN)docs$(NC)             - Build and open documentation"
 	@echo "  $(GREEN)help$(NC)             - Show this help message"
 
 # Install Kani
@@ -155,6 +160,46 @@ ci-verify: fmt-check clippy kani-verify kani-report
 # CI workflow without Kani (faster)
 ci-verify-quick: fmt-check clippy
 	@echo "$(GREEN)Quick CI verification workflow complete!$(NC)"
+
+# Docker management
+docker:
+	@echo "$(BLUE)Building Docker image...$(NC)"
+	docker build -f Dockerfile.optimized -t polytorus:latest .
+
+docker-dev:
+	@echo "$(BLUE)Starting development environment...$(NC)"
+	docker-compose -f docker-compose.dev.yml up -d
+
+docker-clean:
+	@echo "$(BLUE)Cleaning Docker resources...$(NC)"
+	docker-compose -f docker-compose.dev.yml down -v
+	docker system prune -f
+
+# Dependency management
+deps-check:
+	@echo "$(BLUE)Checking dependencies...$(NC)"
+	cargo outdated
+	cargo audit
+
+deps-update:
+	@echo "$(BLUE)Updating dependencies...$(NC)"
+	cargo update
+
+# Security checks
+security-audit:
+	@echo "$(BLUE)Running security audit...$(NC)"
+	cargo audit
+	cargo deny check
+
+# Documentation
+docs:
+	@echo "$(BLUE)Building documentation...$(NC)"
+	cargo doc --all-features --no-deps --open
+
+docs-serve:
+	@echo "$(BLUE)Serving documentation...$(NC)"
+	cargo doc --all-features --no-deps
+	python3 -m http.server 8080 -d target/doc
 
 # Development targets
 .PHONY: kani-dev kani-list kani-check

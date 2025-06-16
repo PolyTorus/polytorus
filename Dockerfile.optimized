@@ -1,0 +1,146 @@
+# PolyTorus Multi-stage Docker Build
+# Optimized for production with security and performance in mind
+
+# Build stage - OpenFHE dependencies
+FROM ubuntu:22.04 AS openfhe-builder
+
+LABEL maintainer="shiro@machina.io"
+LABEL description="PolyTorus - Post-Quantum Blockchain Platform"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    pkg-config \
+    libssl-dev \
+    autoconf \
+    automake \
+    libtool \
+    libgmp-dev \
+    libntl-dev \
+    libboost-all-dev \
+    libgmp3-dev \
+    libmpfr-dev \
+    libfftw3-dev \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for security
+RUN groupadd -r openfhe && useradd -r -g openfhe openfhe
+
+# Build OpenFHE
+WORKDIR /tmp
+RUN git clone https://github.com/MachinaIO/openfhe-development.git \
+    && cd openfhe-development \
+    && git checkout feat/improve_determinant \
+    && mkdir build \
+    && cd build \
+    && cmake -DCMAKE_BUILD_TYPE=Release \
+             -DBUILD_UNITTESTS=OFF \
+             -DBUILD_EXAMPLES=OFF \
+             -DBUILD_BENCHMARKS=OFF \
+             -DCMAKE_INSTALL_PREFIX=/usr/local \
+             .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/openfhe-development
+
+# Rust build stage
+FROM rust:1.80-slim AS rust-builder
+
+# Install system dependencies for Rust build
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    pkg-config \
+    libssl-dev \
+    libgmp-dev \
+    libntl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy OpenFHE from previous stage
+COPY --from=openfhe-builder /usr/local /usr/local
+RUN ldconfig
+
+# Create app directory
+WORKDIR /app
+
+# Copy dependency files first for better caching
+COPY Cargo.toml Cargo.lock ./
+COPY build.rs ./
+
+# Create a dummy main.rs to build dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release && rm src/main.rs
+
+# Copy source code
+COPY src ./src
+COPY examples ./examples
+COPY benches ./benches
+COPY tests ./tests
+
+# Build the application
+RUN cargo build --release --bin polytorus
+
+# Final runtime stage
+FROM ubuntu:22.04 AS runtime
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    libgmp10 \
+    libntl43 \
+    libboost-filesystem1.74.0 \
+    libboost-system1.74.0 \
+    libgmp3-dev \
+    libmpfr6 \
+    libfftw3-3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy OpenFHE libraries
+COPY --from=openfhe-builder /usr/local/lib /usr/local/lib
+COPY --from=openfhe-builder /usr/local/include /usr/local/include
+RUN ldconfig
+
+# Create non-root user
+RUN groupadd -r polytorus \
+    && useradd -r -g polytorus -d /app -s /sbin/nologin polytorus
+
+# Create app directory and data directories
+WORKDIR /app
+RUN mkdir -p data/blockchain data/contracts data/wallets \
+    && chown -R polytorus:polytorus /app
+
+# Copy the binary from build stage
+COPY --from=rust-builder /app/target/release/polytorus /usr/local/bin/polytorus
+COPY --from=rust-builder /app/config ./config
+
+# Copy configuration files
+COPY docker-compose.yml ./
+COPY contracts ./contracts
+
+# Set ownership
+RUN chown -R polytorus:polytorus /app
+
+# Switch to non-root user
+USER polytorus
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD polytorus --help || exit 1
+
+# Expose ports
+EXPOSE 8080 8443 9944
+
+# Set environment variables
+ENV RUST_LOG=info
+ENV POLYTORUS_CONFIG_PATH=/app/config
+
+# Default command
+CMD ["polytorus", "--config", "/app/config/polytorus.toml"]

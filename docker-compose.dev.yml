@@ -1,0 +1,245 @@
+# PolyTorus Multi-Node Development Environment
+version: '3.8'
+
+services:
+  # PostgreSQL Database for persistent storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: polytorus-postgres
+    environment:
+      POSTGRES_DB: polytorus
+      POSTGRES_USER: polytorus
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-polytorus_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - polytorus-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polytorus"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for caching and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: polytorus-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-polytorus_dev}
+    volumes:
+      - redis_data:/data
+    networks:
+      - polytorus-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Bootstrap node (Node 0)
+  node-0:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+    container_name: polytorus-node-0
+    ports:
+      - "${NODE_0_HTTP_PORT:-9000}:9000"
+      - "${NODE_0_P2P_PORT:-8000}:8000"
+      - "${NODE_0_WS_PORT:-9944}:9944"
+    environment:
+      POLYTORUS_NODE_ID: node-0
+      POLYTORUS_HTTP_PORT: 9000
+      POLYTORUS_P2P_PORT: 8000
+      POLYTORUS_WS_PORT: 9944
+      POLYTORUS_DATA_DIR: /app/data
+      POLYTORUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      POLYTORUS_BOOTSTRAP_PEERS: ""
+      DATABASE_URL: postgresql://polytorus:${DB_PASSWORD:-polytorus_dev}@postgres:5432/polytorus
+      REDIS_URL: redis://:${REDIS_PASSWORD:-polytorus_dev}@redis:6379
+    volumes:
+      - ./data/simulation/node-0:/app/data
+      - ./config:/app/config:ro
+      - ./contracts:/app/contracts:ro
+    networks:
+      - polytorus-network
+      - polytorus-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Validator node (Node 1)
+  node-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+    container_name: polytorus-node-1
+    ports:
+      - "${NODE_1_HTTP_PORT:-9001}:9000"
+      - "${NODE_1_P2P_PORT:-8001}:8000"
+      - "${NODE_1_WS_PORT:-9945}:9944"
+    environment:
+      POLYTORUS_NODE_ID: node-1
+      POLYTORUS_HTTP_PORT: 9000
+      POLYTORUS_P2P_PORT: 8000
+      POLYTORUS_WS_PORT: 9944
+      POLYTORUS_DATA_DIR: /app/data
+      POLYTORUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000"
+      DATABASE_URL: postgresql://polytorus:${DB_PASSWORD:-polytorus_dev}@postgres:5432/polytorus
+      REDIS_URL: redis://:${REDIS_PASSWORD:-polytorus_dev}@redis:6379
+    volumes:
+      - ./data/simulation/node-1:/app/data
+      - ./config:/app/config:ro
+      - ./contracts:/app/contracts:ro
+    networks:
+      - polytorus-network
+      - polytorus-internal
+    depends_on:
+      node-0:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Full node (Node 2)
+  node-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+    container_name: polytorus-node-2
+    ports:
+      - "${NODE_2_HTTP_PORT:-9002}:9000"
+      - "${NODE_2_P2P_PORT:-8002}:8000"
+      - "${NODE_2_WS_PORT:-9946}:9944"
+    environment:
+      POLYTORUS_NODE_ID: node-2
+      POLYTORUS_HTTP_PORT: 9000
+      POLYTORUS_P2P_PORT: 8000
+      POLYTORUS_WS_PORT: 9944
+      POLYTORUS_DATA_DIR: /app/data
+      POLYTORUS_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000,node-1:8000"
+      DATABASE_URL: postgresql://polytorus:${DB_PASSWORD:-polytorus_dev}@postgres:5432/polytorus
+      REDIS_URL: redis://:${REDIS_PASSWORD:-polytorus_dev}@redis:6379
+    volumes:
+      - ./data/simulation/node-2:/app/data
+      - ./config:/app/config:ro
+      - ./contracts:/app/contracts:ro
+    networks:
+      - polytorus-network
+      - polytorus-internal
+    depends_on:
+      node-0:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: polytorus-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - polytorus-internal
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: polytorus-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - polytorus-internal
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Load balancer - Nginx
+  nginx:
+    image: nginx:alpine
+    container_name: polytorus-nginx
+    ports:
+      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_SSL_PORT:-443}:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - polytorus-network
+    depends_on:
+      - node-0
+      - node-1
+      - node-2
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  # Public network for P2P communication
+  polytorus-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  
+  # Internal network for database and monitoring
+  polytorus-internal:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
