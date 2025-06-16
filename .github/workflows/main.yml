@@ -128,7 +128,11 @@ jobs:
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install cmake openssl pkg-config gmp ntl boost fftw
+          brew install cmake openssl pkg-config gmp ntl boost fftw libomp
+          echo "OpenMP_ROOT=$(brew --prefix libomp)" >> $GITHUB_ENV
+          echo "OpenMP_CXX_FLAGS=-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" >> $GITHUB_ENV
+          echo "OpenMP_CXX_LIB_NAMES=omp" >> $GITHUB_ENV
+          echo "OpenMP_omp_LIBRARY=$(brew --prefix libomp)/lib/libomp.dylib" >> $GITHUB_ENV
 
       - name: Setup OpenFHE (macOS)
         if: matrix.os == 'macos-latest'
@@ -137,18 +141,52 @@ jobs:
           cd /tmp/openfhe
           git checkout feat/improve_determinant
           mkdir build && cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+          # Try with OpenMP first
+          if cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DBUILD_UNITTESTS=OFF \
                 -DBUILD_EXAMPLES=OFF \
                 -DBUILD_BENCHMARKS=OFF \
                 -DWITH_OPENMP=ON \
                 -DCMAKE_CXX_STANDARD=17 \
-                ..
-          make -j$(sysctl -n hw.ncpu)
+                -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I$(brew --prefix libomp)/include" \
+                -DOpenMP_CXX_LIB_NAMES="omp" \
+                -DOpenMP_omp_LIBRARY="$(brew --prefix libomp)/lib/libomp.dylib" \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                ..; then
+            echo "Building with OpenMP support"
+            make -j$(sysctl -n hw.ncpu) || {
+              echo "OpenMP build failed, trying without OpenMP"
+              cd ..
+              rm -rf build
+              mkdir build && cd build
+              cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                    -DCMAKE_BUILD_TYPE=Release \
+                    -DBUILD_UNITTESTS=OFF \
+                    -DBUILD_EXAMPLES=OFF \
+                    -DBUILD_BENCHMARKS=OFF \
+                    -DWITH_OPENMP=OFF \
+                    -DCMAKE_CXX_STANDARD=17 \
+                    -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                    ..
+              make -j$(sysctl -n hw.ncpu)
+            }
+          else
+            echo "CMake with OpenMP failed, trying without OpenMP"
+            cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DBUILD_UNITTESTS=OFF \
+                  -DBUILD_EXAMPLES=OFF \
+                  -DBUILD_BENCHMARKS=OFF \
+                  -DWITH_OPENMP=OFF \
+                  -DCMAKE_CXX_STANDARD=17 \
+                  -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                  ..
+            make -j$(sysctl -n hw.ncpu)
+          fi
           sudo make install
           echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
-          echo "DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "DYLD_LIBRARY_PATH=/usr/local/lib:$(brew --prefix libomp)/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Install system dependencies (Windows)
         if: matrix.os == 'windows-latest'

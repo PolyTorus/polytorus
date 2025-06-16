@@ -153,7 +153,28 @@ fn setup_openfhe() -> Result<(), String> {
     if cfg!(target_os = "linux") {
         println!("cargo::rustc-link-lib=gomp");
     } else if cfg!(target_os = "macos") {
-        println!("cargo::rustc-link-lib=omp");
+        // Try to find libomp from Homebrew
+        let homebrew_paths = vec![
+            "/opt/homebrew/lib".to_string(),
+            "/usr/local/lib".to_string(),
+        ];
+
+        let mut found_omp = false;
+        for lib_dir in &homebrew_paths {
+            let omp_lib = format!("{lib_dir}/libomp.dylib");
+            if Path::new(&omp_lib).exists() {
+                println!("cargo::rustc-link-search=native={lib_dir}");
+                println!("cargo::rustc-link-lib=omp");
+                found_omp = true;
+                break;
+            }
+        }
+
+        if !found_omp {
+            eprintln!("Warning: OpenMP library not found on macOS");
+            eprintln!("Consider installing with: brew install libomp");
+            // Don't fail the build - OpenFHE might be built without OpenMP
+        }
     }
 
     // Set rpath for runtime library loading
