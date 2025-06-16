@@ -128,11 +128,9 @@ impl EnhancedPrivacyProvider {
     /// Create a new enhanced privacy provider
     pub async fn new(config: EnhancedPrivacyConfig) -> Result<Self> {
         let privacy_provider = PrivacyProvider::new(config.privacy_config.clone());
-        
-        let diamond_io_provider = if config.enable_real_diamond_io {
+          let diamond_io_provider = if config.enable_real_diamond_io {
             Some(RealDiamondIOProvider::new(
                 config.diamond_io_config.clone(),
-                config.privacy_config.clone(),
             ).await?)
         } else {
             None
@@ -198,7 +196,7 @@ impl EnhancedPrivacyProvider {
                 let diamond_proof = RealDiamondIOProof {
                     base_proof: input.validity_proof.clone(),
                     circuit_id: circuit_id.clone(),
-                    evaluation_result,
+                    evaluation_result: evaluation_result.into(),
                     params_commitment: input.amount_commitment.clone(),
                     performance_metrics,
                 };
@@ -225,11 +223,9 @@ impl EnhancedPrivacyProvider {
             circuit_ids,
             enhanced_metadata,
         })
-    }
-
-    /// Verify an enhanced private transaction
+    }    /// Verify an enhanced private transaction
     pub async fn verify_enhanced_private_transaction(
-        &self,
+        &mut self,
         enhanced_tx: &EnhancedPrivateTransaction,
     ) -> Result<bool> {
         // Verify base private transaction
@@ -238,24 +234,29 @@ impl EnhancedPrivacyProvider {
         }
 
         // Verify Diamond IO proofs if available
-        if let Some(ref diamond_provider) = self.diamond_io_provider {
+        if self.diamond_io_provider.is_some() {
+            // Collect verification data first
+            let mut verification_data = Vec::new();
             for diamond_proof in enhanced_tx.diamond_io_proofs.iter() {
-                // Get the circuit
                 if let Some(circuit) = self.get_circuit_by_id(&diamond_proof.circuit_id).await? {
-                    // Derive inputs for verification
                     let circuit_inputs = self.derive_circuit_inputs(&diamond_proof.base_proof)?;
-                    
-                    // Verify evaluation
-                    if !diamond_provider.verify_evaluation(
-                        &circuit,
-                        &circuit_inputs,
-                        &diamond_proof.evaluation_result,
-                    ).await? {
-                        return Ok(false);
-                    }
+                    verification_data.push((circuit, circuit_inputs, diamond_proof.evaluation_result.clone().into()));
                 } else {
                     // Circuit not found - this could be normal if it was cleaned up
                     tracing::warn!("Circuit {} not found for verification", diamond_proof.circuit_id);
+                }
+            }
+            
+            // Now verify with mutable reference
+            if let Some(ref mut diamond_provider) = self.diamond_io_provider {
+                for (circuit, circuit_inputs, expected_result) in verification_data {
+                    if !diamond_provider.verify_evaluation(
+                        &circuit,
+                        &circuit_inputs,
+                        &expected_result,
+                    ).await? {
+                        return Ok(false);
+                    }
                 }
             }
         }
@@ -284,27 +285,24 @@ impl EnhancedPrivacyProvider {
         }
 
         Ok(inputs)
-    }
-
-    /// Collect performance metrics from a circuit
+    }    /// Collect performance metrics from a circuit
     fn collect_performance_metrics(&self, circuit: &DiamondIOCircuit) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
-        metrics.insert("ring_dimension".to_string(), circuit.metadata.ring_dim as f64);
-        metrics.insert("crt_depth".to_string(), circuit.metadata.crt_depth as f64);
-        metrics.insert("obfuscated_size".to_string(), circuit.obfuscated_data.len() as f64);
-        metrics.insert("matrix_files_count".to_string(), circuit.metadata.matrix_files.len() as f64);
+        metrics.insert("input_size".to_string(), circuit.metadata.input_size as f64);
+        metrics.insert("output_size".to_string(), circuit.metadata.output_size as f64);
+        metrics.insert("obfuscated_size".to_string(), circuit.obfuscated_data.len() as f64);        metrics.insert("obfuscation_time".to_string(), circuit.metadata.obfuscation_time as f64);
+        metrics.insert("complexity".to_string(), circuit.metadata.complexity.parse().unwrap_or(0.0));
+        metrics.insert("security_level".to_string(), circuit.metadata.security_level as f64);
         metrics
-    }
-
-    /// Collect Diamond IO statistics
+    }    /// Collect Diamond IO statistics
     fn collect_diamond_io_stats(&self) -> HashMap<String, f64> {
         let mut stats = HashMap::new();
         
         if let Some(ref diamond_provider) = self.diamond_io_provider {
             let provider_stats = diamond_provider.get_statistics();
             stats.insert("active_circuits".to_string(), provider_stats.active_circuits as f64);
-            stats.insert("ring_dimension".to_string(), provider_stats.ring_dimension as f64);
-            stats.insert("crt_depth".to_string(), provider_stats.crt_depth as f64);
+            stats.insert("security_level".to_string(), provider_stats.security_level as f64);
+            stats.insert("max_circuits".to_string(), provider_stats.max_circuits as f64);
             stats.insert("disk_storage_enabled".to_string(), provider_stats.disk_storage_enabled as u8 as f64);
         }
 
@@ -486,7 +484,7 @@ mod tests {
         // Production should have stronger parameters
         assert!(production_config.privacy_config.range_proof_bits >= testing_config.privacy_config.range_proof_bits);
         assert!(production_config.cleanup_interval >= testing_config.cleanup_interval);
-        assert!(production_config.diamond_io_config.ring_dim >= testing_config.diamond_io_config.ring_dim);
+        assert!(production_config.diamond_io_config.security_level >= testing_config.diamond_io_config.security_level);
     }
 
     #[tokio::test]

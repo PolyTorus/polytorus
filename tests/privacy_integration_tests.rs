@@ -330,16 +330,16 @@ fn test_diamond_privacy_config_creation() {
     assert!(matches!(config.circuit_complexity, DiamondCircuitComplexity::Medium));
 }
 
-#[test] 
-fn test_diamond_privacy_provider_creation() {
+#[tokio::test] 
+async fn test_diamond_privacy_provider_creation() {
     let config = DiamondPrivacyConfig::default();
     
-    match DiamondPrivacyProvider::new(config) {
+    match DiamondPrivacyProvider::new(config).await {
         Ok(provider) => {
             let stats = provider.get_diamond_privacy_stats();
             assert!(stats.diamond_obfuscation_enabled);
             assert!(stats.hybrid_privacy_enabled);
-            assert_eq!(stats.circuits_cached, 0);
+            assert_eq!(stats.security_level, "Medium_with_diamond_io");
         }
         Err(_) => {
             // Skip test if Diamond IO dependencies not available

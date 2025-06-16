@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use uuid;
 
 use crate::crypto::privacy::{
     PedersenCommitment,
@@ -15,16 +16,15 @@ use crate::crypto::privacy::{
     PrivateTransaction,
     UtxoValidityProof,
 };
-use crate::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
+use crate::crypto::real_diamond_io::{RealDiamondIOProvider, RealDiamondIOConfig};
 use crate::Result;
 
 /// Enhanced privacy configuration that combines traditional privacy with Diamond IO
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondPrivacyConfig {
     /// Base privacy configuration
-    pub privacy_config: PrivacyConfig,
-    /// Diamond IO configuration for circuit obfuscation
-    pub diamond_io_config: DiamondIOConfig,
+    pub privacy_config: PrivacyConfig,    /// Diamond IO configuration for circuit obfuscation
+    pub diamond_io_config: RealDiamondIOConfig,
     /// Enable Diamond IO obfuscation for privacy circuits
     pub enable_diamond_obfuscation: bool,
     /// Enable hybrid privacy (traditional ZK + Diamond IO)
@@ -50,7 +50,7 @@ impl Default for DiamondPrivacyConfig {
     fn default() -> Self {
         Self {
             privacy_config: PrivacyConfig::default(),
-            diamond_io_config: DiamondIOConfig::testing(),
+            diamond_io_config: RealDiamondIOConfig::testing(),
             enable_diamond_obfuscation: true,
             enable_hybrid_privacy: true,
             circuit_complexity: DiamondCircuitComplexity::Medium,
@@ -102,28 +102,20 @@ pub struct DiamondPrivacyMetadata {
 /// Diamond IO enhanced privacy provider
 pub struct DiamondPrivacyProvider {
     /// Configuration
-    config: DiamondPrivacyConfig,
-    /// Diamond IO integration instance
-    diamond_io: DiamondIOIntegration,
-    /// Circuit cache for performance
-    circuit_cache: HashMap<String, Vec<u8>>,
+    config: DiamondPrivacyConfig,    /// Diamond IO integration instance
+    diamond_io: RealDiamondIOProvider,
 }
 
-impl DiamondPrivacyProvider {
-    /// Create a new Diamond privacy provider
-    pub fn new(config: DiamondPrivacyConfig) -> Result<Self> {
-        let diamond_io = DiamondIOIntegration::new(config.diamond_io_config.clone())
+impl DiamondPrivacyProvider {    /// Create a new Diamond privacy provider
+    pub async fn new(config: DiamondPrivacyConfig) -> Result<Self> {
+        let diamond_io = RealDiamondIOProvider::new(config.diamond_io_config.clone()).await
             .map_err(|e| failure::format_err!("Diamond IO initialization failed: {}", e))?;
-        
-        Ok(Self {
+          Ok(Self {
             config,
             diamond_io,
-            circuit_cache: HashMap::new(),
         })
-    }
-
-    /// Create a Diamond-obfuscated privacy proof (simplified for testing)
-    pub fn create_diamond_privacy_proof(
+    }    /// Create a Diamond-obfuscated privacy proof (using real Diamond IO)
+    pub async fn create_diamond_privacy_proof(
         &mut self,
         base_proof: UtxoValidityProof,
         circuit_inputs: &[u8],
@@ -132,28 +124,27 @@ impl DiamondPrivacyProvider {
             return Err(failure::format_err!("Diamond obfuscation not enabled"));
         }
 
-        // Generate or retrieve circuit from cache
-        let circuit_key = self.generate_circuit_key(&base_proof);
-        let circuit_data = if let Some(cached_circuit) = self.circuit_cache.get(&circuit_key) {
-            cached_circuit.clone()
-        } else {
-            self.generate_privacy_circuit(&base_proof)?
-        };
+        // Generate a unique proof ID
+        let proof_id = format!("proof_{}", uuid::Uuid::new_v4());
 
-        // Simplified Diamond IO simulation for testing
-        let mut hasher = Sha256::new();
-        hasher.update(&circuit_data);
-        hasher.update(circuit_inputs);
-        let obfuscated_circuit = hasher.finalize().to_vec();
+        // Create the real Diamond IO proof
+        let real_proof = self.diamond_io.create_privacy_proof(proof_id, base_proof.clone()).await?;
 
-        // Simplified evaluation result
-        let mut eval_hasher = Sha256::new();
-        eval_hasher.update(&obfuscated_circuit);
-        eval_hasher.update(&base_proof.params_hash);
-        let evaluation_result = eval_hasher.finalize().to_vec();
+        // Convert circuit inputs to boolean array for simplicity
+        let _boolean_inputs = circuit_inputs.iter().map(|&b| b != 0).collect::<Vec<_>>();
 
-        // Create commitment to proof parameters
-        let params_commitment = self.create_params_commitment(&base_proof)?;
+        // Create obfuscated circuit representation
+        let mut obfuscated_circuit = Vec::new();
+        obfuscated_circuit.extend_from_slice(circuit_inputs);
+        obfuscated_circuit.extend_from_slice(&real_proof.circuit_id.as_bytes());
+
+        // Create evaluation result
+        let evaluation_result = real_proof.evaluation_result.outputs.iter()
+            .map(|&b| if b { 1u8 } else { 0u8 })
+            .collect();
+
+        // Create parameters commitment
+        let params_commitment = real_proof.params_commitment;
 
         Ok(DiamondPrivacyProof {
             obfuscated_circuit,
@@ -162,16 +153,14 @@ impl DiamondPrivacyProvider {
             params_commitment,
             complexity_level: self.config.circuit_complexity.clone(),
         })
-    }
-
-    /// Verify a Diamond-obfuscated privacy proof
-    pub fn verify_diamond_privacy_proof(&self, proof: &DiamondPrivacyProof) -> Result<bool> {
+    }    /// Verify a Diamond-obfuscated privacy proof
+    pub async fn verify_diamond_privacy_proof(&mut self, proof: &DiamondPrivacyProof) -> Result<bool> {
         if !self.config.enable_diamond_obfuscation {
             // Fall back to traditional verification
             return self.verify_traditional_proof(&proof.backup_proof);
         }
 
-        // Simplified verification for Diamond IO (since async verification is complex)
+        // Simplified verification for Diamond IO
         if proof.obfuscated_circuit.is_empty() || proof.evaluation_result.is_empty() {
             return Ok(false);
         }
@@ -185,10 +174,8 @@ impl DiamondPrivacyProvider {
 
         // Verify parameters commitment
         self.verify_params_commitment(&proof.params_commitment, &proof.backup_proof)
-    }
-
-    /// Create a Diamond-enhanced private transaction
-    pub fn create_diamond_private_transaction(
+    }    /// Create a Diamond-enhanced private transaction
+    pub async fn create_diamond_private_transaction(
         &mut self,
         base_private_tx: PrivateTransaction,
     ) -> Result<DiamondPrivateTransaction> {
@@ -200,7 +187,7 @@ impl DiamondPrivacyProvider {
             let diamond_proof = self.create_diamond_privacy_proof(
                 input.validity_proof.clone(),
                 &circuit_inputs,
-            )?;
+            ).await?;
             diamond_proofs.push(diamond_proof);
         }
 
@@ -224,13 +211,11 @@ impl DiamondPrivacyProvider {
             hybrid_proof,
             diamond_metadata,
         })
-    }
-
-    /// Verify a Diamond-enhanced private transaction
-    pub fn verify_diamond_private_transaction(&self, diamond_tx: &DiamondPrivateTransaction) -> Result<bool> {
+    }    /// Verify a Diamond-enhanced private transaction
+    pub async fn verify_diamond_private_transaction(&mut self, diamond_tx: &DiamondPrivateTransaction) -> Result<bool> {
         // Verify all Diamond proofs
         for proof in &diamond_tx.diamond_proofs {
-            if !self.verify_diamond_privacy_proof(proof)? {
+            if !self.verify_diamond_privacy_proof(proof).await? {
                 return Ok(false);
             }
         }
@@ -242,32 +227,7 @@ impl DiamondPrivacyProvider {
 
         // Verify metadata consistency
         self.verify_metadata_consistency(&diamond_tx.diamond_metadata)
-    }
-
-    /// Generate a privacy circuit for Diamond IO obfuscation
-    fn generate_privacy_circuit(&mut self, proof: &UtxoValidityProof) -> Result<Vec<u8>> {
-        // Generate circuit description based on complexity level
-        let circuit_description = match self.config.circuit_complexity {
-            DiamondCircuitComplexity::Simple => "simple_privacy_circuit",
-            DiamondCircuitComplexity::Medium => "medium_privacy_circuit", 
-            DiamondCircuitComplexity::High => "high_privacy_circuit",
-            DiamondCircuitComplexity::Maximum => "maximum_privacy_circuit",
-        };
-
-        // Create simplified circuit data for caching
-        let circuit_data = format!("{}_{}", 
-            circuit_description, 
-            hex::encode(&proof.params_hash[..8])
-        ).into_bytes();
-
-        // Cache the circuit for future use
-        let circuit_key = self.generate_circuit_key(proof);
-        self.circuit_cache.insert(circuit_key, circuit_data.clone());
-
-        Ok(circuit_data)
-    }
-
-    /// Prepare circuit inputs from validity proof
+    }    /// Prepare circuit inputs from validity proof
     fn prepare_circuit_inputs(&self, proof: &UtxoValidityProof) -> Result<Vec<u8>> {
         let mut inputs = Vec::new();
         
@@ -286,27 +246,7 @@ impl DiamondPrivacyProvider {
         let mut hasher = Sha256::new();
         hasher.update(&proof.nullifier);
         let nullifier_hash = hasher.finalize();
-        inputs.extend_from_slice(&nullifier_hash);
-        
-        Ok(inputs)
-    }
-
-    /// Generate a unique key for circuit caching
-    fn generate_circuit_key(&self, proof: &UtxoValidityProof) -> String {
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(&proof.params_hash);
-        hasher.update(format!("{:?}", self.config.circuit_complexity));
-        hex::encode(hasher.finalize())
-    }
-
-    /// Create commitment to proof parameters
-    fn create_params_commitment(&self, proof: &UtxoValidityProof) -> Result<PedersenCommitment> {
-        // This is a simplified commitment - in production use proper randomness
-        Ok(PedersenCommitment {
-            commitment: proof.params_hash.clone(),
-            blinding_factor: vec![0u8; 32], // Simplified
-        })
+        inputs.extend_from_slice(&nullifier_hash);        Ok(inputs)
     }
 
     /// Verify traditional proof as fallback
@@ -398,21 +338,19 @@ impl DiamondPrivacyProvider {
     /// Get security level string
     fn get_security_level_string(&self) -> String {
         format!("{:?}_with_diamond_io", self.config.circuit_complexity)
-    }
-
-    /// Collect performance metrics
+    }    /// Collect performance metrics
     fn collect_performance_metrics(&self) -> HashMap<String, u64> {
         let mut metrics = HashMap::new();
-        metrics.insert("circuit_cache_size".to_string(), self.circuit_cache.len() as u64);
         metrics.insert("diamond_obfuscation_enabled".to_string(), self.config.enable_diamond_obfuscation as u64);
         metrics.insert("hybrid_privacy_enabled".to_string(), self.config.enable_hybrid_privacy as u64);
+        metrics.insert("security_level".to_string(), self.config.diamond_io_config.security_level as u64);
+        metrics.insert("input_size".to_string(), self.config.diamond_io_config.input_size as u64);
         metrics
     }
 
     /// Get Diamond privacy statistics
     pub fn get_diamond_privacy_stats(&self) -> DiamondPrivacyStats {
         DiamondPrivacyStats {
-            circuits_cached: self.circuit_cache.len(),
             diamond_obfuscation_enabled: self.config.enable_diamond_obfuscation,
             hybrid_privacy_enabled: self.config.enable_hybrid_privacy,
             complexity_level: self.config.circuit_complexity.clone(),
@@ -424,7 +362,6 @@ impl DiamondPrivacyProvider {
 /// Diamond privacy statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondPrivacyStats {
-    pub circuits_cached: usize,
     pub diamond_obfuscation_enabled: bool,
     pub hybrid_privacy_enabled: bool,
     pub complexity_level: DiamondCircuitComplexity,
@@ -433,12 +370,10 @@ pub struct DiamondPrivacyStats {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn test_diamond_privacy_provider_creation() {
+    use super::*;    #[tokio::test]
+    async fn test_diamond_privacy_provider_creation() {
         let config = DiamondPrivacyConfig::default();
-        let provider = DiamondPrivacyProvider::new(config);
+        let provider = DiamondPrivacyProvider::new(config).await;
         
         // Note: This test might fail if Diamond IO is not properly set up
         // In a real environment, ensure Diamond IO dependencies are available
@@ -447,7 +382,6 @@ mod tests {
                 let stats = provider.get_diamond_privacy_stats();
                 assert!(stats.diamond_obfuscation_enabled);
                 assert!(stats.hybrid_privacy_enabled);
-                assert_eq!(stats.circuits_cached, 0);
             }
             Err(_) => {
                 // Skip test if Diamond IO not available (e.g., in CI)
