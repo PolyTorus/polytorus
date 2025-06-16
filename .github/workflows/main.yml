@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -92,6 +95,8 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     needs: quick-checks
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
