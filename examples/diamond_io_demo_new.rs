@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyhow::Result<()> {
-    println!("Testing {} Mode:", mode_name);
+    println!("Testing {mode_name} Mode:");
     println!("  Ring dimension: {}", config.ring_dimension);
     println!("  CRT depth: {}", config.crt_depth);
     println!("  Base bits: {}", config.base_bits);
@@ -44,19 +44,19 @@ async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyho
     );
 
     // Test evaluation with sample inputs
-    let inputs = vec![true, false, true, false];
+    let inputs = [true, false, true, false];
     let truncated_inputs = &inputs[..std::cmp::min(inputs.len(), integration.config().input_size)];
 
     let start = std::time::Instant::now();
     match integration.execute_circuit_detailed(truncated_inputs).await {
         Ok(output) => {
             let elapsed = start.elapsed();
-            println!("  Evaluation successful in {:?}", elapsed);
+            println!("  Evaluation successful in {elapsed:?}");
             println!("  Output length: {}", output.outputs.len());
             println!("  Execution time: {}ms", output.execution_time_ms);
         }
         Err(e) => {
-            println!("  Evaluation failed: {}", e);
+            println!("  Evaluation failed: {e}");
         }
     }
 
@@ -81,7 +81,7 @@ async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
     match integration.obfuscate_circuit(circuit).await {
         Ok(_result) => {
             let obf_elapsed = obf_start.elapsed();
-            println!("  Obfuscation successful in {:?}", obf_elapsed);
+            println!("  Obfuscation successful in {obf_elapsed:?}");
 
             // Test evaluation after obfuscation
             let inputs = vec![true, false, true, true];
@@ -90,7 +90,7 @@ async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
             match integration.execute_circuit_detailed(&inputs).await {
                 Ok(eval_result) => {
                     let eval_elapsed = eval_start.elapsed();
-                    println!("  Evaluation successful in {:?}", eval_elapsed);
+                    println!("  Evaluation successful in {eval_elapsed:?}");
                     println!("  Evaluation outputs: {:?}", eval_result.outputs);
                     println!(
                         "  Evaluation execution time: {}ms",
@@ -98,12 +98,12 @@ async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
                     );
                 }
                 Err(e) => {
-                    println!("  Evaluation failed: {}", e);
+                    println!("  Evaluation failed: {e}");
                 }
             }
         }
         Err(e) => {
-            println!("  Obfuscation failed: {}", e);
+            println!("  Obfuscation failed: {e}");
         }
     }
 
@@ -163,7 +163,7 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
                 );
             }
             Err(e) => {
-                println!("  {} inputs failed: {}", input_size, e);
+                println!("  {input_size} inputs failed: {e}");
             }
         }
     }

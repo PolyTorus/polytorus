@@ -169,8 +169,10 @@ fn test_private_transaction_creation_and_verification() {
 
 #[test]
 fn test_eutxo_processor_with_privacy() {
-    let mut config = EUtxoProcessorConfig::default();
-    config.privacy_config = create_test_privacy_config();
+    let config = EUtxoProcessorConfig {
+        privacy_config: create_test_privacy_config(),
+        ..Default::default()
+    };
 
     let processor = EUtxoProcessor::new(config);
 
@@ -186,8 +188,10 @@ fn test_eutxo_processor_with_privacy() {
 
 #[test]
 fn test_private_transaction_processing_in_eutxo() {
-    let mut config = EUtxoProcessorConfig::default();
-    config.privacy_config = create_test_privacy_config();
+    let config = EUtxoProcessorConfig {
+        privacy_config: create_test_privacy_config(),
+        ..Default::default()
+    };
 
     let processor = EUtxoProcessor::new(config);
 
@@ -392,7 +396,7 @@ fn test_privacy_performance_characteristics() {
         let _commitment = provider.commit_amount(i * 100, &mut rng).unwrap();
     }
     let commitment_time = start.elapsed();
-    println!("10 commitments took: {:?}", commitment_time);
+    println!("10 commitments took: {commitment_time:?}");
 
     // Measure range proof performance
     let amount = 1000u64;
@@ -403,14 +407,14 @@ fn test_privacy_performance_characteristics() {
         .generate_range_proof(amount, &commitment, &mut rng)
         .unwrap();
     let proof_time = start.elapsed();
-    println!("Range proof generation took: {:?}", proof_time);
+    println!("Range proof generation took: {proof_time:?}");
 
     let start = Instant::now();
     let _verified = provider
         .verify_range_proof(&range_proof, &commitment)
         .unwrap();
     let verify_time = start.elapsed();
-    println!("Range proof verification took: {:?}", verify_time);
+    println!("Range proof verification took: {verify_time:?}");
 
     // Performance should be reasonable (not scientific, just sanity check)
     assert!(commitment_time.as_millis() < 1000); // Should take less than 1 second
@@ -420,8 +424,10 @@ fn test_privacy_performance_characteristics() {
 
 #[test]
 fn test_end_to_end_privacy_workflow() {
-    let mut config = EUtxoProcessorConfig::default();
-    config.privacy_config = create_test_privacy_config();
+    let config = EUtxoProcessorConfig {
+        privacy_config: create_test_privacy_config(),
+        ..Default::default()
+    };
 
     let processor = EUtxoProcessor::new(config);
 

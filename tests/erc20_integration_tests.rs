@@ -22,7 +22,7 @@ async fn test_erc20_full_workflow() -> Result<()> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    let temp_dir = format!("./data/test_erc20_full_{}", timestamp);
+    let temp_dir = format!("./data/test_erc20_full_{timestamp}");
     let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
     data_context.ensure_directories()?;
     let state = ContractState::new(&data_context.contracts_db_path)?;
@@ -38,7 +38,7 @@ async fn test_erc20_full_workflow() -> Result<()> {
         "erc20_test".to_string(),
     )?;
 
-    println!("Deployed ERC20 contract at: {}", contract_address);
+    println!("Deployed ERC20 contract at: {contract_address}");
 
     // Test contract info
     let info = engine.get_erc20_contract_info(&contract_address)?;
@@ -149,7 +149,7 @@ async fn test_erc20_error_cases() -> Result<()> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    let temp_dir = format!("./data/test_erc20_error_{}", timestamp);
+    let temp_dir = format!("./data/test_erc20_error_{timestamp}");
     let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
     data_context.ensure_directories()?;
     let state = ContractState::new(&data_context.contracts_db_path)?;
@@ -211,7 +211,7 @@ async fn test_multiple_erc20_contracts() -> Result<()> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    let temp_dir = format!("./data/test_erc20_multi_{}", timestamp);
+    let temp_dir = format!("./data/test_erc20_multi_{timestamp}");
     let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
     data_context.ensure_directories()?;
     let state = ContractState::new(&data_context.contracts_db_path)?;

@@ -101,13 +101,13 @@ fn demo_configuration_manager() -> Result<(), Box<dyn std::error::Error>> {
 
     if !validation.errors.is_empty() {
         for error in &validation.errors {
-            println!("       ❌ {}", error);
+            println!("       ❌ {error}");
         }
     }
 
     if !validation.warnings.is_empty() {
         for warning in &validation.warnings {
-            println!("       ⚠️  {}", warning);
+            println!("       ⚠️  {warning}");
         }
     }
 

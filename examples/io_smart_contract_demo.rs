@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    println!("  Contract '{}' deployed", contract_id);
+    println!("  Contract '{contract_id}' deployed");
 
     // 3. Obfuscate contract
     println!("  Obfuscating contract...");
@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
         .await?;
 
     println!("  Input: {:?}", &inputs[0..2]);
-    println!("  Output: {:?}", result);
+    println!("  Output: {result:?}");
     println!("  AND(true, true) = {} (expected: true)", result[0]);
 
     // 5. Actual iO usage in test mode
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    println!("  Test contract '{}' deployed", test_contract_id);
+    println!("  Test contract '{test_contract_id}' deployed");
 
     // Obfuscate in test mode
     println!("  Obfuscating contract in test mode...");
@@ -82,7 +82,7 @@ async fn main() -> Result<()> {
         .await?;
 
     println!("  Input: {:?}", &test_inputs[0..2]);
-    println!("  Output: {:?}", test_result);
+    println!("  Output: {test_result:?}");
     println!("  XOR(true, false) = {} (expected: true)", test_result[0]);
 
     // 6. Check execution history

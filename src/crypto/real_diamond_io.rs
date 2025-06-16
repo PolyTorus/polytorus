@@ -521,8 +521,8 @@ mod tests {
         // Testing config should have smaller parameters
         assert!(testing_config.input_size <= production_config.input_size);
         assert!(testing_config.max_circuits <= production_config.max_circuits);
-        assert_eq!(testing_config.enable_disk_storage, false);
-        assert_eq!(production_config.enable_disk_storage, true);
+        assert!(!testing_config.enable_disk_storage);
+        assert!(production_config.enable_disk_storage);
     }
 
     #[test]

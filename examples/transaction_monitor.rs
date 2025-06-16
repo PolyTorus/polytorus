@@ -54,7 +54,7 @@ impl TransactionMonitor {
         println!("🔍 Starting Transaction Monitor");
         println!("================================");
         println!("Monitoring {} nodes", self.nodes.len());
-        println!("Update interval: {} seconds", interval_seconds);
+        println!("Update interval: {interval_seconds} seconds");
         println!();
 
         let mut interval = interval(Duration::from_secs(interval_seconds));
@@ -69,7 +69,7 @@ impl TransactionMonitor {
 
     async fn update_stats(&mut self) {
         for (i, endpoint) in self.nodes.iter().enumerate() {
-            let node_id = format!("node-{}", i);
+            let node_id = format!("node-{i}");
 
             let mut stats = NodeStats {
                 node_id: node_id.clone(),
@@ -111,7 +111,7 @@ impl TransactionMonitor {
     }
 
     async fn fetch_node_status(&self, endpoint: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/status", endpoint);
+        let url = format!("{endpoint}/status");
         let response = self
             .client
             .get(&url)
@@ -124,7 +124,7 @@ impl TransactionMonitor {
     }
 
     async fn fetch_node_stats(&self, endpoint: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/stats", endpoint);
+        let url = format!("{endpoint}/stats");
         let response = self
             .client
             .get(&url)
@@ -151,7 +151,7 @@ impl TransactionMonitor {
         let mut online_nodes = 0;
 
         for i in 0..self.nodes.len() {
-            let node_id = format!("node-{}", i);
+            let node_id = format!("node-{i}");
             if let Some(stats) = self.stats.get(&node_id) {
                 let status = if stats.is_online {
                     "🟢 Online "
@@ -217,8 +217,7 @@ impl TransactionMonitor {
         if total_sent > 0 {
             let propagation_rate = (total_received as f64 / total_sent as f64) * 100.0;
             println!(
-                "   Transaction Propagation: {:.1}% ({} received / {} sent)",
-                propagation_rate, total_received, total_sent
+                "   Transaction Propagation: {propagation_rate:.1}% ({total_received} received / {total_sent} sent)"
             );
         }
 
@@ -236,8 +235,7 @@ impl TransactionMonitor {
                 .filter(|s| s.is_online && s.block_height == max_height)
                 .count();
             println!(
-                "   Block Synchronization: {}/{} nodes at height {}",
-                synced_nodes, online_nodes, max_height
+                "   Block Synchronization: {synced_nodes}/{online_nodes} nodes at height {max_height}"
             );
         }
     }

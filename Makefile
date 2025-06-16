@@ -1,6 +1,6 @@
 # Makefile for Polytorus Kani Verification
 
-.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify kani-dev kani-list kani-check dep-check kani-ci fmt fmt-check clippy help
+.PHONY: kani-install kani-setup kani-verify kani-clean kani-quick kani-crypto kani-blockchain kani-modular kani-security kani-performance kani-watch kani-report pre-commit ci-verify ci-verify-quick kani-dev kani-list kani-check dep-check kani-ci fmt fmt-check clippy help
 
 # Colors for output
 BLUE := \033[0;34m
@@ -23,11 +23,11 @@ help:
 	@echo "  $(GREEN)kani-security$(NC)    - Run security-focused verifications"
 	@echo "  $(GREEN)kani-performance$(NC) - Run performance-oriented verifications"
 	@echo "  $(GREEN)kani-clean$(NC)       - Clean verification results"
-	@echo "  $(GREEN)pre-commit$(NC)       - Run pre-commit checks (fmt + clippy + kani-quick)"
-	@echo "  $(GREEN)fmt$(NC)              - Format code with rustfmt"
+	@echo "  $(GREEN)pre-commit$(NC)       - Run pre-commit checks (fmt + clippy)"	@echo "  $(GREEN)fmt$(NC)              - Format code with rustfmt"
 	@echo "  $(GREEN)fmt-check$(NC)        - Check code formatting"
 	@echo "  $(GREEN)clippy$(NC)           - Run clippy linter"
 	@echo "  $(GREEN)ci-verify$(NC)        - Run full CI verification pipeline"
+	@echo "  $(GREEN)ci-verify-quick$(NC)  - Run quick CI verification (no Kani)"
 	@echo "  $(GREEN)help$(NC)             - Show this help message"
 
 # Install Kani
@@ -48,7 +48,7 @@ kani-setup:
 # Run all verifications
 kani-verify: kani-setup
 	@echo "$(BLUE)Running complete Kani verification suite...$(NC)"
-	cd kani-verification && chmod +x run_verification.sh && ./run_verification.sh
+	cd kani-verification && bash ./run_verification.sh
 
 # Run quick verification (subset for development)
 kani-quick: kani-setup
@@ -128,7 +128,7 @@ kani-report: kani-verify
 	fi
 
 # Development workflow - quick check before commit
-pre-commit: fmt clippy kani-quick
+pre-commit: fmt clippy
 	@echo "$(GREEN)Pre-commit verification passed!$(NC)"
 
 # Format code
@@ -151,6 +151,10 @@ clippy:
 # CI workflow - comprehensive verification
 ci-verify: fmt-check clippy kani-verify kani-report
 	@echo "$(GREEN)CI verification workflow complete!$(NC)"
+
+# CI workflow without Kani (faster)
+ci-verify-quick: fmt-check clippy
+	@echo "$(GREEN)Quick CI verification workflow complete!$(NC)"
 
 # Development targets
 .PHONY: kani-dev kani-list kani-check

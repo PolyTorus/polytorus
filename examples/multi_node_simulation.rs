@@ -114,16 +114,16 @@ impl MultiNodeSimulator {
         let mut configs = Vec::new();
 
         for i in 0..self.config.num_nodes {
-            let node_id = format!("node-{}", i);
+            let node_id = format!("node-{i}");
             let port = self.config.base_port + i as u16;
             let p2p_port = self.config.base_p2p_port + i as u16;
-            let data_dir = format!("./data/simulation/{}", node_id);
+            let data_dir = format!("./data/simulation/{node_id}");
 
             // Generate bootstrap peers (connect to previous nodes)
             let mut bootstrap_peers = Vec::new();
             for j in 0..i {
                 let peer_port = self.config.base_p2p_port + j as u16;
-                bootstrap_peers.push(format!("127.0.0.1:{}", peer_port));
+                bootstrap_peers.push(format!("127.0.0.1:{peer_port}"));
             }
 
             configs.push(NodeConfig {
@@ -259,7 +259,7 @@ impl MultiNodeSimulator {
                     )
                     .await
                     {
-                        eprintln!("Failed to generate transaction {}: {}", tx_counter, e);
+                        eprintln!("Failed to generate transaction {tx_counter}: {e}");
                     }
 
                     tx_counter += 1;
@@ -267,7 +267,7 @@ impl MultiNodeSimulator {
 
                 // Print progress
                 if tx_counter % 10 == 0 {
-                    println!("📊 Generated {} transactions", tx_counter);
+                    println!("📊 Generated {tx_counter} transactions");
                 }
             }
         });
@@ -335,7 +335,7 @@ impl MultiNodeSimulator {
                 }
             }
             Err(e) => {
-                eprintln!("❌ HTTP error when sending to sender node: {}", e);
+                eprintln!("❌ HTTP error when sending to sender node: {e}");
             }
         }
 
@@ -368,7 +368,7 @@ impl MultiNodeSimulator {
                 }
             }
             Err(e) => {
-                eprintln!("❌ HTTP error when submitting to receiver node: {}", e);
+                eprintln!("❌ HTTP error when submitting to receiver node: {e}");
             }
         }
 
@@ -395,7 +395,7 @@ impl MultiNodeSimulator {
             total_rx += rx_count;
         }
 
-        println!("📊 Total: TX: {}, RX: {}", total_tx, total_rx);
+        println!("📊 Total: TX: {total_tx}, RX: {total_rx}");
         println!();
     }
 

@@ -15,8 +15,6 @@ use polytorus::crypto::real_diamond_io::{
     RealDiamondIOProvider,
     SerializableDiamondIOResult,
 };
-use polytorus::diamond_io_integration_new::DiamondIOResult;
-use tokio;
 
 #[tokio::test]
 async fn test_real_diamond_io_provider_creation() {
@@ -70,7 +68,7 @@ async fn test_circuit_creation_and_evaluation() {
 
     // Verify evaluation result
     assert!(!evaluation_result.outputs.is_empty());
-    assert!(evaluation_result.execution_time_ms >= 0);
+    // execution_time_ms is always >= 0 for u64, so this assertion is unnecessary
 }
 
 #[tokio::test]

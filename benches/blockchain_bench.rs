@@ -111,7 +111,7 @@ fn benchmark_difficulty_calculations(c: &mut Criterion) {
             let building_block =
                 Block::<block_states::Building, network::Development>::new_building_with_config(
                     vec![create_test_transaction()],
-                    format!("prev_hash_{}", i),
+                    format!("prev_hash_{i}"),
                     i + 1,
                     1, // Low difficulty for fast mining
                     DifficultyAdjustmentConfig::default(),
@@ -181,8 +181,8 @@ fn benchmark_multiple_transactions(c: &mut Criterion) {
                     let mut transactions = vec![create_test_transaction()];                    // Add regular transactions if needed
                     for i in 1..tx_count {
                         let tx = create_simple_transaction(
-                            format!("multi_addr_{}", i),
-                            format!("multi_dest_{}", i),
+                            format!("multi_addr_{i}"),
+                            format!("multi_dest_{i}"),
                             10 + i,
                             i,
                         );
@@ -219,12 +219,12 @@ fn benchmark_multiple_transactions(c: &mut Criterion) {
 /// Create a simple test transaction (non-coinbase)
 fn create_simple_transaction(from: String, to: String, amount: i32, nonce: i32) -> Transaction {
     // Create a fake input referencing a previous transaction
-    let prev_tx_id = format!("prev_tx_{}", nonce);
+    let prev_tx_id = format!("prev_tx_{nonce}");
     let input = TXInput {
         txid: prev_tx_id,
         vout: 0,
         signature: Vec::new(),
-        pub_key: format!("pubkey_{}", from).into_bytes(),
+        pub_key: format!("pubkey_{from}").into_bytes(),
         redeemer: None,
     };
 
@@ -265,8 +265,8 @@ fn benchmark_tps(c: &mut Criterion) {
                         ).expect("Failed to create coinbase transaction")];                        // Add regular transactions
                         for i in 1..tx_count {
                             let tx = create_simple_transaction(
-                                format!("addr_{}", i),
-                                format!("dest_{}", i),
+                                format!("addr_{i}"),
+                                format!("dest_{i}"),
                                 10 + i,
                                 total_transactions + i,
                             );
@@ -286,7 +286,7 @@ fn benchmark_tps(c: &mut Criterion) {
 
                         let block = Block::<block_states::Building, network::Development>::new_building_with_config(
                             transactions,
-                            format!("tps_prev_{}", total_transactions),
+                            format!("tps_prev_{total_transactions}"),
                             1,
                             1, // Minimal difficulty for maximum TPS
                             config,
@@ -325,8 +325,8 @@ fn benchmark_pure_transaction_processing(c: &mut Criterion) {
                         let mut transactions = vec![create_test_transaction()]; // Create regular transactions
                         for i in 1..tx_count {
                             let tx = create_simple_transaction(
-                                format!("pure_addr_{}", i),
-                                format!("pure_dest_{}", i),
+                                format!("pure_addr_{i}"),
+                                format!("pure_dest_{i}"),
                                 10 + i,
                                 i,
                             );
@@ -372,15 +372,15 @@ fn benchmark_concurrent_tps(c: &mut Criterion) {
                                     // Each thread processes transactions
                                     // First create a coinbase transaction
                                     let mut transactions = vec![Transaction::new_coinbase(
-                                        format!("concurrent_address_{}", thread_id),
-                                        format!("concurrent_reward_{}", thread_id),
+                                        format!("concurrent_address_{thread_id}"),
+                                        format!("concurrent_reward_{thread_id}"),
                                     )
                                     .expect("Failed to create coinbase transaction")];
                                     // Add regular transactions
                                     for i in 1..50 {
                                         let tx = create_simple_transaction(
-                                            format!("concurrent_addr_{}_{}", thread_id, i),
-                                            format!("concurrent_dest_{}_{}", thread_id, i),
+                                            format!("concurrent_addr_{thread_id}_{i}"),
+                                            format!("concurrent_dest_{thread_id}_{i}"),
                                             10 + i,
                                             thread_id * 1000 + i,
                                         );

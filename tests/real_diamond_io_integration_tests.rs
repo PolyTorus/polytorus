@@ -15,7 +15,6 @@ use polytorus::crypto::real_diamond_io::{
     RealDiamondIOProvider,
     SerializableDiamondIOResult,
 };
-use tokio;
 
 #[tokio::test]
 async fn test_real_diamond_io_provider_creation() {
