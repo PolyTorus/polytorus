@@ -151,7 +151,7 @@ impl PrivacyProvider {
         rng: &mut R,
     ) -> Result<PedersenCommitment> {
         if !self.config.enable_confidential_amounts {
-            return Err(failure::format_err!("Confidential amounts not enabled"));
+            return Err(anyhow::anyhow!("Confidential amounts not enabled"));
         }
 
         // Generate random blinding factor
@@ -167,12 +167,12 @@ impl PrivacyProvider {
         commitment
             .into_affine()
             .serialize_compressed(&mut commitment_bytes)
-            .map_err(|e| failure::format_err!("Failed to serialize commitment: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to serialize commitment: {}", e))?;
 
         let mut blinding_bytes = Vec::new();
         blinding_factor
             .serialize_compressed(&mut blinding_bytes)
-            .map_err(|e| failure::format_err!("Failed to serialize blinding factor: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to serialize blinding factor: {}", e))?;
 
         Ok(PedersenCommitment {
             commitment: commitment_bytes,
@@ -184,10 +184,10 @@ impl PrivacyProvider {
     pub fn verify_commitment(&self, commitment: &PedersenCommitment, amount: u64) -> Result<bool> {
         // Deserialize commitment and blinding factor
         let commitment_point = EdwardsAffine::deserialize_compressed(&commitment.commitment[..])
-            .map_err(|e| failure::format_err!("Failed to deserialize commitment: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to deserialize commitment: {}", e))?;
 
         let blinding_factor = Fr::deserialize_compressed(&commitment.blinding_factor[..])
-            .map_err(|e| failure::format_err!("Failed to deserialize blinding factor: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to deserialize blinding factor: {}", e))?;
 
         // Recompute commitment and compare
         let amount_scalar = Fr::from(amount);
@@ -205,7 +205,7 @@ impl PrivacyProvider {
         rng: &mut R,
     ) -> Result<Vec<u8>> {
         if !self.config.enable_zk_proofs {
-            return Err(failure::format_err!("Zero-knowledge proofs not enabled"));
+            return Err(anyhow::anyhow!("Zero-knowledge proofs not enabled"));
         }
 
         let max_value = if self.config.range_proof_bits >= 64 {
@@ -214,7 +214,7 @@ impl PrivacyProvider {
             1u64 << self.config.range_proof_bits
         };
         if amount >= max_value {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Amount {} exceeds maximum value {}",
                 amount,
                 max_value
@@ -312,7 +312,7 @@ impl PrivacyProvider {
         }
 
         if self.used_nullifiers.contains_key(&nullifier) {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Nullifier already used (double spend attempt)"
             ));
         }
@@ -331,15 +331,15 @@ impl PrivacyProvider {
         rng: &mut R,
     ) -> Result<PrivateTransaction> {
         if input_amounts.len() != base_transaction.vin.len() {
-            return Err(failure::format_err!("Input amounts count mismatch"));
+            return Err(anyhow::anyhow!("Input amounts count mismatch"));
         }
 
         if output_amounts.len() != base_transaction.vout.len() {
-            return Err(failure::format_err!("Output amounts count mismatch"));
+            return Err(anyhow::anyhow!("Output amounts count mismatch"));
         }
 
         if secret_keys.len() != base_transaction.vin.len() {
-            return Err(failure::format_err!("Secret keys count mismatch"));
+            return Err(anyhow::anyhow!("Secret keys count mismatch"));
         }
 
         let mut private_inputs = Vec::new();
@@ -489,7 +489,7 @@ impl PrivacyProvider {
             let commitment_point =
                 EdwardsAffine::deserialize_compressed(&input.amount_commitment.commitment[..])
                     .map_err(|e| {
-                        failure::format_err!("Failed to deserialize input commitment: {}", e)
+                        anyhow::anyhow!("Failed to deserialize input commitment: {}", e)
                     })?;
             input_sum += commitment_point;
         }
@@ -500,7 +500,7 @@ impl PrivacyProvider {
             let commitment_point =
                 EdwardsAffine::deserialize_compressed(&output.amount_commitment.commitment[..])
                     .map_err(|e| {
-                        failure::format_err!("Failed to deserialize output commitment: {}", e)
+                        anyhow::anyhow!("Failed to deserialize output commitment: {}", e)
                     })?;
             output_sum += commitment_point;
         }
@@ -508,7 +508,7 @@ impl PrivacyProvider {
         // Add fee commitment to outputs
         let fee_commitment_point =
             EdwardsAffine::deserialize_compressed(&private_tx.fee_commitment.commitment[..])
-                .map_err(|e| failure::format_err!("Failed to deserialize fee commitment: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to deserialize fee commitment: {}", e))?;
         output_sum += fee_commitment_point;
 
         // Check balance: input_sum == output_sum + fee_sum

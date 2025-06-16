@@ -6,7 +6,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use failure;
+use anyhow;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, Mutex as AsyncMutex, RwLock};
 
@@ -1066,7 +1066,7 @@ impl UnifiedModularOrchestrator {
             let node = network_node.lock().await;
             node.connect_to_peer(addr).await?;
         } else {
-            return Err(failure::format_err!("No network node available"));
+            return Err(anyhow::anyhow!("No network node available"));
         }
         Ok(())
     }
@@ -1151,25 +1151,25 @@ impl UnifiedOrchestratorBuilder {
     pub fn build(self) -> Result<UnifiedModularOrchestrator> {
         let execution_layer = self
             .execution_layer
-            .ok_or_else(|| failure::err_msg("Execution layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Execution layer is required"))?;
         let settlement_layer = self
             .settlement_layer
-            .ok_or_else(|| failure::err_msg("Settlement layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Settlement layer is required"))?;
         let consensus_layer = self
             .consensus_layer
-            .ok_or_else(|| failure::err_msg("Consensus layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Consensus layer is required"))?;
         let data_availability_layer = self
             .data_availability_layer
-            .ok_or_else(|| failure::err_msg("Data availability layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Data availability layer is required"))?;
         let message_bus = self
             .message_bus
-            .ok_or_else(|| failure::err_msg("Message bus is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Message bus is required"))?;
         let config_manager = self
             .config_manager
-            .ok_or_else(|| failure::err_msg("Config manager is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Config manager is required"))?;
         let layer_factory = self
             .layer_factory
-            .ok_or_else(|| failure::err_msg("Layer factory is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Layer factory is required"))?;
 
         UnifiedModularOrchestrator::new(
             execution_layer,

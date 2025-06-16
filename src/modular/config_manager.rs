@@ -88,10 +88,10 @@ impl ModularConfigManager {
     /// Load configuration from file
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = std::fs::read_to_string(&path)
-            .map_err(|e| failure::format_err!("Failed to read config file: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to read config file: {}", e))?;
 
         let config: EnhancedModularConfig = toml::from_str(&content)
-            .map_err(|e| failure::format_err!("Failed to parse config file: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse config file: {}", e))?;
 
         let mut manager = Self::with_config(config);
         manager.config_path = Some(path.as_ref().to_string_lossy().to_string());
@@ -361,10 +361,10 @@ impl ModularConfigManager {
             .config
             .layers
             .get(&LayerType::Execution)
-            .ok_or_else(|| failure::format_err!("Execution layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Execution layer not configured"))?;
 
         serde_json::from_value(layer_config.config.clone())
-            .map_err(|e| failure::format_err!("Invalid execution config: {}", e))
+            .map_err(|e| anyhow::anyhow!("Invalid execution config: {}", e))
     }
 
     /// Get consensus layer configuration
@@ -373,10 +373,10 @@ impl ModularConfigManager {
             .config
             .layers
             .get(&LayerType::Consensus)
-            .ok_or_else(|| failure::format_err!("Consensus layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Consensus layer not configured"))?;
 
         serde_json::from_value(layer_config.config.clone())
-            .map_err(|e| failure::format_err!("Invalid consensus config: {}", e))
+            .map_err(|e| anyhow::anyhow!("Invalid consensus config: {}", e))
     }
 
     /// Get settlement layer configuration
@@ -385,10 +385,10 @@ impl ModularConfigManager {
             .config
             .layers
             .get(&LayerType::Settlement)
-            .ok_or_else(|| failure::format_err!("Settlement layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Settlement layer not configured"))?;
 
         serde_json::from_value(layer_config.config.clone())
-            .map_err(|e| failure::format_err!("Invalid settlement config: {}", e))
+            .map_err(|e| anyhow::anyhow!("Invalid settlement config: {}", e))
     }
 
     /// Get data availability layer configuration
@@ -397,19 +397,19 @@ impl ModularConfigManager {
             .config
             .layers
             .get(&LayerType::DataAvailability)
-            .ok_or_else(|| failure::format_err!("Data availability layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Data availability layer not configured"))?;
 
         serde_json::from_value(layer_config.config.clone())
-            .map_err(|e| failure::format_err!("Invalid data availability config: {}", e))
+            .map_err(|e| anyhow::anyhow!("Invalid data availability config: {}", e))
     }
 
     /// Save configuration to file
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let content = toml::to_string_pretty(&self.config)
-            .map_err(|e| failure::format_err!("Failed to serialize config: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to serialize config: {}", e))?;
 
         std::fs::write(&path, content)
-            .map_err(|e| failure::format_err!("Failed to write config file: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to write config file: {}", e))?;
 
         log::info!("Saved configuration to: {}", path.as_ref().display());
         Ok(())
@@ -422,7 +422,7 @@ impl ModularConfigManager {
         let validation = temp_manager.validate();
 
         if !validation.is_valid {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Invalid configuration: {:?}",
                 validation.errors
             ));

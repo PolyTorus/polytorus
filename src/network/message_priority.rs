@@ -9,7 +9,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use failure::format_err;
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::{RwLock, Semaphore},
@@ -168,7 +167,7 @@ impl PriorityMessageQueue {
     /// Add a message to the appropriate priority queue
     pub fn enqueue(&mut self, message: PrioritizedMessage) -> Result<()> {
         if message.is_expired() {
-            return Err(format_err!("Message expired before queuing"));
+            return Err(anyhow::anyhow!("Message expired before queuing"));
         }
 
         let priority_index = message.priority as usize;

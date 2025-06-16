@@ -242,7 +242,7 @@ impl ModularNetwork {
     pub async fn retrieve_data(&self, hash: &str) -> Result<Vec<u8>> {
         match self.request_data(hash).await? {
             Some(data) => Ok(data),
-            None => Err(failure::format_err!("Data not available: {}", hash)),
+            None => Err(anyhow::anyhow!("Data not available: {}", hash)),
         }
     }
 
@@ -283,7 +283,7 @@ impl ModularNetwork {
         {
             let peers = self.peers.lock().unwrap();
             if peers.len() >= self.config.max_connections {
-                return Err(failure::format_err!(
+                return Err(anyhow::anyhow!(
                     "Maximum connections ({}) reached, cannot connect to {}",
                     self.config.max_connections,
                     peer_address
@@ -329,10 +329,7 @@ impl ModularNetwork {
 
         // Simulate occasional connection failures
         if peer_address.contains("unreachable") || peer_address.contains("invalid") {
-            return Err(failure::format_err!(
-                "Connection refused by {}",
-                peer_address
-            ));
+            return Err(anyhow::anyhow!("Connection refused by {}", peer_address));
         }
 
         log::debug!("Connection established with: {}", peer_address);
@@ -351,7 +348,7 @@ impl ModularNetwork {
         {
             let peers = self.peers.lock().unwrap();
             if !peers.contains_key(peer_id) {
-                return Err(failure::format_err!("Peer {} not connected", peer_id));
+                return Err(anyhow::anyhow!("Peer {} not connected", peer_id));
             }
         }
 
@@ -397,7 +394,7 @@ impl ModularNetwork {
 
         // Simulate occasional transmission failures
         if peer_id.contains("unstable") {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Network transmission failed to {}",
                 peer_id
             ));
@@ -418,7 +415,7 @@ impl ModularNetwork {
         {
             let peers = self.peers.lock().unwrap();
             if !peers.contains_key(peer_id) {
-                return Err(failure::format_err!("Peer {} not connected", peer_id));
+                return Err(anyhow::anyhow!("Peer {} not connected", peer_id));
             }
         }
 
@@ -466,7 +463,7 @@ impl ModularNetwork {
         }
 
         if peer_id.contains("unreachable") {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Failed to reach peer {} for data request",
                 peer_id
             ));
@@ -517,7 +514,7 @@ impl ModularNetwork {
             peer.last_seen = SystemTime::now();
             Ok(())
         } else {
-            Err(failure::format_err!("Peer not found: {}", peer_id))
+            Err(anyhow::anyhow!("Peer not found: {}", peer_id))
         }
     }
 }

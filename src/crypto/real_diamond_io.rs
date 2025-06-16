@@ -137,13 +137,13 @@ impl RealDiamondIOProvider {
         if !Path::new(&work_dir).exists() {
             fs::create_dir_all(&work_dir)
                 .await
-                .map_err(|e| failure::format_err!("Failed to create work directory: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to create work directory: {}", e))?;
         }
 
         // Initialize Diamond IO integration
         let diamond_io_config = config.to_diamond_io_config();
         let diamond_io = DiamondIOIntegration::new(diamond_io_config)
-            .map_err(|e| failure::format_err!("Diamond IO initialization failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Diamond IO initialization failed: {}", e))?;
 
         Ok(Self {
             config,
@@ -164,7 +164,7 @@ impl RealDiamondIOProvider {
         let circuit_work_dir = format!("{}/{}", self.work_dir, circuit_id);
         fs::create_dir_all(&circuit_work_dir)
             .await
-            .map_err(|e| failure::format_err!("Failed to create circuit directory: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create circuit directory: {}", e))?;
 
         // Create Diamond IO circuit and register it
         let _diamond_circuit = crate::diamond_io_integration::DiamondCircuit {
@@ -174,7 +174,7 @@ impl RealDiamondIOProvider {
             output_size: self.derive_output_size_from_proof(proof),
         }; // Register the circuit with Diamond IO (handled internally by new implementation)
            // self.diamond_io.register_circuit(diamond_circuit)
-           //     .map_err(|e| failure::format_err!("Failed to register circuit: {}", e))?;
+           //     .map_err(|e| anyhow::anyhow!("Failed to register circuit: {}", e))?;
 
         // Create circuit metadata
         let metadata = CircuitMetadata {
@@ -182,7 +182,7 @@ impl RealDiamondIOProvider {
             output_size: self.derive_output_size_from_proof(proof),
             obfuscation_time: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map_err(|e| failure::format_err!("Time error: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Time error: {}", e))?
                 .as_secs(),
             complexity: "privacy_circuit".to_string(),
             security_level: self.config.security_level,
@@ -208,7 +208,7 @@ impl RealDiamondIOProvider {
 
         // Validate input size
         if inputs.is_empty() {
-            return Err(failure::format_err!("Empty input vector not allowed"));
+            return Err(anyhow::anyhow!("Empty input vector not allowed"));
         }
 
         // Use the actual Diamond IO integration for evaluation
@@ -237,7 +237,7 @@ impl RealDiamondIOProvider {
             .diamond_io
             .execute_circuit_detailed(&circuit_inputs)
             .await
-            .map_err(|e| failure::format_err!("Circuit execution failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Circuit execution failed: {}", e))?;
 
         Ok(result)
     }
@@ -273,9 +273,7 @@ impl RealDiamondIOProvider {
             if Path::new(&circuit.work_dir).exists() {
                 tokio::fs::remove_dir_all(&circuit.work_dir)
                     .await
-                    .map_err(|e| {
-                        failure::format_err!("Failed to remove circuit directory: {}", e)
-                    })?;
+                    .map_err(|e| anyhow::anyhow!("Failed to remove circuit directory: {}", e))?;
             }
         }
         Ok(())
@@ -335,7 +333,7 @@ impl RealDiamondIOProvider {
         let circuit = self
             .circuits
             .get(&proof.circuit_id)
-            .ok_or_else(|| failure::format_err!("Circuit not found"))?
+            .ok_or_else(|| anyhow::anyhow!("Circuit not found"))?
             .clone();
 
         // Re-evaluate and compare

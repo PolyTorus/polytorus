@@ -9,7 +9,6 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use failure::format_err;
 use tokio::{
     sync::{mpsc, RwLock},
     time::interval,
@@ -591,7 +590,7 @@ impl NetworkedBlockchainNode {
         // Broadcast to network
         self.network_commands
             .send(NetworkCommand::BroadcastBlock(Box::new(block)))
-            .map_err(|e| format_err!("Failed to broadcast block: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast block: {}", e))?;
 
         Ok(())
     }
@@ -613,7 +612,7 @@ impl NetworkedBlockchainNode {
         // Broadcast to network
         self.network_commands
             .send(NetworkCommand::BroadcastTransaction(transaction))
-            .map_err(|e| format_err!("Failed to broadcast transaction: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast transaction: {}", e))?;
 
         Ok(())
     }
@@ -638,7 +637,7 @@ impl NetworkedBlockchainNode {
     pub async fn connect_to_peer(&self, addr: std::net::SocketAddr) -> Result<()> {
         self.network_commands
             .send(NetworkCommand::ConnectPeer(addr))
-            .map_err(|e| format_err!("Failed to connect to peer: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to connect to peer: {}", e))?;
         Ok(())
     }
 

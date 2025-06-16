@@ -128,7 +128,7 @@ impl ModularLayerFactory {
             factory: Arc::new(|config, data_context| {
                 let execution_config: ExecutionConfig =
                     serde_json::from_value(config.config.clone())
-                        .map_err(|e| failure::format_err!("Invalid execution config: {}", e))?;
+                        .map_err(|e| anyhow::anyhow!("Invalid execution config: {}", e))?;
 
                 let layer = PolyTorusExecutionLayer::new(data_context.clone(), execution_config)?;
                 Ok(Box::new(layer) as Box<dyn std::any::Any + Send + Sync>)
@@ -148,7 +148,7 @@ impl ModularLayerFactory {
             factory: Arc::new(|config, data_context| {
                 let consensus_config: ConsensusConfig =
                     serde_json::from_value(config.config.clone())
-                        .map_err(|e| failure::format_err!("Invalid consensus config: {}", e))?;
+                        .map_err(|e| anyhow::anyhow!("Invalid consensus config: {}", e))?;
 
                 let layer = PolyTorusConsensusLayer::new(
                     data_context.clone(),
@@ -172,7 +172,7 @@ impl ModularLayerFactory {
             factory: Arc::new(|config, _data_context| {
                 let settlement_config: SettlementConfig =
                     serde_json::from_value(config.config.clone())
-                        .map_err(|e| failure::format_err!("Invalid settlement config: {}", e))?;
+                        .map_err(|e| anyhow::anyhow!("Invalid settlement config: {}", e))?;
 
                 let layer = PolyTorusSettlementLayer::new(settlement_config)?;
                 Ok(Box::new(layer) as Box<dyn std::any::Any + Send + Sync>)
@@ -192,7 +192,7 @@ impl ModularLayerFactory {
             factory: Arc::new(|config, _data_context| {
                 let da_config: DataAvailabilityConfig =
                     serde_json::from_value(config.config.clone())
-                        .map_err(|e| failure::format_err!("Invalid DA config: {}", e))?;
+                        .map_err(|e| anyhow::anyhow!("Invalid DA config: {}", e))?;
 
                 // Create network for DA layer
                 let network_config = super::network::ModularNetworkConfig::default();
@@ -228,13 +228,13 @@ impl ModularLayerFactory {
         let config = self
             .layer_configs
             .get(&LayerType::Execution)
-            .ok_or_else(|| failure::format_err!("Execution layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Execution layer not configured"))?;
 
         let implementation = self
             .implementation_registry
             .get(&config.implementation)
             .ok_or_else(|| {
-                failure::format_err!("Implementation not found: {}", config.implementation)
+                anyhow::anyhow!("Implementation not found: {}", config.implementation)
             })?;
 
         let layer_any = (implementation.factory)(config, data_context)?;
@@ -242,7 +242,7 @@ impl ModularLayerFactory {
         // Try to downcast to the execution layer
         let layer = layer_any
             .downcast::<PolyTorusExecutionLayer>()
-            .map_err(|_| failure::format_err!("Failed to downcast to execution layer"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to downcast to execution layer"))?;
 
         // Register with message bus
         let layer_info = LayerInfo {
@@ -266,20 +266,20 @@ impl ModularLayerFactory {
         let config = self
             .layer_configs
             .get(&LayerType::Consensus)
-            .ok_or_else(|| failure::format_err!("Consensus layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Consensus layer not configured"))?;
 
         let implementation = self
             .implementation_registry
             .get(&config.implementation)
             .ok_or_else(|| {
-                failure::format_err!("Implementation not found: {}", config.implementation)
+                anyhow::anyhow!("Implementation not found: {}", config.implementation)
             })?;
 
         let layer_any = (implementation.factory)(config, data_context)?;
 
         let layer = layer_any
             .downcast::<PolyTorusConsensusLayer>()
-            .map_err(|_| failure::format_err!("Failed to downcast to consensus layer"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to downcast to consensus layer"))?;
 
         // Register with message bus
         let layer_info = LayerInfo {
@@ -300,13 +300,13 @@ impl ModularLayerFactory {
         let config = self
             .layer_configs
             .get(&LayerType::Settlement)
-            .ok_or_else(|| failure::format_err!("Settlement layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Settlement layer not configured"))?;
 
         let implementation = self
             .implementation_registry
             .get(&config.implementation)
             .ok_or_else(|| {
-                failure::format_err!("Implementation not found: {}", config.implementation)
+                anyhow::anyhow!("Implementation not found: {}", config.implementation)
             })?;
 
         // For settlement layer, we don't need data_context
@@ -315,7 +315,7 @@ impl ModularLayerFactory {
 
         let layer = layer_any
             .downcast::<PolyTorusSettlementLayer>()
-            .map_err(|_| failure::format_err!("Failed to downcast to settlement layer"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to downcast to settlement layer"))?;
 
         // Register with message bus
         let layer_info = LayerInfo {
@@ -336,13 +336,13 @@ impl ModularLayerFactory {
         let config = self
             .layer_configs
             .get(&LayerType::DataAvailability)
-            .ok_or_else(|| failure::format_err!("Data availability layer not configured"))?;
+            .ok_or_else(|| anyhow::anyhow!("Data availability layer not configured"))?;
 
         let implementation = self
             .implementation_registry
             .get(&config.implementation)
             .ok_or_else(|| {
-                failure::format_err!("Implementation not found: {}", config.implementation)
+                anyhow::anyhow!("Implementation not found: {}", config.implementation)
             })?;
 
         let data_context = DataContext::default();
@@ -350,7 +350,7 @@ impl ModularLayerFactory {
 
         let layer = layer_any
             .downcast::<PolyTorusDataAvailabilityLayer>()
-            .map_err(|_| failure::format_err!("Failed to downcast to data availability layer"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to downcast to data availability layer"))?;
 
         // Register with message bus
         let layer_info = LayerInfo {
@@ -405,7 +405,7 @@ impl ModularLayerFactory {
             .implementation_registry
             .contains_key(&config.implementation)
         {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Implementation not found: {}",
                 config.implementation
             ));
@@ -414,7 +414,7 @@ impl ModularLayerFactory {
         // Check dependencies
         for dependency in &config.dependencies {
             if !self.layer_configs.contains_key(dependency) {
-                return Err(failure::format_err!(
+                return Err(anyhow::anyhow!(
                     "Dependency layer not configured: {:?}",
                     dependency
                 ));

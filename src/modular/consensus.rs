@@ -113,10 +113,10 @@ impl PolyTorusConsensusLayer {
 impl ConsensusLayer for PolyTorusConsensusLayer {
     fn propose_block(&self, block: Block) -> Result<()> {
         if !self.is_validator {
-            return Err(failure::format_err!("Node is not a validator"));
+            return Err(anyhow::anyhow!("Node is not a validator"));
         } // Validate the proposed block
         if !self.validate_block(&block) {
-            return Err(failure::format_err!("Invalid block proposed"));
+            return Err(anyhow::anyhow!("Invalid block proposed"));
         }
 
         // Add block to storage
@@ -168,7 +168,7 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
     fn add_block(&mut self, block: Block) -> Result<()> {
         // Validate before adding
         if !self.validate_block(&block) {
-            return Err(failure::format_err!("Block validation failed"));
+            return Err(anyhow::anyhow!("Block validation failed"));
         }
 
         self.storage.store_block(&block)?;

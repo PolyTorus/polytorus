@@ -1,7 +1,7 @@
 //! Modern CLI - Unified Modular Architecture Only
 
 use actix_web::{web, App as ActixApp, HttpServer};
-use clap::{App, Arg};
+use clap::{Arg, Command};
 
 use crate::{
     config::{ConfigManager, DataContext},
@@ -26,259 +26,240 @@ impl ModernCli {
         ModernCli {}
     }
     pub async fn run(&self) -> Result<()> {
-        let matches = App::new("Polytorus - Modern Blockchain")
+        let matches = Command::new("Polytorus - Modern Blockchain")
             .version("2.0.0")
             .author("Modern Architecture Team")
             .about("Unified Modular Blockchain Platform")
             .arg(
-                Arg::with_name("config")
+                Arg::new("config")
                     .long("config")
                     .help("Configuration file path")
-                    .takes_value(true)
                     .value_name("CONFIG_FILE"),
             )
             .arg(
-                Arg::with_name("data-dir")
+                Arg::new("data-dir")
                     .long("data-dir")
                     .help("Data directory path")
-                    .takes_value(true)
                     .value_name("DATA_DIR"),
             )
             .arg(
-                Arg::with_name("http-port")
+                Arg::new("http-port")
                     .long("http-port")
                     .help("HTTP API server port")
-                    .takes_value(true)
                     .value_name("PORT"),
             )
             .arg(
-                Arg::with_name("createwallet")
+                Arg::new("createwallet")
                     .long("createwallet")
-                    .help("Create a new wallet")
-                    .takes_value(false),
+                    .help("Create a new wallet"),
             )
             .arg(
-                Arg::with_name("listaddresses")
+                Arg::new("listaddresses")
                     .long("listaddresses")
-                    .help("List all addresses in wallets")
-                    .takes_value(false),
+                    .help("List all addresses in wallets"),
             )
             .arg(
-                Arg::with_name("getbalance")
+                Arg::new("getbalance")
                     .long("getbalance")
                     .help("Get balance for an address")
-                    .takes_value(true)
                     .value_name("ADDRESS"),
             )
             .arg(
-                Arg::with_name("modular-init")
+                Arg::new("modular-init")
                     .long("modular-init")
-                    .help("Initialize modular architecture")
-                    .takes_value(false),
+                    .help("Initialize modular architecture"),
             )
             .arg(
-                Arg::with_name("modular-status")
+                Arg::new("modular-status")
                     .long("modular-status")
-                    .help("Show modular system status")
-                    .takes_value(false),
+                    .help("Show modular system status"),
             )
             .arg(
-                Arg::with_name("modular-config")
+                Arg::new("modular-config")
                     .long("modular-config")
-                    .help("Show modular configuration")
-                    .takes_value(false),
+                    .help("Show modular configuration"),
             )
             .arg(
-                Arg::with_name("smart-contract-deploy")
+                Arg::new("smart-contract-deploy")
                     .long("smart-contract-deploy")
                     .help("Deploy a smart contract")
-                    .takes_value(true)
                     .value_name("CONTRACT_PATH"),
             )
             .arg(
-                Arg::with_name("smart-contract-call")
+                Arg::new("smart-contract-call")
                     .long("smart-contract-call")
                     .help("Call a smart contract function")
-                    .takes_value(true)
                     .value_name("CONTRACT_ADDRESS"),
             )
             .arg(
-                Arg::with_name("erc20-deploy")
+                Arg::new("erc20-deploy")
                     .long("erc20-deploy")
                     .help("Deploy an ERC20 token contract")
-                    .takes_value(true)
                     .value_name("NAME,SYMBOL,DECIMALS,SUPPLY,OWNER"),
             )
             .arg(
-                Arg::with_name("erc20-transfer")
+                Arg::new("erc20-transfer")
                     .long("erc20-transfer")
                     .help("Transfer ERC20 tokens")
-                    .takes_value(true)
                     .value_name("CONTRACT,TO,AMOUNT"),
             )
             .arg(
-                Arg::with_name("erc20-balance")
+                Arg::new("erc20-balance")
                     .long("erc20-balance")
                     .help("Check ERC20 token balance")
-                    .takes_value(true)
                     .value_name("CONTRACT,ADDRESS"),
             )
             .arg(
-                Arg::with_name("erc20-approve")
+                Arg::new("erc20-approve")
                     .long("erc20-approve")
                     .help("Approve ERC20 token spending")
-                    .takes_value(true)
                     .value_name("CONTRACT,SPENDER,AMOUNT"),
             )
             .arg(
-                Arg::with_name("erc20-allowance")
+                Arg::new("erc20-allowance")
                     .long("erc20-allowance")
                     .help("Check ERC20 token allowance")
-                    .takes_value(true)
                     .value_name("CONTRACT,OWNER,SPENDER"),
             )
             .arg(
-                Arg::with_name("erc20-info")
+                Arg::new("erc20-info")
                     .long("erc20-info")
                     .help("Get ERC20 token information")
-                    .takes_value(true)
                     .value_name("CONTRACT_ADDRESS"),
             )
             .arg(
-                Arg::with_name("erc20-list")
+                Arg::new("erc20-list")
                     .long("erc20-list")
-                    .help("List all deployed ERC20 contracts")
-                    .takes_value(false),
+                    .help("List all deployed ERC20 contracts"),
             )
             .arg(
-                Arg::with_name("governance-propose")
+                Arg::new("governance-propose")
                     .long("governance-propose")
                     .help("Create a governance proposal")
-                    .takes_value(true)
                     .value_name("PROPOSAL_DATA"),
             )
             .arg(
-                Arg::with_name("governance-vote")
+                Arg::new("governance-vote")
                     .long("governance-vote")
                     .help("Vote on a governance proposal")
-                    .takes_value(true)
                     .value_name("PROPOSAL_ID"),
             )
             .arg(
-                Arg::with_name("network-start")
+                Arg::new("network-start")
                     .long("network-start")
-                    .help("Start P2P network node")
-                    .takes_value(false),
+                    .help("Start P2P network node"),
             )
             .arg(
-                Arg::with_name("network-status")
+                Arg::new("network-status")
                     .long("network-status")
-                    .help("Show network status")
-                    .takes_value(false),
+                    .help("Show network status"),
             )
             .arg(
-                Arg::with_name("network-connect")
+                Arg::new("network-connect")
                     .long("network-connect")
                     .help("Connect to a peer")
-                    .takes_value(true)
                     .value_name("ADDRESS"),
             )
             .arg(
-                Arg::with_name("network-peers")
+                Arg::new("network-peers")
                     .long("network-peers")
-                    .help("List connected peers")
-                    .takes_value(false),
+                    .help("List connected peers"),
             )
             .arg(
-                Arg::with_name("network-sync")
+                Arg::new("network-sync")
                     .long("network-sync")
-                    .help("Force blockchain synchronization")
-                    .takes_value(false),
+                    .help("Force blockchain synchronization"),
             )
             .arg(
-                Arg::with_name("modular-start")
+                Arg::new("modular-start")
                     .long("modular-start")
-                    .help("Start modular blockchain with P2P network")
-                    .takes_value(false),
+                    .help("Start modular blockchain with P2P network"),
             )
             .arg(
-                Arg::with_name("network-health")
+                Arg::new("network-health")
                     .long("network-health")
-                    .help("Show network health information")
-                    .takes_value(false),
+                    .help("Show network health information"),
             )
             .arg(
-                Arg::with_name("network-blacklist")
+                Arg::new("network-blacklist")
                     .long("network-blacklist")
                     .help("Blacklist a peer")
-                    .takes_value(true)
                     .value_name("PEER_ID"),
             )
             .arg(
-                Arg::with_name("network-queue-stats")
+                Arg::new("network-queue-stats")
                     .long("network-queue-stats")
-                    .help("Show message queue statistics")
-                    .takes_value(false),
+                    .help("Show message queue statistics"),
             )
             .get_matches(); // Extract common options
-        let config_path = matches.value_of("config");
-        let data_dir = matches.value_of("data-dir");
-        let http_port = matches.value_of("http-port");
+        let config_path = matches.get_one::<String>("config");
+        let data_dir = matches.get_one::<String>("data-dir");
+        let http_port = matches.get_one::<String>("http-port");
 
-        if matches.is_present("createwallet") {
+        if matches.contains_id("createwallet") {
             self.cmd_create_wallet().await?;
-        } else if matches.is_present("listaddresses") {
+        } else if matches.contains_id("listaddresses") {
             self.cmd_list_addresses().await?;
-        } else if let Some(address) = matches.value_of("getbalance") {
+        } else if let Some(address) = matches.get_one::<String>("getbalance") {
             self.cmd_get_balance(address).await?;
-        } else if matches.is_present("modular-init") {
-            self.cmd_modular_init_with_options(config_path, data_dir)
-                .await?;
-        } else if matches.is_present("modular-start") {
-            self.cmd_modular_start_with_options(config_path, data_dir, http_port)
-                .await?;
-        } else if matches.is_present("modular-status") {
-            self.cmd_modular_status_with_options(config_path, data_dir)
-                .await?;
-        } else if matches.is_present("modular-config") {
+        } else if matches.contains_id("modular-init") {
+            self.cmd_modular_init_with_options(
+                config_path.as_ref().map(|s| s.as_str()),
+                data_dir.as_ref().map(|s| s.as_str()),
+            )
+            .await?;
+        } else if matches.contains_id("modular-start") {
+            self.cmd_modular_start_with_options(
+                config_path.as_ref().map(|s| s.as_str()),
+                data_dir.as_ref().map(|s| s.as_str()),
+                http_port.as_ref().map(|s| s.as_str()),
+            )
+            .await?;
+        } else if matches.contains_id("modular-status") {
+            self.cmd_modular_status_with_options(
+                config_path.as_ref().map(|s| s.as_str()),
+                data_dir.as_ref().map(|s| s.as_str()),
+            )
+            .await?;
+        } else if matches.contains_id("modular-config") {
             self.cmd_modular_config().await?;
-        } else if let Some(contract_path) = matches.value_of("smart-contract-deploy") {
+        } else if let Some(contract_path) = matches.get_one::<String>("smart-contract-deploy") {
             self.cmd_smart_contract_deploy(contract_path).await?;
-        } else if let Some(contract_address) = matches.value_of("smart-contract-call") {
+        } else if let Some(contract_address) = matches.get_one::<String>("smart-contract-call") {
             self.cmd_smart_contract_call(contract_address).await?;
-        } else if let Some(params) = matches.value_of("erc20-deploy") {
+        } else if let Some(params) = matches.get_one::<String>("erc20-deploy") {
             self.cmd_erc20_deploy(params).await?;
-        } else if let Some(params) = matches.value_of("erc20-transfer") {
+        } else if let Some(params) = matches.get_one::<String>("erc20-transfer") {
             self.cmd_erc20_transfer(params).await?;
-        } else if let Some(params) = matches.value_of("erc20-balance") {
+        } else if let Some(params) = matches.get_one::<String>("erc20-balance") {
             self.cmd_erc20_balance(params).await?;
-        } else if let Some(params) = matches.value_of("erc20-approve") {
+        } else if let Some(params) = matches.get_one::<String>("erc20-approve") {
             self.cmd_erc20_approve(params).await?;
-        } else if let Some(params) = matches.value_of("erc20-allowance") {
+        } else if let Some(params) = matches.get_one::<String>("erc20-allowance") {
             self.cmd_erc20_allowance(params).await?;
-        } else if let Some(contract_address) = matches.value_of("erc20-info") {
+        } else if let Some(contract_address) = matches.get_one::<String>("erc20-info") {
             self.cmd_erc20_info(contract_address).await?;
-        } else if matches.is_present("erc20-list") {
+        } else if matches.contains_id("erc20-list") {
             self.cmd_erc20_list().await?;
-        } else if let Some(proposal_data) = matches.value_of("governance-propose") {
+        } else if let Some(proposal_data) = matches.get_one::<String>("governance-propose") {
             self.cmd_governance_propose(proposal_data).await?;
-        } else if let Some(proposal_id) = matches.value_of("governance-vote") {
+        } else if let Some(proposal_id) = matches.get_one::<String>("governance-vote") {
             self.cmd_governance_vote(proposal_id).await?;
-        } else if matches.is_present("network-start") {
+        } else if matches.contains_id("network-start") {
             self.cmd_network_start().await?;
-        } else if matches.is_present("network-status") {
+        } else if matches.contains_id("network-status") {
             self.cmd_network_status().await?;
-        } else if let Some(address) = matches.value_of("network-connect") {
+        } else if let Some(address) = matches.get_one::<String>("network-connect") {
             self.cmd_network_connect(address).await?;
-        } else if matches.is_present("network-peers") {
+        } else if matches.contains_id("network-peers") {
             self.cmd_network_peers().await?;
-        } else if matches.is_present("network-sync") {
+        } else if matches.contains_id("network-sync") {
             self.cmd_network_sync().await?;
-        } else if matches.is_present("network-health") {
+        } else if matches.contains_id("network-health") {
             self.cmd_network_health().await?;
-        } else if let Some(peer_id) = matches.value_of("network-blacklist") {
+        } else if let Some(peer_id) = matches.get_one::<String>("network-blacklist") {
             self.cmd_network_blacklist(peer_id).await?;
-        } else if matches.is_present("network-queue-stats") {
+        } else if matches.contains_id("network-queue-stats") {
             self.cmd_network_queue_stats().await?;
         } else {
             println!("Use --help for usage information");
@@ -491,7 +472,7 @@ impl ModernCli {
         // Parse the address
         let socket_addr: std::net::SocketAddr = address
             .parse()
-            .map_err(|e| failure::format_err!("Invalid address format: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid address format: {}", e))?;
 
         println!("Parsed address: {}", socket_addr);
         println!("Connection functionality requires a running network node");

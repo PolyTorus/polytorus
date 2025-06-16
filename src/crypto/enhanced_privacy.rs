@@ -16,6 +16,7 @@ use crate::{
         },
         transaction::Transaction,
     },
+    diamond_io_integration_new::DiamondIOResult,
     Result,
 };
 
@@ -202,7 +203,7 @@ impl EnhancedPrivacyProvider {
         let enhanced_metadata = EnhancedTransactionMetadata {
             created_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map_err(|e| failure::format_err!("Time error: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Time error: {}", e))?
                 .as_secs(),
             diamond_io_stats: self.collect_diamond_io_stats(),
             privacy_level: self.determine_privacy_level(),
@@ -236,11 +237,9 @@ impl EnhancedPrivacyProvider {
             for diamond_proof in enhanced_tx.diamond_io_proofs.iter() {
                 if let Some(circuit) = self.get_circuit_by_id(&diamond_proof.circuit_id).await? {
                     let circuit_inputs = self.derive_circuit_inputs(&diamond_proof.base_proof)?;
-                    verification_data.push((
-                        circuit,
-                        circuit_inputs,
-                        diamond_proof.evaluation_result.clone().into(),
-                    ));
+                    let expected_result: DiamondIOResult =
+                        diamond_proof.evaluation_result.clone().into(); // Convert SerializableDiamondIOResult to DiamondIOResult
+                    verification_data.push((circuit, circuit_inputs, expected_result));
                 } else {
                     // Circuit not found - this could be normal if it was cleaned up
                     tracing::warn!(
@@ -404,7 +403,7 @@ impl EnhancedPrivacyProvider {
         // Check timestamp is reasonable (within last 24 hours)
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| failure::format_err!("Time error: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Time error: {}", e))?
             .as_secs();
 
         let time_diff = current_time.saturating_sub(metadata.created_at);

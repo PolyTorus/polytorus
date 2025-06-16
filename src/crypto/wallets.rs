@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use bincode::{deserialize, serialize};
 use bitcoincash_addr::*;
-use crypto::{digest::Digest, ripemd160::Ripemd160, sha2::Sha256};
 use fn_dsa::{
     sign_key_size, vrfy_key_size, KeyPairGenerator, KeyPairGeneratorStandard, FN_DSA_LOGN_512,
 };
+use ripemd::Ripemd160;
 use secp256k1::{rand::rngs::OsRng, Secp256k1};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use sled;
 
 use super::types::*;
@@ -79,12 +80,15 @@ impl Default for Wallet {
 /// HashPubKey hashes public key
 pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
     let mut hasher1 = Sha256::new();
-    hasher1.input(pubKey);
-    hasher1.result(pubKey);
+    hasher1.update(&*pubKey);
+    let sha256_result = hasher1.finalize();
+
     let mut hasher2 = Ripemd160::new();
-    hasher2.input(pubKey);
-    pubKey.resize(20, 0);
-    hasher2.result(pubKey);
+    hasher2.update(sha256_result);
+    let ripemd_result = hasher2.finalize();
+
+    pubKey.clear();
+    pubKey.extend_from_slice(&ripemd_result[..]);
 }
 
 /// Extract encryption type from address

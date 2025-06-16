@@ -112,7 +112,7 @@ impl DiamondPrivacyProvider {
     pub async fn new(config: DiamondPrivacyConfig) -> Result<Self> {
         let diamond_io = RealDiamondIOProvider::new(config.diamond_io_config.clone())
             .await
-            .map_err(|e| failure::format_err!("Diamond IO initialization failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Diamond IO initialization failed: {}", e))?;
         Ok(Self { config, diamond_io })
     }
     /// Create a Diamond-obfuscated privacy proof (using real Diamond IO)
@@ -122,7 +122,7 @@ impl DiamondPrivacyProvider {
         circuit_inputs: &[u8],
     ) -> Result<DiamondPrivacyProof> {
         if !self.config.enable_diamond_obfuscation {
-            return Err(failure::format_err!("Diamond obfuscation not enabled"));
+            return Err(anyhow::anyhow!("Diamond obfuscation not enabled"));
         }
 
         // Generate a unique proof ID
@@ -207,7 +207,7 @@ impl DiamondPrivacyProvider {
         let diamond_metadata = DiamondPrivacyMetadata {
             generation_time: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map_err(|e| failure::format_err!("Time error: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Time error: {}", e))?
                 .as_secs(),
             obfuscation_params_hash: self.get_obfuscation_params_hash(),
             security_level: self.get_security_level_string(),
@@ -329,7 +329,7 @@ impl DiamondPrivacyProvider {
         // Check timestamp is reasonable (within last day)
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| failure::format_err!("Time error: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Time error: {}", e))?
             .as_secs();
 
         let time_diff = current_time.saturating_sub(metadata.generation_time);

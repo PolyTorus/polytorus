@@ -125,7 +125,7 @@ impl EUtxoProcessor {
         let utxo_set = self
             .utxo_set
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire UTXO set lock"))?;
 
         for input in &tx.vin {
             // Skip coinbase inputs
@@ -137,15 +137,15 @@ impl EUtxoProcessor {
             let utxo_key = format!("{}:{}", input.txid, input.vout);
             let utxo = utxo_set
                 .get(&utxo_key)
-                .ok_or_else(|| failure::format_err!("UTXO not found: {}", utxo_key))?;
+                .ok_or_else(|| anyhow::anyhow!("UTXO not found: {}", utxo_key))?;
 
             if utxo.is_spent {
-                return Err(failure::format_err!("UTXO already spent: {}", utxo_key));
+                return Err(anyhow::anyhow!("UTXO already spent: {}", utxo_key));
             }
 
             // Validate spending conditions (script + redeemer)
             if !utxo.output.validate_spending(input)? {
-                return Err(failure::format_err!(
+                return Err(anyhow::anyhow!(
                     "Invalid spending conditions for UTXO: {}",
                     utxo_key
                 ));
@@ -153,7 +153,7 @@ impl EUtxoProcessor {
 
             // Calculate gas for script execution
             if let Some(ref script) = utxo.output.script {
-                result.gas_used += script.len() as u64 * self.config.script_gas_cost;
+                result.gas_used += (script.len() as u64) * self.config.script_gas_cost;
             }
 
             // Calculate gas for redeemer
@@ -178,19 +178,13 @@ impl EUtxoProcessor {
             // Validate output constraints
             if let Some(ref script) = output.script {
                 if script.len() > self.config.max_script_size {
-                    return Err(failure::format_err!(
-                        "Script too large: {} bytes",
-                        script.len()
-                    ));
+                    return Err(anyhow::anyhow!("Script too large: {} bytes", script.len()));
                 }
             }
 
             if let Some(ref datum) = output.datum {
                 if datum.len() > self.config.max_datum_size {
-                    return Err(failure::format_err!(
-                        "Datum too large: {} bytes",
-                        datum.len()
-                    ));
+                    return Err(anyhow::anyhow!("Datum too large: {} bytes", datum.len()));
                 }
             }
 
@@ -215,7 +209,7 @@ impl EUtxoProcessor {
         let mut utxo_set = self
             .utxo_set
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire UTXO set lock"))?;
 
         // Mark spent UTXOs
         for input in &tx.vin {
@@ -251,7 +245,7 @@ impl EUtxoProcessor {
         let utxo_set = self
             .utxo_set
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire UTXO set lock"))?;
 
         let utxo_key = format!("{}:{}", txid, vout);
         Ok(utxo_set.get(&utxo_key).cloned())
@@ -262,7 +256,7 @@ impl EUtxoProcessor {
         let utxo_set = self
             .utxo_set
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire UTXO set lock"))?;
 
         let mut result = Vec::new();
 
@@ -303,7 +297,7 @@ impl EUtxoProcessor {
         }
 
         if total < amount {
-            return Err(failure::format_err!(
+            return Err(anyhow::anyhow!(
                 "Insufficient balance: need {}, have {}",
                 amount,
                 total
@@ -322,7 +316,7 @@ impl EUtxoProcessor {
         let account_states = self
             .account_states
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire account states lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire account states lock"))?;
 
         let mut state = account_states.get(address).cloned().unwrap_or_default();
 
@@ -353,7 +347,7 @@ impl EUtxoProcessor {
         let privacy_provider = self
             .privacy_provider
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire privacy provider lock"))?;
 
         if !privacy_provider.verify_private_transaction(private_tx)? {
             result.error = Some("Private transaction verification failed".to_string());
@@ -417,7 +411,7 @@ impl EUtxoProcessor {
         let mut privacy_provider = self
             .privacy_provider
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire privacy provider lock"))?;
 
         privacy_provider.create_private_transaction(
             base_transaction,
@@ -433,7 +427,7 @@ impl EUtxoProcessor {
         let privacy_provider = self
             .privacy_provider
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire privacy provider lock"))?;
 
         Ok(privacy_provider.get_privacy_stats())
     }
@@ -449,7 +443,7 @@ impl EUtxoProcessor {
         let privacy_provider = self
             .privacy_provider
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire privacy provider lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire privacy provider lock"))?;
 
         Ok(!privacy_provider.is_nullifier_used(nullifier))
     }
@@ -463,7 +457,7 @@ impl EUtxoProcessor {
         let mut account_states = self
             .account_states
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire account states lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire account states lock"))?;
 
         account_states.insert(address.to_string(), state);
         Ok(())
@@ -474,7 +468,7 @@ impl EUtxoProcessor {
         let utxo_set = self
             .utxo_set
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire UTXO set lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire UTXO set lock"))?;
 
         let total_utxos = utxo_set.len();
         let unspent_utxos = utxo_set.values().filter(|utxo| !utxo.is_spent).count();
@@ -499,7 +493,7 @@ impl EUtxoProcessor {
     /// Convert address to pub_key_hash for UTXO matching
     fn address_to_pub_key_hash(&self, address: &str) -> Result<Vec<u8>> {
         use bitcoincash_addr::Address;
-        use crypto::{digest::Digest, sha2::Sha256};
+        use sha2::{Digest, Sha256};
 
         use crate::crypto::wallets::extract_encryption_type;
 
@@ -512,8 +506,8 @@ impl EUtxoProcessor {
             Err(_) => {
                 // For modular blockchain testing, use address hash as fallback
                 let mut hasher = Sha256::new();
-                hasher.input_str(&base_address);
-                let hash_bytes = hasher.result_str();
+                hasher.update(&base_address);
+                let hash_bytes = hex::encode(hasher.finalize());
                 // Convert hex string to bytes and take first 20 bytes
                 match hex::decode(&hash_bytes[..40]) {
                     Ok(hash_vec) => Ok(hash_vec),

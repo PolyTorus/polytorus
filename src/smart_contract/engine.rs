@@ -5,7 +5,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use failure::format_err;
 use wasmtime::*;
 
 use crate::{
@@ -387,7 +386,7 @@ impl ContractEngine {
 
         // Create WASM module
         let module = Module::new(&self.engine, &bytecode)
-            .map_err(|e| format_err!("Failed to create WASM module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create WASM module: {}", e))?;
 
         // Create store
         let mut store = Store::new(&self.engine, ());
@@ -399,7 +398,7 @@ impl ContractEngine {
         // Instantiate the module
         let instance = linker
             .instantiate(&mut store, &module)
-            .map_err(|e| format_err!("Failed to instantiate module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to instantiate module: {}", e))?;
 
         // Call the function
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
@@ -477,7 +476,7 @@ impl ContractEngine {
 
         // Create WASM module from provided bytecode
         let module = Module::new(&self.engine, &bytecode)
-            .map_err(|e| format_err!("Failed to create WASM module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create WASM module: {}", e))?;
 
         // Create store
         let mut store = Store::new(&self.engine, ());
@@ -489,7 +488,7 @@ impl ContractEngine {
         // Instantiate the module
         let instance = linker
             .instantiate(&mut store, &module)
-            .map_err(|e| format_err!("Failed to instantiate module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to instantiate module: {}", e))?;
 
         // Call the function
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
@@ -533,23 +532,23 @@ impl ContractEngine {
         // Storage functions - completely dummy implementations
         linker
             .func_wrap("env", "storage_get", |_: i32, _: i32| -> i32 { 0 })
-            .map_err(|e| format_err!("Failed to add storage_get: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add storage_get: {}", e))?;
 
         linker
             .func_wrap("env", "storage_set", |_: i32, _: i32, _: i32, _: i32| {})
-            .map_err(|e| format_err!("Failed to add storage_set: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add storage_set: {}", e))?;
 
         linker
             .func_wrap("env", "log", |_: i32, _: i32| {})
-            .map_err(|e| format_err!("Failed to add log: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add log: {}", e))?;
 
         linker
             .func_wrap("env", "get_caller", || -> i32 { 42 })
-            .map_err(|e| format_err!("Failed to add get_caller: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add get_caller: {}", e))?;
 
         linker
             .func_wrap("env", "get_value", || -> i64 { 0 })
-            .map_err(|e| format_err!("Failed to add get_value: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add get_value: {}", e))?;
 
         Ok(())
     }
@@ -565,11 +564,11 @@ impl ContractEngine {
 
         let func = instance
             .get_typed_func::<(), i32>(&mut *store, function_name)
-            .map_err(|e| format_err!("Function '{}' not found: {}", function_name, e))?;
+            .map_err(|e| anyhow::anyhow!("Function '{}' not found: {}", function_name, e))?;
 
         let result = func
             .call(&mut *store, ())
-            .map_err(|e| format_err!("Function execution failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Function execution failed: {}", e))?;
 
         println!("Function call result: {}", result);
         Ok(result.to_le_bytes().to_vec())
@@ -604,7 +603,7 @@ impl ContractEngine {
 
         wat::parse_str(wat)
             .map(|cow| cow.to_vec())
-            .map_err(|e| format_err!("Failed to parse WAT: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to parse WAT: {}", e))
     }
 
     /// Get contract state

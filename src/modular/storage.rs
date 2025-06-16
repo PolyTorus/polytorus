@@ -302,7 +302,7 @@ impl StorageLayer for ModularStorage {
         let block_data = self
             .block_db
             .get(hash)?
-            .ok_or_else(|| failure::format_err!("Block not found: {}", hash))?;
+            .ok_or_else(|| anyhow::anyhow!("Block not found: {}", hash))?;
 
         let block: Block = bincode::deserialize(&block_data)?;
 
@@ -399,7 +399,7 @@ impl StorageLayer for ModularStorage {
         let metadata_data = self
             .index_db
             .get(metadata_key)?
-            .ok_or_else(|| failure::format_err!("Block metadata not found: {}", hash))?;
+            .ok_or_else(|| anyhow::anyhow!("Block metadata not found: {}", hash))?;
 
         let metadata: BlockMetadata = bincode::deserialize(&metadata_data)?;
         Ok(metadata)

@@ -4,7 +4,7 @@
 
 use std::{collections::HashMap, time::Duration};
 
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use reqwest::Client;
 use serde_json::Value;
 use tokio::time::{interval, sleep};
@@ -236,41 +236,38 @@ impl TransactionMonitor {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matches = App::new("Transaction Monitor")
+    let matches = Command::new("Transaction Monitor")
         .version("0.1.0")
         .about("Monitor transaction flow between PolyTorus nodes")
         .arg(
-            Arg::with_name("nodes")
-                .short("n")
+            Arg::new("nodes")
+                .short('n')
                 .long("nodes")
                 .value_name("NUMBER")
                 .help("Number of nodes to monitor")
-                .takes_value(true)
                 .default_value("4"),
         )
         .arg(
-            Arg::with_name("base-port")
-                .short("p")
+            Arg::new("base-port")
+                .short('p')
                 .long("base-port")
                 .value_name("PORT")
                 .help("Base HTTP port number")
-                .takes_value(true)
                 .default_value("9000"),
         )
         .arg(
-            Arg::with_name("interval")
-                .short("i")
+            Arg::new("interval")
+                .short('i')
                 .long("interval")
                 .value_name("SECONDS")
                 .help("Update interval in seconds")
-                .takes_value(true)
                 .default_value("10"),
         )
         .get_matches();
 
-    let num_nodes: usize = matches.value_of("nodes").unwrap().parse()?;
-    let base_port: u16 = matches.value_of("base-port").unwrap().parse()?;
-    let interval: u64 = matches.value_of("interval").unwrap().parse()?;
+    let num_nodes: usize = matches.get_one::<String>("nodes").unwrap().parse()?;
+    let base_port: u16 = matches.get_one::<String>("base-port").unwrap().parse()?;
+    let interval: u64 = matches.get_one::<String>("interval").unwrap().parse()?;
 
     let mut monitor = TransactionMonitor::new(base_port, num_nodes);
 

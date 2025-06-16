@@ -221,14 +221,14 @@ impl ModularMessageBus {
                 log::warn!("Failed to send message: {}", e);
                 let mut metrics = self.metrics.write().await;
                 metrics.error_count += 1;
-                return Err(failure::format_err!("Message send failed: {}", e));
+                return Err(anyhow::anyhow!("Message send failed: {}", e));
             }
         } else {
             log::warn!(
                 "No channel found for message type: {:?}",
                 message.message_type
             );
-            return Err(failure::format_err!("No channel for message type"));
+            return Err(anyhow::anyhow!("No channel for message type"));
         }
 
         // Update latency metrics
@@ -372,14 +372,14 @@ impl MessageBuilder {
             id: uuid::Uuid::new_v4().to_string(),
             message_type: self
                 .message_type
-                .ok_or_else(|| failure::format_err!("Message type is required"))?,
+                .ok_or_else(|| anyhow::anyhow!("Message type is required"))?,
             source_layer: self
                 .source_layer
-                .ok_or_else(|| failure::format_err!("Source layer is required"))?,
+                .ok_or_else(|| anyhow::anyhow!("Source layer is required"))?,
             target_layer: self.target_layer,
             payload: self
                 .payload
-                .ok_or_else(|| failure::format_err!("Payload is required"))?,
+                .ok_or_else(|| anyhow::anyhow!("Payload is required"))?,
             priority: self.priority,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
