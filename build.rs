@@ -157,9 +157,21 @@ fn setup_openfhe() -> Result<(), String> {
 
     // Fallback to manual linking
     println!("cargo::rustc-link-search=native={lib_path}");
+
+    // Add additional library search paths for tarpaulin compatibility
+    println!("cargo::rustc-link-search=native=/usr/local/lib");
+    println!("cargo::rustc-link-search=native=/usr/lib");
+    println!("cargo::rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
+
+    // Link OpenFHE libraries in correct order
+    println!("cargo::rustc-link-lib=OPENFHEcore");
     println!("cargo::rustc-link-lib=OPENFHEpke");
     println!("cargo::rustc-link-lib=OPENFHEbinfhe");
-    println!("cargo::rustc-link-lib=OPENFHEcore");
+
+    // Additional system libraries that OpenFHE may depend on
+    println!("cargo::rustc-link-lib=ntl");
+    println!("cargo::rustc-link-lib=gmp");
+    println!("cargo::rustc-link-lib=stdc++");
 
     // Link OpenMP if available
     if cfg!(target_os = "linux") {
@@ -189,11 +201,28 @@ fn setup_openfhe() -> Result<(), String> {
         }
     }
 
-    // Set rpath for runtime library loading
+    // Set rpath for runtime library loading - enhanced for tarpaulin
     if !found_lib_path.is_empty() {
         println!("cargo::rustc-link-arg=-Wl,-rpath,{found_lib_path}");
+        println!("cargo::rustc-link-arg=-Wl,-rpath,/usr/local/lib");
     } else {
         println!("cargo::rustc-link-arg=-Wl,-rpath,{lib_path}");
+        println!("cargo::rustc-link-arg=-Wl,-rpath,/usr/local/lib");
+    }
+
+    // Additional rpath entries for system libraries
+    println!("cargo::rustc-link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu");
+    println!("cargo::rustc-link-arg=-Wl,-rpath,/lib/x86_64-linux-gnu");
+
+    // Enable additional linker flags for better compatibility
+    println!("cargo::rustc-link-arg=-Wl,--enable-new-dtags");
+
+    // For tarpaulin: ensure libraries are found at runtime
+    if env::var("CARGO_TARPAULIN").is_ok() {
+        println!(
+            "cargo::warning=Detected tarpaulin execution, applying additional linker settings"
+        );
+        println!("cargo::rustc-link-arg=-Wl,--no-as-needed");
     }
 
     Ok(())
