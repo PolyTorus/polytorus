@@ -33,8 +33,8 @@ fn setup_openfhe() -> Result<(), String> {
     // For cxx crate: provide include paths
     println!("cargo::rustc-env=DEP_OPENFHE_INCLUDE={include_path}");
 
-    // Additional include paths to try
-    let include_paths = vec![
+    // Check CPATH environment variable for additional include paths
+    let mut include_paths = vec![
         include_path.clone(),
         format!("{openfhe_root}/include/openfhe"),
         "/usr/include/openfhe".to_string(),
@@ -42,21 +42,50 @@ fn setup_openfhe() -> Result<(), String> {
         "/opt/homebrew/include/openfhe".to_string(),
     ];
 
+    // Add CPATH directories if available
+    if let Ok(cpath) = env::var("CPATH") {
+        for path in cpath.split(':') {
+            include_paths.push(path.to_string());
+            include_paths.push(format!("{path}/openfhe"));
+        }
+    }
+
+    // Additional common include paths for OpenFHE
+    include_paths.extend(vec![
+        "/usr/local/include".to_string(),
+        "/usr/include".to_string(),
+        format!("{openfhe_root}/include"),
+    ]);
+
     // Find a valid include path and check for key headers
     let mut found_include = false;
     for path in &include_paths {
         if Path::new(path).exists() {
-            // Check for key OpenFHE headers
-            let core_header = format!("{path}/core/include/lattice/lat-hal.h");
-            let pke_header = format!("{path}/pke/include/scheme/scheme-id.h");
-            let binfhe_header = format!("{path}/binfhe/include/binfhe.h");
+            // Check for key OpenFHE headers in multiple possible locations
+            let header_patterns = vec![
+                format!("{path}/core/include/lattice/lat-hal.h"),
+                format!("{path}/pke/include/scheme/scheme-id.h"),
+                format!("{path}/binfhe/include/binfhe.h"),
+                format!("{path}/openfhe/core/include/lattice/lat-hal.h"),
+                format!("{path}/openfhe/pke/include/scheme/scheme-id.h"),
+                format!("{path}/openfhe/binfhe/include/binfhe.h"),
+                format!("{path}/lattice/lat-hal.h"),
+                format!("{path}/scheme/scheme-id.h"),
+                format!("{path}/binfhe.h"),
+            ];
 
-            if Path::new(&core_header).exists()
-                || Path::new(&pke_header).exists()
-                || Path::new(&binfhe_header).exists()
-            {
+            let mut found_any_header = false;
+            for header in &header_patterns {
+                if Path::new(header).exists() {
+                    found_any_header = true;
+                    break;
+                }
+            }
+
+            if found_any_header {
                 println!("cargo::include={path}");
                 println!("cargo::rustc-env=OPENFHE_INCLUDE_PATH={path}");
+                println!("cargo::warning=Found OpenFHE headers in: {path}");
                 found_include = true;
                 break;
             }

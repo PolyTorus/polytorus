@@ -17,8 +17,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 高速フィードバック用の基本チェック
-  quick-checks:
+  # 高速フィードバック用の基本チェック  quick-checks:
     name: Quick Checks
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +43,7 @@ jobs:
 
       - name: Setup OpenFHE
         run: |
+          echo "=== Installing OpenFHE from source ==="
           git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
           cd /tmp/openfhe
           git checkout feat/improve_determinant
@@ -60,8 +60,23 @@ jobs:
           make -j$(nproc)
           sudo make install
           sudo ldconfig
+          
+          echo "=== Verifying OpenFHE installation ==="
+          echo "Headers in /usr/local/include:"
+          find /usr/local/include -name "*openfhe*" -type d || echo "No OpenFHE headers found"
+          echo "Libraries in /usr/local/lib:"
+          ls -la /usr/local/lib/libOPENFHE* || echo "No OpenFHE libraries found"
+          
+          # Create symlinks for easier header discovery
+          if [ -d "/usr/local/include/openfhe" ]; then
+            sudo ln -sf /usr/local/include/openfhe /usr/include/openfhe || true
+          fi
+          
+          # Set environment variables
           echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CPATH=/usr/local/include:/usr/local/include/openfhe:$CPATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=/usr/local/lib:$LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -267,13 +282,13 @@ jobs:
                   </package>
                 </packages>
               </coverage>' > cobertura.xml
-            }
-
-      - name: Upload coverage reports to Codecov
+            }      - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: cobertura.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
 
   # Kani形式検証（オプション）
   kani-verification:
