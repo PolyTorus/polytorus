@@ -1,7 +1,67 @@
 # PolyTorus Code Quality Assurance
 
 ## Overview
-This document outlines the strict code quality standards maintained in the PolyTorus blockchain platform.
+This document outlines the comprehensive code quality standards maintained in the PolyTorus blockchain platform, including automated enforcement through CI/CD pipelines.
+
+## Latest Updates (June 2025)
+
+### ✅ **Automated Quality Enforcement**
+PolyTorus now enforces code quality through automated systems:
+
+- **Pre-commit Hooks**: Automatic formatting and linting before commits
+- **CI/CD Integration**: Comprehensive quality checks in GitHub Actions
+- **Zero Warning Policy**: No warnings allowed in any build
+- **Security Integration**: Automated vulnerability scanning
+- **Coverage Requirements**: Minimum 80% test coverage maintained
+
+### Quality Automation Features
+- **cargo fmt**: Automatic code formatting on every commit
+- **cargo clippy**: Comprehensive linting with strict rules
+- **cargo audit**: Security vulnerability scanning
+- **cargo deny**: License and dependency policy enforcement
+- **Kani verification**: Formal verification of critical components
+
+## Automated Quality Standards
+
+### Pre-commit Quality Checks
+Every commit automatically runs:
+
+```bash
+# Formatting check (zero tolerance for formatting issues)
+cargo fmt --all --check
+
+# Comprehensive linting (zero warnings allowed)
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Quick test suite (basic functionality verification)
+cargo test --lib
+```
+
+### CI/CD Quality Pipeline
+The GitHub Actions pipeline enforces:
+
+```yaml
+# Quality gates that must pass:
+- Code formatting compliance
+- Zero clippy warnings
+- All tests passing
+- Security audit clean
+- Documentation coverage
+- Coverage threshold (>80%)
+```
+
+### Make Targets for Quality
+Developers can use these commands for quality assurance:
+
+```bash
+make fmt              # Apply automatic formatting
+make clippy          # Run comprehensive linting
+make pre-commit      # Run all pre-commit checks
+make ci-verify       # Simulate full CI pipeline locally
+make audit           # Run security audit
+make security        # Run all security checks
+make deny            # Check dependency policies
+```
 
 ## Zero Dead Code Policy
 

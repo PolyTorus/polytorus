@@ -2,15 +2,13 @@
 //! This module contains verification proofs for the core cryptographic functions
 //! used in the Polytorus blockchain.
 
-use crate::crypto::ecdsa::EcdsaCrypto;
-use crate::crypto::fndsa::FnDsaCrypto;
-use crate::crypto::traits::CryptoProvider;
-use crate::crypto::transaction::{
-    TXInput,
-    TXOutput,
-    Transaction,
+use crate::crypto::{
+    ecdsa::EcdsaCrypto,
+    fndsa::FnDsaCrypto,
+    traits::CryptoProvider,
+    transaction::{TXInput, TXOutput, Transaction},
+    types::EncryptionType,
 };
-use crate::crypto::types::EncryptionType;
 
 /// Helper function to determine encryption type (moved here for verification)
 fn determine_encryption_type_local(pub_key: &[u8]) -> EncryptionType {
@@ -43,7 +41,7 @@ fn verify_ecdsa_sign_verify() {
 
     // Property: A signature created by a private key should be verifiable by its corresponding public key
     // Note: This is a simplified harness - in practice, you'd need proper key derivation
-    let is_valid = crypto.verify(&public_key, &message, &signature);
+    let _is_valid = crypto.verify(&public_key, &message, &signature); // Prefix with underscore to silence warning
 
     // Assert that the signature verification process doesn't panic
     // The actual verification result depends on key pair correctness

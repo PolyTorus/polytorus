@@ -11,17 +11,17 @@
 
 PolyTorus is a revolutionary **modular blockchain platform** designed for the post-quantum era, offering unparalleled cryptographic flexibility and adaptability. Built on a cutting-edge modular architecture, it cleanly separates consensus, execution, settlement, and data availability layers, enabling unprecedented customization and optimization for diverse use cases in the quantum computing age.
 
-## 🚀 **Latest Updates: Code Quality & Network Enhancements** (December 2024)
+## 🚀 **Latest Updates: CI/CD Integration & Pre-commit Automation** (June 2025)
 
-🎯 **PolyTorus achieves zero dead code and enhanced network reliability:**
+🎯 **PolyTorus achieves production-ready CI/CD pipeline with automated code quality enforcement:**
 
-- ✅ **Zero Dead Code** - Complete elimination of unused code and warnings
-- ✅ **Enhanced Network Priority Queue** - Advanced message prioritization with rate limiting
-- ✅ **Improved P2P Networking** - Robust peer management and blacklisting system
-- ✅ **Network Health Monitoring** - Comprehensive network topology and health tracking
-- ✅ **Strict Code Quality** - All code actively used, no suppressions allowed
-- ✅ **Async Performance** - Optimized async networking with bandwidth management
-- ✅ **Production Ready** - Battle-tested with comprehensive test coverage
+- ✅ **Automated Pre-commit Checks** - cargo fmt, clippy, and tests run before every commit
+- ✅ **Unified CI/CD Pipeline** - GitHub Actions with multi-platform support, coverage, and security
+- ✅ **Docker Production Ready** - Multi-stage builds, security scanning, and compose orchestration
+- ✅ **Environment Management** - Secure secrets handling and flexible configuration
+- ✅ **Code Quality Enforcement** - Zero warnings policy with automated formatting
+- ✅ **Security Integration** - cargo-audit, Dependabot, and vulnerability scanning
+- ✅ **Kani Verification** - Formal verification integrated into CI pipeline
 
 ## 🚀 **Major Achievement: Diamond IO E2E Obfuscation Integration** (June 2025)
 
@@ -33,6 +33,18 @@ PolyTorus is a revolutionary **modular blockchain platform** designed for the po
 - ✅ **Modular Architecture Support** - Diamond IO integrated across all layers
 - ✅ **Performance Optimized** - Multiple modes from testing to production security
 - ✅ **Full API Compatibility** - Seamless integration with existing PolyTorus systems
+
+## 🚀 **Previous Achievement: Code Quality & Network Enhancements** (December 2024)
+
+🎯 **PolyTorus achieves zero dead code and enhanced network reliability:**
+
+- ✅ **Zero Dead Code** - Complete elimination of unused code and warnings
+- ✅ **Enhanced Network Priority Queue** - Advanced message prioritization with rate limiting
+- ✅ **Improved P2P Networking** - Robust peer management and blacklisting system
+- ✅ **Network Health Monitoring** - Comprehensive network topology and health tracking
+- ✅ **Strict Code Quality** - All code actively used, no suppressions allowed
+- ✅ **Async Performance** - Optimized async networking with bandwidth management
+- ✅ **Production Ready** - Battle-tested with comprehensive test coverage
 
 ## 🚀 Features
 
@@ -550,4 +562,80 @@ For comprehensive guides and references, see the [documentation directory](docs/
 - **Diamond IO Contracts**: Private, quantum-resistant indistinguishability obfuscation
 - **Hybrid Approach**: Choose the right tool for your use case
 
-Learn more in the [Diamond IO Contracts Guide](docs/DIAMOND_IO_CONTRACTS.md).
+Learn more in the [Diamond IO Contracts Guide](docs/DIAMOND_IO_CONTRACTS.md)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Rust 1.70+ 
+- Git
+- OpenFHE library (for Diamond IO features)
+
+### Development Setup with Automated Quality Checks
+
+```bash
+# Clone the repository
+git clone https://github.com/quantumshiro/polytorus.git
+cd polytorus
+
+# Install pre-commit hooks and development tools
+make pre-commit
+
+# Set up development environment
+cp .env.example .env
+cp .env.secrets.example .env.secrets
+
+# Build and run all quality checks
+make ci-verify-quick
+```
+
+### Development Workflow
+
+```bash
+# Format code automatically
+make fmt
+
+# Run comprehensive linting
+make clippy
+
+# Run tests with coverage
+make test
+
+# Build optimized release
+make build
+
+# The pre-commit hook will automatically run on every commit:
+# - cargo fmt (formatting)
+# - cargo clippy (linting) 
+# - cargo test (basic tests)
+
+git add .
+git commit -m "Your changes"  # Quality checks run automatically
+```
+
+### Docker Development Environment
+
+```bash
+# Quick development setup
+make docker-dev
+
+# Production environment
+make docker-prod
+
+# With custom configuration
+docker-compose -f docker-compose.dev.yml up
+```
+
+### Code Quality Commands
+
+```bash
+make fmt              # Format code
+make clippy          # Run linter
+make pre-commit      # Run all pre-commit checks
+make ci-verify       # Simulate full CI pipeline
+make audit           # Security audit
+make security        # All security checks
+make docs            # Generate documentation
+```
+
+## 🔧 OpenFHE Library Installation

@@ -3,18 +3,14 @@
 //! This module provides configuration management for the PolyTorus blockchain,
 //! including network settings, execution parameters, and environment variable support.
 
+pub mod database;
 pub mod enhanced_config;
 
 // Re-export commonly used types
 use std::path::PathBuf;
 
 pub use enhanced_config::{
-    CompleteConfig,
-    ConfigManager,
-    ConsensusConfig,
-    ExecutionConfig,
-    LoggingConfig,
-    NetworkConfig,
+    CompleteConfig, ConfigManager, ConsensusConfig, ExecutionConfig, LoggingConfig, NetworkConfig,
     StorageConfig,
 };
 
@@ -36,7 +32,11 @@ impl Default for DataContext {
         Self {
             wallet_dir: data_dir.join("wallets"),
             blockchain_dir: data_dir.join("blockchain"),
-            contracts_db_path: data_dir.join("contracts").join("db").to_string_lossy().to_string(),
+            contracts_db_path: data_dir
+                .join("contracts")
+                .join("db")
+                .to_string_lossy()
+                .to_string(),
             data_dir,
         }
     }
@@ -47,7 +47,11 @@ impl DataContext {
         Self {
             wallet_dir: data_dir.join("wallets"),
             blockchain_dir: data_dir.join("blockchain"),
-            contracts_db_path: data_dir.join("contracts").join("db").to_string_lossy().to_string(),
+            contracts_db_path: data_dir
+                .join("contracts")
+                .join("db")
+                .to_string_lossy()
+                .to_string(),
             data_dir,
         }
     }

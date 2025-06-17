@@ -1,29 +1,18 @@
 // Legacy utxoset import removed in Phase 4 - using modular storage
 // use crate::blockchain::utxoset::*;
-use std::collections::HashMap;
-use std::vec;
+use std::{collections::HashMap, vec};
 
 use bincode::serialize_into;
 use bitcoincash_addr::Address;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use failure::format_err;
-use fn_dsa::{
-    VerifyingKey,
-    VerifyingKeyStandard,
-    DOMAIN_NONE,
-    HASH_ID_RAW,
-};
+use fn_dsa::{VerifyingKey, VerifyingKeyStandard, DOMAIN_NONE, HASH_ID_RAW};
 use rand::Rng;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-use crate::crypto::traits::CryptoProvider;
-use crate::crypto::types::EncryptionType;
-use crate::crypto::wallets::*;
-use crate::Result;
+use crate::{
+    crypto::{traits::CryptoProvider, types::EncryptionType, wallets::*},
+    Result,
+};
 
 const SUBSIDY: i32 = 10;
 
@@ -125,7 +114,7 @@ impl Transaction {
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
         if acc_v.0 < amount {
             error!("Not Enough balance");
-            return Err(format_err!(
+            return Err(anyhow::anyhow!(
                 "Not Enough balance: current balance {}",
                 acc_v.0
             ));
@@ -218,7 +207,7 @@ impl Transaction {
 
           let acc_v = utxo.find_spendable_outputs(&pub_key_hash, gas_fee)?;
           if acc_v.0 < gas_fee {
-              return Err(format_err!(
+              return Err(anyhow::anyhow!(
                   "Not enough balance for gas fees: need {}, have {}",
                   gas_fee,
                   acc_v.0
@@ -291,7 +280,7 @@ impl Transaction {
 
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, total_cost)?;
         if acc_v.0 < total_cost {
-            return Err(format_err!(
+            return Err(anyhow::anyhow!(
                 "Not enough balance: need {}, have {}",
                 total_cost,
                 acc_v.0
@@ -353,7 +342,7 @@ impl Transaction {
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
         if acc_v.0 < amount {
             error!("Not Enough balance");
-            return Err(format_err!(
+            return Err(anyhow::anyhow!(
                 "Not Enough balance: current balance {}",
                 acc_v.0
             ));
@@ -418,7 +407,7 @@ impl Transaction {
         let acc_v = utxo.find_spendable_outputs(&pub_key_hash, amount)?;
         if acc_v.0 < amount {
             error!("Not Enough balance");
-            return Err(format_err!(
+            return Err(anyhow::anyhow!(
                 "Not Enough balance: current balance {}",
                 acc_v.0
             ));
@@ -467,7 +456,9 @@ impl Transaction {
 
         for vin in &self.vin {
             if prev_TXs.get(&vin.txid).unwrap().id.is_empty() {
-                return Err(format_err!("ERROR: Previous transaction is not correct"));
+                return Err(anyhow::anyhow!(
+                    "ERROR: Previous transaction is not correct"
+                ));
             }
         }
 
@@ -536,7 +527,9 @@ impl Transaction {
 
         for vin in &self.vin {
             if prev_TXs.get(&vin.txid).unwrap().id.is_empty() {
-                return Err(format_err!("ERROR: Previous transaction is not correct"));
+                return Err(anyhow::anyhow!(
+                    "ERROR: Previous transaction is not correct"
+                ));
             }
         }
 
@@ -570,8 +563,8 @@ impl Transaction {
         }
 
         let mut hasher = Sha256::new();
-        hasher.input(&buf);
-        Ok(hasher.result_str())
+        hasher.update(&buf);
+        Ok(hex::encode(hasher.finalize()))
     }
 
     /// TrimmedCopy creates a trimmed copy of Transaction to be used in signing
@@ -634,10 +627,10 @@ impl TXOutput {
             }
             Err(_) => {
                 // For modular blockchain testing, use address hash as fallback
-                use crypto::digest::Digest;
+                use sha2::Digest;
                 let mut hasher = Sha256::new();
-                hasher.input_str(&base_address);
-                let hash_bytes = hasher.result_str();
+                hasher.update(&base_address);
+                let hash_bytes = hex::encode(hasher.finalize());
                 // Convert hex string to bytes and take first 20 bytes
                 match hex::decode(&hash_bytes[..40]) {
                     Ok(hash_vec) => self.pub_key_hash = hash_vec,
@@ -714,10 +707,10 @@ impl TXOutput {
 
         // Rule 2: Simple hash comparison - script contains expected hash of redeemer
         if script.len() >= 32 && !redeemer.is_empty() {
-            use crypto::digest::Digest;
+            use sha2::Digest;
             let mut hasher = Sha256::new();
-            hasher.input(redeemer);
-            let redeemer_hash = hasher.result_str();
+            hasher.update(redeemer);
+            let redeemer_hash = hex::encode(hasher.finalize());
 
             // Convert first 32 bytes of script to hex string
             let script_hash = hex::encode(&script[..32]);
@@ -777,21 +770,15 @@ fn hash_pub_key_clone(pub_key: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod test {
     use fn_dsa::{
-        signature_size,
-        SigningKey,
-        SigningKeyStandard,
-        VerifyingKey,
-        VerifyingKeyStandard,
-        DOMAIN_NONE,
-        HASH_ID_RAW,
+        signature_size, SigningKey, SigningKeyStandard, VerifyingKey, VerifyingKeyStandard,
+        DOMAIN_NONE, HASH_ID_RAW,
     };
     use rand_core::OsRng;
 
     use super::*;
-    use crate::crypto::types::EncryptionType;
-    use crate::test_helpers::{
-        cleanup_test_context,
-        create_test_context,
+    use crate::{
+        crypto::types::EncryptionType,
+        test_helpers::{cleanup_test_context, create_test_context},
     };
 
     #[test]
@@ -870,11 +857,11 @@ mod test {
         ws.save_all().unwrap();
 
         // Create a script that expects a specific hash
-        use crypto::digest::Digest;
+        use sha2::Digest;
         let mut hasher = Sha256::new();
         let redeemer_data = vec![1, 2, 3, 4];
-        hasher.input(&redeemer_data);
-        let expected_hash = hasher.result_str();
+        hasher.update(&redeemer_data);
+        let expected_hash = hex::encode(hasher.finalize());
 
         // Create script with the expected hash (first 32 bytes)
         let hash_bytes = hex::decode(&expected_hash[..64]).unwrap();

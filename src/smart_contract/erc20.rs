@@ -4,9 +4,10 @@
 //! following the Ethereum ERC20 standard specification.
 
 use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
-use crate::smart_contract::types::ContractResult;
-use crate::Result;
+
+use crate::{smart_contract::types::ContractResult, Result};
 
 /// ERC20 token events
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,15 +131,22 @@ impl ERC20Contract {
                 success: false,
                 return_value: b"Insufficient balance".to_vec(),
                 gas_used: 1000,
-                logs: vec![format!("Insufficient balance: {} < {}", from_balance, value)],
+                logs: vec![format!(
+                    "Insufficient balance: {} < {}",
+                    from_balance, value
+                )],
                 state_changes: HashMap::new(),
             });
         }
 
         // Update balances
-        self.state.balances.insert(from.to_string(), from_balance - value);
+        self.state
+            .balances
+            .insert(from.to_string(), from_balance - value);
         let to_balance = self.balance_of(to);
-        self.state.balances.insert(to.to_string(), to_balance + value);
+        self.state
+            .balances
+            .insert(to.to_string(), to_balance + value);
 
         // Emit transfer event
         self.events.push(ERC20Event::Transfer {
@@ -161,7 +169,10 @@ impl ERC20Contract {
             success: true,
             return_value: b"true".to_vec(),
             gas_used: 21000, // Standard ERC20 transfer gas cost
-            logs: vec![format!("Transferred {} tokens from {} to {}", value, from, to)],
+            logs: vec![format!(
+                "Transferred {} tokens from {} to {}",
+                value, from, to
+            )],
             state_changes,
         })
     }
@@ -182,7 +193,7 @@ impl ERC20Contract {
         self.state
             .allowances
             .entry(owner.to_string())
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(spender.to_string(), value);
 
         // Emit approval event
@@ -202,7 +213,10 @@ impl ERC20Contract {
             success: true,
             return_value: b"true".to_vec(),
             gas_used: 46000, // Standard ERC20 approve gas cost
-            logs: vec![format!("Approved {} tokens for {} by {}", value, spender, owner)],
+            logs: vec![format!(
+                "Approved {} tokens for {} by {}",
+                value, spender, owner
+            )],
             state_changes,
         })
     }
@@ -258,25 +272,37 @@ impl ERC20Contract {
     }
 
     /// Increase allowance for a spender
-    pub fn increase_allowance(&mut self, owner: &str, spender: &str, added_value: u64) -> Result<ContractResult> {
+    pub fn increase_allowance(
+        &mut self,
+        owner: &str,
+        spender: &str,
+        added_value: u64,
+    ) -> Result<ContractResult> {
         let current_allowance = self.allowance(owner, spender);
         let new_allowance = current_allowance.saturating_add(added_value);
-        
+
         self.approve(owner, spender, new_allowance)
     }
 
     /// Decrease allowance for a spender
-    pub fn decrease_allowance(&mut self, owner: &str, spender: &str, subtracted_value: u64) -> Result<ContractResult> {
+    pub fn decrease_allowance(
+        &mut self,
+        owner: &str,
+        spender: &str,
+        subtracted_value: u64,
+    ) -> Result<ContractResult> {
         let current_allowance = self.allowance(owner, spender);
         let new_allowance = current_allowance.saturating_sub(subtracted_value);
-        
+
         self.approve(owner, spender, new_allowance)
     }
 
     /// Mint new tokens (only for token creators/admin)
     pub fn mint(&mut self, to: &str, value: u64) -> Result<ContractResult> {
         let current_balance = self.balance_of(to);
-        self.state.balances.insert(to.to_string(), current_balance + value);
+        self.state
+            .balances
+            .insert(to.to_string(), current_balance + value);
         self.state.total_supply += value;
 
         // Emit transfer event from zero address
@@ -291,7 +317,10 @@ impl ERC20Contract {
             format!("balance_{}", to),
             (current_balance + value).to_le_bytes().to_vec(),
         );
-        state_changes.insert("total_supply".to_string(), self.state.total_supply.to_le_bytes().to_vec());
+        state_changes.insert(
+            "total_supply".to_string(),
+            self.state.total_supply.to_le_bytes().to_vec(),
+        );
 
         Ok(ContractResult {
             success: true,
@@ -310,12 +339,17 @@ impl ERC20Contract {
                 success: false,
                 return_value: b"Insufficient balance to burn".to_vec(),
                 gas_used: 1000,
-                logs: vec![format!("Insufficient balance to burn: {} < {}", current_balance, value)],
+                logs: vec![format!(
+                    "Insufficient balance to burn: {} < {}",
+                    current_balance, value
+                )],
                 state_changes: HashMap::new(),
             });
         }
 
-        self.state.balances.insert(from.to_string(), current_balance - value);
+        self.state
+            .balances
+            .insert(from.to_string(), current_balance - value);
         self.state.total_supply -= value;
 
         // Emit transfer event to zero address
@@ -330,7 +364,10 @@ impl ERC20Contract {
             format!("balance_{}", from),
             (current_balance - value).to_le_bytes().to_vec(),
         );
-        state_changes.insert("total_supply".to_string(), self.state.total_supply.to_le_bytes().to_vec());
+        state_changes.insert(
+            "total_supply".to_string(),
+            self.state.total_supply.to_le_bytes().to_vec(),
+        );
 
         Ok(ContractResult {
             success: true,
@@ -406,7 +443,9 @@ mod tests {
         assert_eq!(contract.allowance("alice", "bob"), 200);
 
         // Bob transfers 100 tokens from Alice to Charlie
-        let result = contract.transfer_from("bob", "alice", "charlie", 100).unwrap();
+        let result = contract
+            .transfer_from("bob", "alice", "charlie", 100)
+            .unwrap();
         assert!(result.success);
         assert_eq!(contract.balance_of("alice"), 999900);
         assert_eq!(contract.balance_of("charlie"), 100);

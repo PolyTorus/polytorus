@@ -3,10 +3,36 @@
 ## Overview
 This guide provides comprehensive information for developers who want to contribute to PolyTorus or build applications on top of the platform.
 
-## 🎉 Current Project Status (December 2024)
+## 🎉 Current Project Status (June 2025)
 
-### ✅ **COMPLETE: Zero Dead Code Achievement**
-The PolyTorus project has achieved **ZERO DEAD CODE** status:
+### ✅ **COMPLETE: CI/CD Integration & Pre-commit Automation**
+The PolyTorus project has achieved **production-ready CI/CD pipeline** with automated quality enforcement:
+
+- **Automated Pre-commit Hooks** - Format, lint, and test on every commit
+- **Unified GitHub Actions** - Multi-platform builds, coverage, security scanning
+- **Docker Production Ready** - Multi-stage builds with security optimization
+- **Environment Management** - Secure secrets handling and flexible configuration
+- **Zero Warning Policy** - Comprehensive code quality enforcement
+- **Security Integration** - cargo-audit, Dependabot, vulnerability scanning
+- **Kani Verification** - Formal verification integrated into CI pipeline
+
+### Latest CI/CD Features
+- **Pre-commit Hooks**: Automatic cargo fmt, clippy, and test execution
+- **GitHub Actions**: Unified workflow with multi-platform support
+- **Docker Optimization**: Multi-stage builds with security scanning
+- **Secret Management**: Secure environment variable and secret handling
+- **Dependency Management**: Automated updates and security monitoring
+- **Coverage Reporting**: Comprehensive test coverage tracking
+
+### Development Quality Standards
+- **No warnings allowed** - Zero tolerance for code warnings
+- **Automated formatting** - cargo fmt runs on every commit
+- **Comprehensive linting** - clippy with strict rules
+- **Security auditing** - cargo-audit integrated into CI
+- **Formal verification** - Kani proofs for critical components
+
+### ✅ **PREVIOUS: Zero Dead Code Achievement** (December 2024)
+The PolyTorus project achieved **ZERO DEAD CODE** status:
 
 - **All tests passing** - Comprehensive test coverage maintained
 - **Zero dead_code warnings** - Complete elimination of unused code
@@ -14,7 +40,7 @@ The PolyTorus project has achieved **ZERO DEAD CODE** status:
 - **Strict Clippy compliance** - Advanced code quality checks passed
 - **Production-ready state** - Battle-tested network components
 
-### Latest Network Enhancements
+### Previous Network Enhancements
 - **Priority Message Queue**: Advanced message prioritization with rate limiting
 - **Peer Management**: Comprehensive peer tracking and blacklisting system
 - **Network Health Monitoring**: Real-time topology and health analysis
@@ -38,6 +64,7 @@ The PolyTorus project has achieved **ZERO DEAD CODE** status:
 - [Building Custom Modules](#building-custom-modules)
 - [Code Quality and Warning Management](#code-quality-and-warning-management)
 - [CLI Testing Infrastructure](#cli-testing-infrastructure)
+- [CI/CD and Pre-commit Setup](#cicd-and-pre-commit-setup)
 
 ## Development Environment
 
@@ -923,52 +950,89 @@ fn test_new_cli_feature() {
 
 The CLI testing infrastructure ensures that all command-line operations are thoroughly validated, providing confidence in the CLI interface's reliability and robustness across all supported platforms and configurations.
 
-## Code Quality and Standards
+## CI/CD and Pre-commit Setup
 
-### Zero Dead Code Policy
-PolyTorus maintains a strict **zero dead code** policy:
-
-```bash
-# Check for dead code and unused warnings
-cargo check --all-targets 2>&1 | grep -E "(dead_code|unused)" || echo "✅ No dead code found"
-
-# Run strict Clippy checks
-cargo clippy --all-targets -- -D warnings -D clippy::all
-
-# Library-only checks (recommended for development)
-cargo check --lib
-cargo clippy --lib -- -D warnings -D clippy::all
-```
-
-### Code Quality Checks
-```bash
-# Complete quality check pipeline
-./scripts/quality_check.sh
-
-# Or run individual checks:
-cargo test --lib                    # Run library tests
-cargo check --lib                   # Check library compilation
-cargo clippy --lib -- -D warnings   # Lint library code
-cargo fmt --check                   # Check formatting
-```
-
-### Network Component Testing
-The project includes comprehensive network testing:
+### Pre-commit Hooks
+PolyTorus uses automated pre-commit hooks to enforce code quality:
 
 ```bash
-# Test priority message queue
-cargo test network::message_priority --lib
+# Pre-commit hook location
+.git/hooks/pre-commit
 
-# Test network manager
-cargo test network::network_manager --lib
-
-# Test P2P networking
-cargo test network::p2p --lib
+# What runs on every commit:
+# 1. cargo fmt --all --check (code formatting)
+# 2. cargo clippy --all-targets --all-features -- -D warnings (linting)
+# 3. cargo test --lib --quick (basic test suite)
 ```
 
-### Quality Metrics
-- **60+ unit tests** - Comprehensive test coverage
-- **Zero dead code** - All code actively used
-- **Zero unused warnings** - Every variable and function has purpose
-- **Async safety** - Proper handling of async/await patterns
-- **Memory safety** - Rust's ownership system enforced
+### Make Targets
+Use the following Make targets for development:
+
+```bash
+# Code quality
+make fmt              # Format code with cargo fmt
+make clippy          # Run clippy linter
+make pre-commit      # Run all pre-commit checks
+make ci-verify       # Full CI verification locally
+make ci-verify-quick # Quick CI verification
+
+# Development
+make build           # Build the project
+make test            # Run tests
+make run             # Run the main binary
+make clean           # Clean build artifacts
+
+# Docker
+make docker          # Build Docker image
+make docker-dev      # Run development environment
+make docker-prod     # Run production environment
+
+# Security
+make audit           # Run cargo audit
+make security        # Run all security checks
+make deny            # Run cargo deny
+
+# Documentation
+make docs            # Generate documentation
+make docs-open       # Generate and open documentation
+```
+
+### GitHub Actions Workflow
+The unified CI/CD pipeline includes:
+
+```yaml
+# .github/workflows/main.yml
+jobs:
+  quick-checks:      # Fast feedback on formatting and linting
+  test:             # Multi-platform testing
+  coverage:         # Code coverage reporting
+  kani-verification: # Formal verification
+  docker:           # Docker image building
+  security:         # Security auditing
+  deploy:           # Deployment (on tags)
+```
+
+### Environment Configuration
+Use environment variables for configuration:
+
+```bash
+# Copy example files
+cp .env.example .env
+cp .env.secrets.example .env.secrets
+
+# Configure for development
+export RUST_LOG=debug
+export DATABASE_URL=postgres://localhost/polytorus
+export REDIS_URL=redis://localhost:6379
+```
+
+### Docker Development
+Development and production Docker configurations:
+
+```bash
+# Development environment
+docker-compose -f docker-compose.dev.yml up
+
+# Production environment
+docker-compose -f docker-compose.prod.yml up
+```

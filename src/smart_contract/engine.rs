@@ -1,24 +1,21 @@
 //! WASM contract execution engine - simplified and stable version
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
-use failure::format_err;
 use wasmtime::*;
 
-use crate::smart_contract::contract::SmartContract;
-use crate::smart_contract::state::ContractState;
-use crate::smart_contract::types::{
-    ContractExecution,
-    ContractMetadata,
-    ContractResult,
-    GasConfig,
+use crate::{
+    smart_contract::{
+        contract::SmartContract,
+        erc20::ERC20Contract,
+        state::ContractState,
+        types::{ContractExecution, ContractMetadata, ContractResult, GasConfig},
+    },
+    Result,
 };
-use crate::smart_contract::erc20::ERC20Contract;
-use crate::Result;
 
 /// WASM contract execution engine
 pub struct ContractEngine {
@@ -51,16 +48,16 @@ impl ContractEngine {
         contract_address: String,
     ) -> Result<String> {
         let contract = ERC20Contract::new(name, symbol, decimals, initial_supply, initial_owner);
-        
+
         // Save to persistent storage
         let state = self.state.lock().unwrap();
         let contract_data = bincode::serialize(&contract.state)?;
         state.store_data(&format!("erc20:{}", contract_address), &contract_data)?;
-        
+
         // Also keep in memory
         let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
         erc20_contracts.insert(contract_address.clone(), contract);
-        
+
         println!("ERC20 contract deployed at address: {}", contract_address);
         Ok(contract_address)
     }
@@ -74,21 +71,22 @@ impl ContractEngine {
                 return Ok(Some(contract.clone()));
             }
         }
-        
+
         // Then check persistent storage
         let state = self.state.lock().unwrap();
         if let Some(contract_data) = state.get_data(&format!("erc20:{}", contract_address))? {
-            let erc20_state: crate::smart_contract::erc20::ERC20State = bincode::deserialize(&contract_data)?;
+            let erc20_state: crate::smart_contract::erc20::ERC20State =
+                bincode::deserialize(&contract_data)?;
             let contract = ERC20Contract {
                 state: erc20_state,
                 events: Vec::new(), // Events are not persisted
             };
-            
+
             // Cache in memory
             drop(state);
             let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
             erc20_contracts.insert(contract_address.to_string(), contract.clone());
-            
+
             Ok(Some(contract))
         } else {
             Ok(None)
@@ -116,7 +114,7 @@ impl ContractEngine {
                 });
             }
         };
-        
+
         let result = match function_name {
             "name" => Ok(ContractResult {
                 success: true,
@@ -164,7 +162,7 @@ impl ContractEngine {
                     logs: vec![],
                     state_changes: HashMap::new(),
                 })
-            },
+            }
             "allowance" => {
                 if args.len() < 2 {
                     return Ok(ContractResult {
@@ -183,7 +181,7 @@ impl ContractEngine {
                     logs: vec![],
                     state_changes: HashMap::new(),
                 })
-            },
+            }
             "transfer" => {
                 if args.len() < 2 {
                     Ok(ContractResult {
@@ -198,7 +196,7 @@ impl ContractEngine {
                     let amount: u64 = args[1].parse().unwrap_or(0);
                     contract.transfer(caller, to, amount)
                 }
-            },
+            }
             "approve" => {
                 if args.len() < 2 {
                     Ok(ContractResult {
@@ -213,14 +211,17 @@ impl ContractEngine {
                     let amount: u64 = args[1].parse().unwrap_or(0);
                     contract.approve(caller, spender, amount)
                 }
-            },
+            }
             "transferFrom" => {
                 if args.len() < 3 {
                     Ok(ContractResult {
                         success: false,
                         return_value: b"Missing from address, to address, or amount".to_vec(),
                         gas_used: 500,
-                        logs: vec!["Missing from address, to address, or amount for transferFrom".to_string()],
+                        logs: vec![
+                            "Missing from address, to address, or amount for transferFrom"
+                                .to_string(),
+                        ],
                         state_changes: HashMap::new(),
                     })
                 } else {
@@ -229,7 +230,7 @@ impl ContractEngine {
                     let amount: u64 = args[2].parse().unwrap_or(0);
                     contract.transfer_from(caller, from, to, amount)
                 }
-            },
+            }
             "mint" => {
                 if args.len() < 2 {
                     Ok(ContractResult {
@@ -244,9 +245,9 @@ impl ContractEngine {
                     let amount: u64 = args[1].parse().unwrap_or(0);
                     contract.mint(to, amount)
                 }
-            },
+            }
             "burn" => {
-                if args.len() < 1 {
+                if args.is_empty() {
                     Ok(ContractResult {
                         success: false,
                         return_value: b"Missing amount".to_vec(),
@@ -258,10 +259,12 @@ impl ContractEngine {
                     let amount: u64 = args[0].parse().unwrap_or(0);
                     contract.burn(caller, amount)
                 }
-            },
+            }
             _ => Ok(ContractResult {
                 success: false,
-                return_value: format!("Unknown function: {}", function_name).as_bytes().to_vec(),
+                return_value: format!("Unknown function: {}", function_name)
+                    .as_bytes()
+                    .to_vec(),
                 gas_used: 500,
                 logs: vec![format!("Unknown ERC20 function: {}", function_name)],
                 state_changes: HashMap::new(),
@@ -274,7 +277,7 @@ impl ContractEngine {
                 let state = self.state.lock().unwrap();
                 let contract_data = bincode::serialize(&contract.state)?;
                 state.store_data(&format!("erc20:{}", contract_address), &contract_data)?;
-                
+
                 // Update memory cache
                 let mut erc20_contracts = self.erc20_contracts.lock().unwrap();
                 erc20_contracts.insert(contract_address.to_string(), contract);
@@ -285,7 +288,10 @@ impl ContractEngine {
     }
 
     /// Get ERC20 contract information
-    pub fn get_erc20_contract_info(&self, contract_address: &str) -> Result<Option<(String, String, u8, u64)>> {
+    pub fn get_erc20_contract_info(
+        &self,
+        contract_address: &str,
+    ) -> Result<Option<(String, String, u8, u64)>> {
         if let Some(contract) = self.load_erc20_contract(contract_address)? {
             Ok(Some((
                 contract.name().to_string(),
@@ -302,7 +308,7 @@ impl ContractEngine {
     pub fn list_erc20_contracts(&self) -> Result<Vec<String>> {
         let state = self.state.lock().unwrap();
         let mut contracts = Vec::new();
-        
+
         // Scan for ERC20 contracts in storage
         let keys = state.scan_prefix("erc20:")?;
         for key_str in keys {
@@ -310,7 +316,7 @@ impl ContractEngine {
                 contracts.push(contract_address.to_string());
             }
         }
-        
+
         Ok(contracts)
     }
 
@@ -380,7 +386,7 @@ impl ContractEngine {
 
         // Create WASM module
         let module = Module::new(&self.engine, &bytecode)
-            .map_err(|e| format_err!("Failed to create WASM module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create WASM module: {}", e))?;
 
         // Create store
         let mut store = Store::new(&self.engine, ());
@@ -392,7 +398,7 @@ impl ContractEngine {
         // Instantiate the module
         let instance = linker
             .instantiate(&mut store, &module)
-            .map_err(|e| format_err!("Failed to instantiate module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to instantiate module: {}", e))?;
 
         // Call the function
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
@@ -470,7 +476,7 @@ impl ContractEngine {
 
         // Create WASM module from provided bytecode
         let module = Module::new(&self.engine, &bytecode)
-            .map_err(|e| format_err!("Failed to create WASM module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create WASM module: {}", e))?;
 
         // Create store
         let mut store = Store::new(&self.engine, ());
@@ -482,7 +488,7 @@ impl ContractEngine {
         // Instantiate the module
         let instance = linker
             .instantiate(&mut store, &module)
-            .map_err(|e| format_err!("Failed to instantiate module: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to instantiate module: {}", e))?;
 
         // Call the function
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
@@ -526,23 +532,23 @@ impl ContractEngine {
         // Storage functions - completely dummy implementations
         linker
             .func_wrap("env", "storage_get", |_: i32, _: i32| -> i32 { 0 })
-            .map_err(|e| format_err!("Failed to add storage_get: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add storage_get: {}", e))?;
 
         linker
             .func_wrap("env", "storage_set", |_: i32, _: i32, _: i32, _: i32| {})
-            .map_err(|e| format_err!("Failed to add storage_set: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add storage_set: {}", e))?;
 
         linker
             .func_wrap("env", "log", |_: i32, _: i32| {})
-            .map_err(|e| format_err!("Failed to add log: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add log: {}", e))?;
 
         linker
             .func_wrap("env", "get_caller", || -> i32 { 42 })
-            .map_err(|e| format_err!("Failed to add get_caller: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add get_caller: {}", e))?;
 
         linker
             .func_wrap("env", "get_value", || -> i64 { 0 })
-            .map_err(|e| format_err!("Failed to add get_value: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to add get_value: {}", e))?;
 
         Ok(())
     }
@@ -558,11 +564,11 @@ impl ContractEngine {
 
         let func = instance
             .get_typed_func::<(), i32>(&mut *store, function_name)
-            .map_err(|e| format_err!("Function '{}' not found: {}", function_name, e))?;
+            .map_err(|e| anyhow::anyhow!("Function '{}' not found: {}", function_name, e))?;
 
         let result = func
             .call(&mut *store, ())
-            .map_err(|e| format_err!("Function execution failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Function execution failed: {}", e))?;
 
         println!("Function call result: {}", result);
         Ok(result.to_le_bytes().to_vec())
@@ -597,7 +603,7 @@ impl ContractEngine {
 
         wat::parse_str(wat)
             .map(|cow| cow.to_vec())
-            .map_err(|e| format_err!("Failed to parse WAT: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to parse WAT: {}", e))
     }
 
     /// Get contract state

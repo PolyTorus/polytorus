@@ -3,15 +3,11 @@
 //! This demonstrates the working implementation of the PolyTorus blockchain
 //! with integrated P2P networking, transaction propagation, and block synchronization.
 
-use polytorus::config::{
-    ConfigManager,
-    DataContext,
+use polytorus::{
+    config::{ConfigManager, DataContext},
+    modular::{default_modular_config, UnifiedModularOrchestrator},
+    Result,
 };
-use polytorus::modular::{
-    default_modular_config,
-    UnifiedModularOrchestrator,
-};
-use polytorus::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -73,14 +69,14 @@ async fn main() -> Result<()> {
     println!("\n⚙️  Configuration Summary:");
     let summary = config_manager.get_summary();
     for (key, value) in summary.iter() {
-        println!("   {}: {}", key, value);
+        println!("   {key}: {value}");
     }
 
     // 6. Available environment variables
     println!("\n🌍 Environment Variables:");
     println!("The following environment variables can override configuration:");
     for env_var in config_manager.get_env_variable_names() {
-        println!("   {}", env_var);
+        println!("   {env_var}");
     }
 
     println!("\n✨ Implementation Completed!");

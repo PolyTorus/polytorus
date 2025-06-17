@@ -9,8 +9,5 @@ pub mod types;
 pub mod kani_verification;
 
 // Re-export commonly used types
-pub use block::{
-    Block,
-    FinalizedBlock,
-};
+pub use block::{Block, FinalizedBlock};
 pub use types::*;

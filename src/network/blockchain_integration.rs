@@ -3,36 +3,23 @@
 //! This module integrates the blockchain with the P2P network layer,
 //! handling block propagation, transaction broadcasting, and network consensus.
 
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
-use std::sync::{
-    Arc,
-    Mutex,
-};
-use std::time::{
-    Duration,
-    SystemTime,
-    UNIX_EPOCH,
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use failure::format_err;
-use tokio::sync::{
-    mpsc,
-    RwLock,
+use tokio::{
+    sync::{mpsc, RwLock},
+    time::interval,
 };
-use tokio::time::interval;
 
-use crate::blockchain::block::FinalizedBlock;
-use crate::crypto::transaction::Transaction;
-use crate::network::p2p_enhanced::{
-    EnhancedP2PNode,
-    NetworkCommand,
-    NetworkEvent,
-    PeerId,
+use crate::{
+    blockchain::block::FinalizedBlock,
+    crypto::transaction::Transaction,
+    network::p2p_enhanced::{EnhancedP2PNode, NetworkCommand, NetworkEvent, PeerId},
+    Result,
 };
-use crate::Result;
 
 /// Network-integrated blockchain node
 pub struct NetworkedBlockchainNode {
@@ -97,18 +84,18 @@ pub type EventHandler = Box<dyn Fn(&NetworkEvent) -> Result<()> + Send + Sync>;
 /// Network synchronization events
 #[derive(Debug, Clone)]
 pub enum SyncEvent {
-    SyncStarted {
+    Started {
         target_height: i32,
         peer: PeerId,
     },
-    SyncProgress {
+    Progress {
         current_height: i32,
         target_height: i32,
     },
-    SyncCompleted {
+    Completed {
         final_height: i32,
     },
-    SyncFailed {
+    Failed {
         error: String,
     },
 }
@@ -603,7 +590,7 @@ impl NetworkedBlockchainNode {
         // Broadcast to network
         self.network_commands
             .send(NetworkCommand::BroadcastBlock(Box::new(block)))
-            .map_err(|e| format_err!("Failed to broadcast block: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast block: {}", e))?;
 
         Ok(())
     }
@@ -625,7 +612,7 @@ impl NetworkedBlockchainNode {
         // Broadcast to network
         self.network_commands
             .send(NetworkCommand::BroadcastTransaction(transaction))
-            .map_err(|e| format_err!("Failed to broadcast transaction: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to broadcast transaction: {}", e))?;
 
         Ok(())
     }
@@ -650,7 +637,7 @@ impl NetworkedBlockchainNode {
     pub async fn connect_to_peer(&self, addr: std::net::SocketAddr) -> Result<()> {
         self.network_commands
             .send(NetworkCommand::ConnectPeer(addr))
-            .map_err(|e| format_err!("Failed to connect to peer: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to connect to peer: {}", e))?;
         Ok(())
     }
 

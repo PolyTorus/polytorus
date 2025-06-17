@@ -3,19 +3,13 @@
 //! This module implements the consensus layer for the modular blockchain,
 //! handling block validation and chain management.
 
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::sync::{Arc, Mutex};
 
-use super::storage::{
-    ModularStorage,
-    StorageLayer,
+use super::{
+    storage::{ModularStorage, StorageLayer},
+    traits::*,
 };
-use super::traits::*;
-use crate::blockchain::block::Block;
-use crate::config::DataContext;
-use crate::Result;
+use crate::{blockchain::block::Block, config::DataContext, Result};
 
 /// Consensus layer implementation using Proof of Work
 pub struct PolyTorusConsensusLayer {
@@ -119,10 +113,10 @@ impl PolyTorusConsensusLayer {
 impl ConsensusLayer for PolyTorusConsensusLayer {
     fn propose_block(&self, block: Block) -> Result<()> {
         if !self.is_validator {
-            return Err(failure::format_err!("Node is not a validator"));
+            return Err(anyhow::anyhow!("Node is not a validator"));
         } // Validate the proposed block
         if !self.validate_block(&block) {
-            return Err(failure::format_err!("Invalid block proposed"));
+            return Err(anyhow::anyhow!("Invalid block proposed"));
         }
 
         // Add block to storage
@@ -174,7 +168,7 @@ impl ConsensusLayer for PolyTorusConsensusLayer {
     fn add_block(&mut self, block: Block) -> Result<()> {
         // Validate before adding
         if !self.validate_block(&block) {
-            return Err(failure::format_err!("Block validation failed"));
+            return Err(anyhow::anyhow!("Block validation failed"));
         }
 
         self.storage.store_block(&block)?;
@@ -217,7 +211,7 @@ impl ConsensusLayerBuilder {
         self
     }
 
-    pub fn as_validator(mut self) -> Self {
+    pub fn into_validator(mut self) -> Self {
         self.is_validator = true;
         self
     }

@@ -261,7 +261,7 @@ fn verify_data_availability_properties() {
 fn verify_network_message_validation() {
     let msg_id: u64 = kani::any();
     let msg_size: usize = kani::any();
-    let msg_checksum: u32 = kani::any();
+    let _msg_checksum: u32 = kani::any(); // Prefix with underscore to silence warning
     let timestamp: u64 = kani::any();
 
     // Assume reasonable bounds

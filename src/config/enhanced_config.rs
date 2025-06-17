@@ -3,17 +3,9 @@
 //! This module provides comprehensive configuration management including
 //! network settings, environment variable overrides, and dynamic updates.
 
-use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::net::SocketAddr;
-use std::path::Path;
+use std::{collections::HashMap, env, fs, net::SocketAddr, path::Path};
 
-use failure::format_err;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::Result;
 
@@ -143,10 +135,10 @@ impl ConfigManager {
     /// Load configuration from file
     fn load_from_file(path: &str) -> Result<CompleteConfig> {
         let contents = fs::read_to_string(path)
-            .map_err(|e| format_err!("Failed to read config file {}: {}", path, e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to read config file {}: {}", path, e))?;
 
         toml::from_str(&contents)
-            .map_err(|e| format_err!("Failed to parse config file {}: {}", path, e))
+            .map_err(|e| anyhow::anyhow!("Failed to parse config file {}: {}", path, e))
     }
 
     /// Get default configuration
@@ -227,20 +219,20 @@ impl ConfigManager {
         if let Ok(max_peers) = env::var(format!("{}NETWORK_MAX_PEERS", self.env_prefix)) {
             self.config.network.max_peers = max_peers
                 .parse()
-                .map_err(|e| format_err!("Invalid NETWORK_MAX_PEERS value: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Invalid NETWORK_MAX_PEERS value: {}", e))?;
         }
 
         // Consensus configuration overrides
         if let Ok(block_time) = env::var(format!("{}CONSENSUS_BLOCK_TIME", self.env_prefix)) {
             self.config.consensus.block_time = block_time
                 .parse()
-                .map_err(|e| format_err!("Invalid CONSENSUS_BLOCK_TIME value: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Invalid CONSENSUS_BLOCK_TIME value: {}", e))?;
         }
 
         if let Ok(difficulty) = env::var(format!("{}CONSENSUS_DIFFICULTY", self.env_prefix)) {
             self.config.consensus.difficulty = difficulty
                 .parse()
-                .map_err(|e| format_err!("Invalid CONSENSUS_DIFFICULTY value: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Invalid CONSENSUS_DIFFICULTY value: {}", e))?;
         }
 
         // Storage configuration overrides
@@ -273,10 +265,10 @@ impl ConfigManager {
     /// Save configuration to file
     pub fn save(&self) -> Result<()> {
         let toml_string = toml::to_string_pretty(&self.config)
-            .map_err(|e| format_err!("Failed to serialize config: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to serialize config: {}", e))?;
 
         fs::write(&self.config_file_path, toml_string).map_err(|e| {
-            format_err!(
+            anyhow::anyhow!(
                 "Failed to write config file {}: {}",
                 self.config_file_path,
                 e
@@ -306,31 +298,31 @@ impl ConfigManager {
             .network
             .listen_addr
             .parse()
-            .map_err(|e| format_err!("Invalid listen address: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid listen address: {}", e))?;
 
         for peer_addr in &self.config.network.bootstrap_peers {
-            let _addr: SocketAddr = peer_addr
-                .parse()
-                .map_err(|e| format_err!("Invalid bootstrap peer address {}: {}", peer_addr, e))?;
+            let _addr: SocketAddr = peer_addr.parse().map_err(|e| {
+                anyhow::anyhow!("Invalid bootstrap peer address {}: {}", peer_addr, e)
+            })?;
         }
 
         // Validate storage configuration
         if self.config.storage.data_dir.is_empty() {
-            return Err(format_err!("Data directory cannot be empty"));
+            return Err(anyhow::anyhow!("Data directory cannot be empty"));
         }
 
         // Validate consensus configuration
         if self.config.consensus.block_time == 0 {
-            return Err(format_err!("Block time cannot be zero"));
+            return Err(anyhow::anyhow!("Block time cannot be zero"));
         }
 
         if self.config.consensus.max_block_size == 0 {
-            return Err(format_err!("Max block size cannot be zero"));
+            return Err(anyhow::anyhow!("Max block size cannot be zero"));
         }
 
         // Validate execution configuration
         if self.config.execution.gas_limit == 0 {
-            return Err(format_err!("Gas limit cannot be zero"));
+            return Err(anyhow::anyhow!("Gas limit cannot be zero"));
         }
 
         Ok(())
@@ -343,13 +335,13 @@ impl ConfigManager {
             .network
             .listen_addr
             .parse()
-            .map_err(|e| format_err!("Invalid listen address: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid listen address: {}", e))?;
 
         let mut bootstrap_addrs = Vec::new();
         for peer_addr in &self.config.network.bootstrap_peers {
-            let addr = peer_addr
-                .parse()
-                .map_err(|e| format_err!("Invalid bootstrap peer address {}: {}", peer_addr, e))?;
+            let addr = peer_addr.parse().map_err(|e| {
+                anyhow::anyhow!("Invalid bootstrap peer address {}: {}", peer_addr, e)
+            })?;
             bootstrap_addrs.push(addr);
         }
 

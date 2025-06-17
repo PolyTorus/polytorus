@@ -3,38 +3,20 @@
 //! This example demonstrates how to run multiple PolyTorus nodes locally
 //! and simulate transaction propagation across the network.
 
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use actix_web::{
-    web,
-    App,
-    HttpServer,
-    Result as ActixResult,
+use actix_web::{web, App, HttpServer, Result as ActixResult};
+use clap::{Arg, Command};
+use polytorus::{
+    config::{ConfigManager, DataContext},
+    modular::{default_modular_config, UnifiedModularOrchestrator},
+    Result,
 };
-use clap::{
-    App as ClapApp,
-    Arg,
-};
-use polytorus::config::{
-    ConfigManager,
-    DataContext,
-};
-use polytorus::modular::{
-    default_modular_config,
-    UnifiedModularOrchestrator,
-};
-use polytorus::Result;
 use reqwest::Client;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use tokio::sync::Mutex;
-use tokio::time::{
-    interval,
-    sleep,
+use serde::{Deserialize, Serialize};
+use tokio::{
+    sync::Mutex,
+    time::{interval, sleep},
 };
 use uuid::Uuid;
 
@@ -114,16 +96,16 @@ impl MultiNodeSimulator {
         let mut configs = Vec::new();
 
         for i in 0..self.config.num_nodes {
-            let node_id = format!("node-{}", i);
+            let node_id = format!("node-{i}");
             let port = self.config.base_port + i as u16;
             let p2p_port = self.config.base_p2p_port + i as u16;
-            let data_dir = format!("./data/simulation/{}", node_id);
+            let data_dir = format!("./data/simulation/{node_id}");
 
             // Generate bootstrap peers (connect to previous nodes)
             let mut bootstrap_peers = Vec::new();
             for j in 0..i {
                 let peer_port = self.config.base_p2p_port + j as u16;
-                bootstrap_peers.push(format!("127.0.0.1:{}", peer_port));
+                bootstrap_peers.push(format!("127.0.0.1:{peer_port}"));
             }
 
             configs.push(NodeConfig {
@@ -213,6 +195,7 @@ impl MultiNodeSimulator {
                         .app_data(web::Data::new(tx_count))
                         .app_data(web::Data::new(rx_count))
                         .route("/status", web::get().to(get_node_status))
+                        .route("/send", web::post().to(send_transaction))
                         .route("/transaction", web::post().to(submit_transaction))
                         .route("/stats", web::get().to(get_node_stats))
                 })
@@ -259,7 +242,7 @@ impl MultiNodeSimulator {
                     )
                     .await
                     {
-                        eprintln!("Failed to generate transaction {}: {}", tx_counter, e);
+                        eprintln!("Failed to generate transaction {tx_counter}: {e}");
                     }
 
                     tx_counter += 1;
@@ -267,7 +250,7 @@ impl MultiNodeSimulator {
 
                 // Print progress
                 if tx_counter % 10 == 0 {
-                    println!("📊 Generated {} transactions", tx_counter);
+                    println!("📊 Generated {tx_counter} transactions");
                 }
             }
         });
@@ -335,7 +318,7 @@ impl MultiNodeSimulator {
                 }
             }
             Err(e) => {
-                eprintln!("❌ HTTP error when sending to sender node: {}", e);
+                eprintln!("❌ HTTP error when sending to sender node: {e}");
             }
         }
 
@@ -368,7 +351,7 @@ impl MultiNodeSimulator {
                 }
             }
             Err(e) => {
-                eprintln!("❌ HTTP error when submitting to receiver node: {}", e);
+                eprintln!("❌ HTTP error when submitting to receiver node: {e}");
             }
         }
 
@@ -395,7 +378,7 @@ impl MultiNodeSimulator {
             total_rx += rx_count;
         }
 
-        println!("📊 Total: TX: {}, RX: {}", total_tx, total_rx);
+        println!("📊 Total: TX: {total_tx}, RX: {total_rx}");
         println!();
     }
 
@@ -433,7 +416,7 @@ async fn get_node_status(
     Ok(web::Json(status))
 }
 
-async fn submit_transaction(
+async fn send_transaction(
     _orchestrator: web::Data<Arc<UnifiedModularOrchestrator>>,
     tx_count: web::Data<Arc<Mutex<u64>>>,
     _transaction: web::Json<serde_json::Value>,
@@ -441,7 +424,22 @@ async fn submit_transaction(
     *tx_count.lock().await += 1;
 
     let response = serde_json::json!({
-        "status": "accepted",
+        "status": "sent",
+        "transaction_id": Uuid::new_v4().to_string()
+    });
+
+    Ok(web::Json(response))
+}
+
+async fn submit_transaction(
+    _orchestrator: web::Data<Arc<UnifiedModularOrchestrator>>,
+    rx_count: web::Data<Arc<Mutex<u64>>>,
+    _transaction: web::Json<serde_json::Value>,
+) -> ActixResult<web::Json<serde_json::Value>> {
+    *rx_count.lock().await += 1;
+
+    let response = serde_json::json!({
+        "status": "received",
         "transaction_id": Uuid::new_v4().to_string()
     });
 
@@ -468,28 +466,28 @@ async fn get_node_stats(
 async fn main() -> Result<()> {
     env_logger::init();
 
-    let matches = ClapApp::new("Multi-Node Simulation")
+    let matches = Command::new("Multi-Node Simulation")
         .version("0.1.0")
         .about("Simulate multiple PolyTorus nodes for transaction testing")
         .arg(
-            Arg::with_name("nodes")
-                .short("n")
+            Arg::new("nodes")
+                .short('n')
                 .long("nodes")
                 .value_name("NUMBER")
                 .help("Number of nodes to simulate")
                 .default_value("4"),
         )
         .arg(
-            Arg::with_name("duration")
-                .short("d")
+            Arg::new("duration")
+                .short('d')
                 .long("duration")
                 .value_name("SECONDS")
                 .help("Simulation duration in seconds")
                 .default_value("300"),
         )
         .arg(
-            Arg::with_name("interval")
-                .short("i")
+            Arg::new("interval")
+                .short('i')
                 .long("interval")
                 .value_name("MILLISECONDS")
                 .help("Transaction generation interval")
@@ -498,9 +496,17 @@ async fn main() -> Result<()> {
         .get_matches();
 
     let config = SimulationConfig {
-        num_nodes: matches.value_of("nodes").unwrap().parse().unwrap(),
-        simulation_duration: matches.value_of("duration").unwrap().parse().unwrap(),
-        transaction_interval: matches.value_of("interval").unwrap().parse().unwrap(),
+        num_nodes: matches.get_one::<String>("nodes").unwrap().parse().unwrap(),
+        simulation_duration: matches
+            .get_one::<String>("duration")
+            .unwrap()
+            .parse()
+            .unwrap(),
+        transaction_interval: matches
+            .get_one::<String>("interval")
+            .unwrap()
+            .parse()
+            .unwrap(),
         ..Default::default()
     };
 

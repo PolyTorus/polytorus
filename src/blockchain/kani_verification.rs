@@ -2,13 +2,9 @@
 //! This module contains verification proofs for core blockchain functionality
 //! including block creation, mining, and difficulty adjustment.
 
-use crate::blockchain::block::{
-    DifficultyAdjustmentConfig,
-    MiningStats,
-};
-use crate::blockchain::types::{
-    BlockState,
-    NetworkConfig,
+use crate::blockchain::{
+    block::{DifficultyAdjustmentConfig, MiningStats},
+    types::{BlockState, NetworkConfig},
 };
 
 /// Verification harness for mining statistics consistency

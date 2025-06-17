@@ -12,6 +12,8 @@ pub mod modular;
 
 // Diamond IO integration
 pub mod diamond_io_integration;
+pub mod diamond_io_integration_new;
+pub mod diamond_smart_contracts;
 
 // Legacy modules - maintained for backward compatibility
 pub mod blockchain;
@@ -36,4 +38,4 @@ pub mod basic_kani_test;
 #[macro_use]
 extern crate log;
 
-pub type Result<T> = std::result::Result<T, failure::Error>;
+pub type Result<T> = std::result::Result<T, anyhow::Error>;

@@ -1,20 +1,14 @@
 //! Smart contract definition and management
 
-use std::time::{
-    SystemTime,
-    UNIX_EPOCH,
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-use crate::smart_contract::state::ContractState;
-use crate::smart_contract::types::ContractMetadata;
-use crate::Result;
+use crate::{
+    smart_contract::{state::ContractState, types::ContractMetadata},
+    Result,
+};
 
 /// Smart contract representation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,22 +49,25 @@ impl SmartContract {
     /// Generate a deterministic contract address
     fn generate_address(bytecode: &[u8], creator: &str) -> Result<String> {
         let mut hasher = Sha256::new();
-        hasher.input(creator.as_bytes());
-        hasher.input(bytecode);
-        hasher.input(
-            &SystemTime::now()
+        hasher.update(creator.as_bytes());
+        hasher.update(bytecode);
+        hasher.update(
+            SystemTime::now()
                 .duration_since(UNIX_EPOCH)?
                 .as_nanos()
                 .to_le_bytes(),
         );
-        Ok(format!("contract_{}", &hasher.result_str()[..20]))
+        Ok(format!(
+            "contract_{}",
+            &hex::encode(hasher.finalize())[..20]
+        ))
     }
 
     /// Calculate bytecode hash
     fn hash_bytecode(bytecode: &[u8]) -> Result<String> {
         let mut hasher = Sha256::new();
-        hasher.input(bytecode);
-        Ok(hasher.result_str())
+        hasher.update(bytecode);
+        Ok(hex::encode(hasher.finalize()))
     }
 
     /// Deploy the contract to the blockchain state

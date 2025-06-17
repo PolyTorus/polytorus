@@ -6,5 +6,6 @@ use_small_heuristics = "Default"
 reorder_imports = true
 reorder_modules = true
 remove_nested_parens = true
-imports_layout = "Vertical"
+imports_layout = "Mixed"
 group_imports = "StdExternalCrate"
+imports_granularity = "Crate"

@@ -3,23 +3,17 @@
 //! This module provides transaction processing capabilities for the modular blockchain
 //! architecture, independent of legacy UTXO systems.
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::crypto::transaction::{
-    ContractTransactionData,
-    ContractTransactionType,
-    Transaction,
+use crate::{
+    crypto::transaction::{ContractTransactionData, ContractTransactionType, Transaction},
+    Result,
 };
-use crate::Result;
 
 /// Account-based state for modular transaction processing
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -91,11 +85,11 @@ impl ModularTransactionProcessor {
         let mut pool = self
             .tx_pool
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire transaction pool lock"))?;
 
         // Basic validation
         if !self.validate_transaction(&transaction)? {
-            return Err(failure::format_err!("Transaction validation failed"));
+            return Err(anyhow::anyhow!("Transaction validation failed"));
         }
 
         pool.push(transaction);
@@ -107,7 +101,7 @@ impl ModularTransactionProcessor {
         let pool = self
             .tx_pool
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire transaction pool lock"))?;
         Ok(pool.clone())
     }
 
@@ -150,7 +144,7 @@ impl ModularTransactionProcessor {
 
             // Check gas limit
             if total_gas_used > self.config.gas_limit {
-                return Err(failure::format_err!("Block gas limit exceeded"));
+                return Err(anyhow::anyhow!("Block gas limit exceeded"));
             }
 
             // Apply state changes if transaction succeeded
@@ -169,7 +163,7 @@ impl ModularTransactionProcessor {
         let states = self
             .states
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire states lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire states lock"))?;
 
         Ok(states.get(address).cloned().unwrap_or_default())
     }
@@ -179,7 +173,7 @@ impl ModularTransactionProcessor {
         let mut states = self
             .states
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire states lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire states lock"))?;
 
         states.insert(address.to_string(), state);
         Ok(())
@@ -190,7 +184,7 @@ impl ModularTransactionProcessor {
         let mut pool = self
             .tx_pool
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire transaction pool lock"))?;
         pool.clear();
         Ok(())
     }
@@ -200,7 +194,7 @@ impl ModularTransactionProcessor {
         let mut pool = self
             .tx_pool
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire transaction pool lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire transaction pool lock"))?;
 
         pool.retain(|tx| !tx_ids.contains(&tx.id));
         Ok(())
@@ -258,7 +252,7 @@ impl ModularTransactionProcessor {
 
         // Check balance
         if sender_state.balance < amount {
-            return Err(failure::format_err!("Insufficient balance"));
+            return Err(anyhow::anyhow!("Insufficient balance"));
         }
 
         // Update states
@@ -372,7 +366,7 @@ impl ModularTransactionProcessor {
         let mut states = self
             .states
             .lock()
-            .map_err(|_| failure::format_err!("Failed to acquire states lock"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to acquire states lock"))?;
 
         for (address, state) in changes {
             states.insert(address.clone(), state.clone());

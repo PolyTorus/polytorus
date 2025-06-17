@@ -4,35 +4,19 @@
 //! connection management, and network topology optimization.
 
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
+    collections::{HashMap, HashSet},
     net::SocketAddr,
-    sync::{
-        Arc,
-        Mutex,
-    },
-    time::{
-        Duration,
-        SystemTime,
-    },
+    sync::{Arc, Mutex},
+    time::{Duration, SystemTime},
 };
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::{
-        mpsc,
-        RwLock,
-    },
+    sync::{mpsc, RwLock},
     time::interval,
 };
 
-use crate::network::PeerId;
-use crate::Result;
+use crate::{network::PeerId, Result};
 
 /// Network health status
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

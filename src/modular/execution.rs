@@ -3,34 +3,28 @@
 //! This module implements the execution layer for the modular blockchain,
 //! handling transaction execution and state management.
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
 
-use super::eutxo_processor::{
-    EUtxoProcessor,
-    EUtxoProcessorConfig,
+use super::{
+    eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig},
+    traits::*,
+    transaction_processor::{
+        ModularTransactionProcessor, ProcessorAccountState, TransactionProcessorConfig,
+    },
 };
-use super::traits::*;
-use super::transaction_processor::{
-    ModularTransactionProcessor,
-    ProcessorAccountState,
-    TransactionProcessorConfig,
+use crate::{
+    blockchain::block::Block,
+    config::DataContext,
+    crypto::transaction::Transaction,
+    smart_contract::{
+        types::{ContractDeployment, ContractExecution},
+        ContractEngine, ContractState,
+    },
+    Result,
 };
-use crate::blockchain::block::Block;
-use crate::config::DataContext;
-use crate::crypto::transaction::Transaction;
-use crate::smart_contract::types::{
-    ContractDeployment,
-    ContractExecution,
-};
-use crate::smart_contract::{
-    ContractEngine,
-    ContractState,
-};
-use crate::Result;
 
 /// Execution layer implementation
 pub struct PolyTorusExecutionLayer {
@@ -196,19 +190,18 @@ impl PolyTorusExecutionLayer {
 
     /// Calculate new state root based on executed transactions
     fn calculate_state_root(&self, receipts: &[TransactionReceipt]) -> Hash {
-        use crypto::digest::Digest;
-        use crypto::sha2::Sha256;
+        use sha2::{Digest, Sha256};
 
         let mut hasher = Sha256::new();
         let current_root = self.state_root.lock().unwrap().clone();
-        hasher.input(current_root.as_bytes());
+        hasher.update(current_root.as_bytes());
 
         for receipt in receipts {
-            hasher.input(receipt.tx_hash.as_bytes());
-            hasher.input(&receipt.gas_used.to_le_bytes());
+            hasher.update(receipt.tx_hash.as_bytes());
+            hasher.update(receipt.gas_used.to_le_bytes());
         }
 
-        hasher.result_str()
+        hex::encode(hasher.finalize())
     }
 }
 
@@ -284,7 +277,7 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
 
             // Check gas limit
             if total_gas_used > self.config.gas_limit {
-                return Err(failure::format_err!("Block gas limit exceeded"));
+                return Err(anyhow::anyhow!("Block gas limit exceeded"));
             }
         }
 
@@ -317,11 +310,10 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
             balance: processor_state.balance,
             nonce: processor_state.nonce,
             code_hash: processor_state.code.as_ref().map(|code| {
-                use crypto::digest::Digest;
-                use crypto::sha2::Sha256;
+                use sha2::{Digest, Sha256};
                 let mut hasher = Sha256::new();
-                hasher.input(code);
-                hasher.result_str()
+                hasher.update(code);
+                hex::encode(hasher.finalize())
             }),
             storage_root: None, // Simplified for now
         })
@@ -374,7 +366,7 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
             *state_root = new_state_root.clone();
             Ok(new_state_root)
         } else {
-            Err(failure::format_err!("No execution context to commit"))
+            Err(anyhow::anyhow!("No execution context to commit"))
         }
     }
 
@@ -384,7 +376,7 @@ impl ExecutionLayer for PolyTorusExecutionLayer {
             *exec_context = None;
             Ok(())
         } else {
-            Err(failure::format_err!("No execution context to rollback"))
+            Err(anyhow::anyhow!("No execution context to rollback"))
         }
     }
 }
@@ -454,7 +446,7 @@ impl PolyTorusExecutionLayer {
         engine
             .execute_contract(execution)
             .map(|result| result.return_value)
-            .map_err(|e| failure::format_err!("Contract execution failed: {}", e))
+            .map_err(|e| anyhow::anyhow!("Contract execution failed: {}", e))
     }
 
     /// Process and execute a contract transaction publicly

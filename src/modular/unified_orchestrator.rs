@@ -4,31 +4,24 @@
 //! from both the legacy and enhanced implementations, providing a clean
 //! trait-based architecture with comprehensive event handling.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use failure;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use tokio::sync::{
-    mpsc,
-    Mutex as AsyncMutex,
-    RwLock,
-};
+use anyhow;
+use serde::{Deserialize, Serialize};
+use tokio::sync::{mpsc, Mutex as AsyncMutex, RwLock};
 
-use super::config_manager::ModularConfigManager;
-use super::layer_factory::ModularLayerFactory;
-use super::message_bus::ModularMessageBus;
-use super::traits::*;
-use crate::blockchain::block::Block;
-use crate::blockchain::types::{
-    block_states,
-    network,
+use super::{
+    config_manager::ModularConfigManager, layer_factory::ModularLayerFactory,
+    message_bus::ModularMessageBus, traits::*,
 };
-use crate::network::blockchain_integration::NetworkedBlockchainNode;
-use crate::Result;
+use crate::{
+    blockchain::{
+        block::Block,
+        types::{block_states, network},
+    },
+    network::blockchain_integration::NetworkedBlockchainNode,
+    Result,
+};
 
 /// Unified Modular Blockchain Orchestrator with P2P Network Integration
 ///
@@ -964,11 +957,11 @@ impl UnifiedModularOrchestrator {
         config: ModularConfig,
         data_context: crate::config::DataContext,
     ) -> Result<Self> {
-        use super::consensus::PolyTorusConsensusLayer;
-        use super::data_availability::PolyTorusDataAvailabilityLayer;
-        use super::execution::PolyTorusExecutionLayer;
-        use super::network::ModularNetwork;
-        use super::settlement::PolyTorusSettlementLayer;
+        use super::{
+            consensus::PolyTorusConsensusLayer, data_availability::PolyTorusDataAvailabilityLayer,
+            execution::PolyTorusExecutionLayer, network::ModularNetwork,
+            settlement::PolyTorusSettlementLayer,
+        };
 
         // Create infrastructure components first
         let message_bus = Arc::new(ModularMessageBus::new());
@@ -1073,7 +1066,7 @@ impl UnifiedModularOrchestrator {
             let node = network_node.lock().await;
             node.connect_to_peer(addr).await?;
         } else {
-            return Err(failure::format_err!("No network node available"));
+            return Err(anyhow::anyhow!("No network node available"));
         }
         Ok(())
     }
@@ -1158,25 +1151,25 @@ impl UnifiedOrchestratorBuilder {
     pub fn build(self) -> Result<UnifiedModularOrchestrator> {
         let execution_layer = self
             .execution_layer
-            .ok_or_else(|| failure::err_msg("Execution layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Execution layer is required"))?;
         let settlement_layer = self
             .settlement_layer
-            .ok_or_else(|| failure::err_msg("Settlement layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Settlement layer is required"))?;
         let consensus_layer = self
             .consensus_layer
-            .ok_or_else(|| failure::err_msg("Consensus layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Consensus layer is required"))?;
         let data_availability_layer = self
             .data_availability_layer
-            .ok_or_else(|| failure::err_msg("Data availability layer is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Data availability layer is required"))?;
         let message_bus = self
             .message_bus
-            .ok_or_else(|| failure::err_msg("Message bus is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Message bus is required"))?;
         let config_manager = self
             .config_manager
-            .ok_or_else(|| failure::err_msg("Config manager is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Config manager is required"))?;
         let layer_factory = self
             .layer_factory
-            .ok_or_else(|| failure::err_msg("Layer factory is required"))?;
+            .ok_or_else(|| anyhow::anyhow!("Layer factory is required"))?;
 
         UnifiedModularOrchestrator::new(
             execution_layer,

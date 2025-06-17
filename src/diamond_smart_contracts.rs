@@ -1,9 +1,11 @@
-use crate::diamond_io_integration::{DiamondIOConfig, DiamondIOIntegration};
+use std::collections::HashMap;
+
 use anyhow::Result;
 use diamond_io::bgg::circuit::PolyCircuit;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use tracing::info;
+use tracing::{info, warn};
+
+use crate::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondContract {
@@ -134,9 +136,7 @@ impl DiamondContractEngine {
             contract_id, inputs
         );
 
-        let start_time = std::time::Instant::now();
-
-        // Check if inputs match expected size
+        let start_time = std::time::Instant::now(); // Check if inputs match expected size
         if inputs.len() != contract.config.input_size {
             return Err(anyhow::anyhow!(
                 "Input size mismatch for contract {}: expected {}, got {}",
@@ -329,8 +329,8 @@ impl DiamondContractEngine {
                 ])
             }
             _ => {
-                // Echo circuit
-                Ok(inputs.to_vec())
+                // Echo circuit - return first input
+                Ok(vec![inputs.first().copied().unwrap_or(false)])
             }
         }
     }
@@ -353,18 +353,8 @@ impl DiamondContractEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn get_test_config() -> DiamondIOConfig {
-        DiamondIOConfig {
-            ring_dimension: 16,
-            crt_depth: 2,
-            crt_bits: 17,
-            base_bits: 1,
-            input_size: 2,
-            level_width: 4,
-            d: 2,
-            ..Default::default()
-        }
+        DiamondIOConfig::dummy()
     }
 
     #[tokio::test]
@@ -401,18 +391,24 @@ mod tests {
                 "and_gate",
             )
             .await
-            .unwrap();
-
-        // Test AND gate
+            .unwrap(); // Test AND gate
         let result = engine
-            .execute_contract(&contract_id, vec![true, false], "bob".to_string())
+            .execute_contract(
+                &contract_id,
+                vec![true, false, false, false, false, false, false, false],
+                "bob".to_string(),
+            )
             .await
             .unwrap();
 
         assert_eq!(result, vec![false]);
 
         let result = engine
-            .execute_contract(&contract_id, vec![true, true], "charlie".to_string())
+            .execute_contract(
+                &contract_id,
+                vec![true, true, false, false, false, false, false, false],
+                "charlie".to_string(),
+            )
             .await
             .unwrap();
 
@@ -433,15 +429,21 @@ mod tests {
                 "or_gate",
             )
             .await
-            .unwrap();
-
-        // Execute multiple times
+            .unwrap(); // Execute multiple times
         engine
-            .execute_contract(&contract_id, vec![true, false], "bob".to_string())
+            .execute_contract(
+                &contract_id,
+                vec![true, false, false, false, false, false, false, false],
+                "bob".to_string(),
+            )
             .await
             .unwrap();
         engine
-            .execute_contract(&contract_id, vec![false, false], "charlie".to_string())
+            .execute_contract(
+                &contract_id,
+                vec![false, false, false, false, false, false, false, false],
+                "charlie".to_string(),
+            )
             .await
             .unwrap();
 

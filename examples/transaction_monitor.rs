@@ -2,19 +2,12 @@
 //!
 //! A simple monitoring tool to observe transaction flow between nodes
 
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
-use clap::{
-    App,
-    Arg,
-};
+use clap::{Arg, Command};
 use reqwest::Client;
 use serde_json::Value;
-use tokio::time::{
-    interval,
-    sleep,
-};
+use tokio::time::{interval, sleep};
 
 #[derive(Debug, Clone)]
 pub struct NodeStats {
@@ -54,7 +47,7 @@ impl TransactionMonitor {
         println!("🔍 Starting Transaction Monitor");
         println!("================================");
         println!("Monitoring {} nodes", self.nodes.len());
-        println!("Update interval: {} seconds", interval_seconds);
+        println!("Update interval: {interval_seconds} seconds");
         println!();
 
         let mut interval = interval(Duration::from_secs(interval_seconds));
@@ -69,7 +62,7 @@ impl TransactionMonitor {
 
     async fn update_stats(&mut self) {
         for (i, endpoint) in self.nodes.iter().enumerate() {
-            let node_id = format!("node-{}", i);
+            let node_id = format!("node-{i}");
 
             let mut stats = NodeStats {
                 node_id: node_id.clone(),
@@ -111,7 +104,7 @@ impl TransactionMonitor {
     }
 
     async fn fetch_node_status(&self, endpoint: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/status", endpoint);
+        let url = format!("{endpoint}/status");
         let response = self
             .client
             .get(&url)
@@ -124,7 +117,7 @@ impl TransactionMonitor {
     }
 
     async fn fetch_node_stats(&self, endpoint: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/stats", endpoint);
+        let url = format!("{endpoint}/stats");
         let response = self
             .client
             .get(&url)
@@ -151,7 +144,7 @@ impl TransactionMonitor {
         let mut online_nodes = 0;
 
         for i in 0..self.nodes.len() {
-            let node_id = format!("node-{}", i);
+            let node_id = format!("node-{i}");
             if let Some(stats) = self.stats.get(&node_id) {
                 let status = if stats.is_online {
                     "🟢 Online "
@@ -217,8 +210,7 @@ impl TransactionMonitor {
         if total_sent > 0 {
             let propagation_rate = (total_received as f64 / total_sent as f64) * 100.0;
             println!(
-                "   Transaction Propagation: {:.1}% ({} received / {} sent)",
-                propagation_rate, total_received, total_sent
+                "   Transaction Propagation: {propagation_rate:.1}% ({total_received} received / {total_sent} sent)"
             );
         }
 
@@ -236,8 +228,7 @@ impl TransactionMonitor {
                 .filter(|s| s.is_online && s.block_height == max_height)
                 .count();
             println!(
-                "   Block Synchronization: {}/{} nodes at height {}",
-                synced_nodes, online_nodes, max_height
+                "   Block Synchronization: {synced_nodes}/{online_nodes} nodes at height {max_height}"
             );
         }
     }
@@ -245,41 +236,38 @@ impl TransactionMonitor {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matches = App::new("Transaction Monitor")
+    let matches = Command::new("Transaction Monitor")
         .version("0.1.0")
         .about("Monitor transaction flow between PolyTorus nodes")
         .arg(
-            Arg::with_name("nodes")
-                .short("n")
+            Arg::new("nodes")
+                .short('n')
                 .long("nodes")
                 .value_name("NUMBER")
                 .help("Number of nodes to monitor")
-                .takes_value(true)
                 .default_value("4"),
         )
         .arg(
-            Arg::with_name("base-port")
-                .short("p")
+            Arg::new("base-port")
+                .short('p')
                 .long("base-port")
                 .value_name("PORT")
                 .help("Base HTTP port number")
-                .takes_value(true)
                 .default_value("9000"),
         )
         .arg(
-            Arg::with_name("interval")
-                .short("i")
+            Arg::new("interval")
+                .short('i')
                 .long("interval")
                 .value_name("SECONDS")
                 .help("Update interval in seconds")
-                .takes_value(true)
                 .default_value("10"),
         )
         .get_matches();
 
-    let num_nodes: usize = matches.value_of("nodes").unwrap().parse()?;
-    let base_port: u16 = matches.value_of("base-port").unwrap().parse()?;
-    let interval: u64 = matches.value_of("interval").unwrap().parse()?;
+    let num_nodes: usize = matches.get_one::<String>("nodes").unwrap().parse()?;
+    let base_port: u16 = matches.get_one::<String>("base-port").unwrap().parse()?;
+    let interval: u64 = matches.get_one::<String>("interval").unwrap().parse()?;
 
     let mut monitor = TransactionMonitor::new(base_port, num_nodes);
 

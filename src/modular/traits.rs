@@ -3,14 +3,9 @@
 //! This module defines the core interfaces for a modular blockchain architecture
 //! where different layers can be independently developed, tested, and deployed.
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::blockchain::block::Block;
-use crate::crypto::transaction::Transaction;
-use crate::Result;
+use crate::{blockchain::block::Block, crypto::transaction::Transaction, Result};
 
 /// Hash type for blockchain data
 pub type Hash = String;

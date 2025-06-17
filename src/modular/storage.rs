@@ -3,26 +3,18 @@
 //! This module provides a modular storage layer that replaces legacy blockchain storage
 //! with a more flexible and independent storage system for the modular architecture.
 
-use std::collections::HashMap;
-use std::path::{
-    Path,
-    PathBuf,
-};
-use std::sync::{
-    Arc,
-    Mutex,
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use super::traits::Hash;
-use crate::blockchain::block::Block;
 #[cfg(test)]
 use crate::blockchain::block::TestFinalizedParams;
-use crate::Result;
+use crate::{blockchain::block::Block, Result};
 
 /// Storage configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -310,7 +302,7 @@ impl StorageLayer for ModularStorage {
         let block_data = self
             .block_db
             .get(hash)?
-            .ok_or_else(|| failure::format_err!("Block not found: {}", hash))?;
+            .ok_or_else(|| anyhow::anyhow!("Block not found: {}", hash))?;
 
         let block: Block = bincode::deserialize(&block_data)?;
 
@@ -407,7 +399,7 @@ impl StorageLayer for ModularStorage {
         let metadata_data = self
             .index_db
             .get(metadata_key)?
-            .ok_or_else(|| failure::format_err!("Block metadata not found: {}", hash))?;
+            .ok_or_else(|| anyhow::anyhow!("Block metadata not found: {}", hash))?;
 
         let metadata: BlockMetadata = bincode::deserialize(&metadata_data)?;
         Ok(metadata)
@@ -542,8 +534,7 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::blockchain::block::Block;
-    use crate::crypto::transaction::Transaction;
+    use crate::{blockchain::block::Block, crypto::transaction::Transaction};
 
     fn create_test_block(height: i32) -> Block {
         let transactions =

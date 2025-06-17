@@ -5,65 +5,31 @@
 //! network resilience, network management, and message prioritization.
 
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-    },
+    collections::{HashMap, HashSet, VecDeque},
     net::SocketAddr,
-    sync::{
-        Arc,
-        Mutex,
-    },
-    time::{
-        Duration,
-        Instant,
-        SystemTime,
-        UNIX_EPOCH,
-    },
+    sync::{Arc, Mutex},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use bincode;
-use failure::format_err;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::{
-    io::{
-        AsyncReadExt,
-        AsyncWriteExt,
-    },
-    net::{
-        TcpListener,
-        TcpStream,
-    },
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
     sync::mpsc,
-    time::{
-        interval,
-        timeout,
-    },
+    time::{interval, timeout},
 };
 use uuid::Uuid;
 
-use crate::blockchain::block::{
-    Block,
-    FinalizedBlock,
-};
-use crate::crypto::transaction::Transaction;
-use crate::network::{
-    message_priority::{
-        MessagePriority,
-        PrioritizedMessage,
-        PriorityMessageQueue,
+use crate::{
+    blockchain::block::{Block, FinalizedBlock},
+    crypto::transaction::Transaction,
+    network::{
+        message_priority::{MessagePriority, PrioritizedMessage, PriorityMessageQueue},
+        network_manager::{NetworkManager, NetworkManagerConfig, PeerInfo as NetPeerInfo},
     },
-    network_manager::{
-        NetworkManager,
-        NetworkManagerConfig,
-        PeerInfo as NetPeerInfo,
-    },
+    Result,
 };
-use crate::Result;
 
 /// Maximum message size (10MB)
 const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024;
@@ -266,7 +232,7 @@ impl PeerConnection {
     fn send_queued_messages(&mut self) -> Result<()> {
         while let Some(message) = self.message_queue.pop_front() {
             if self.message_tx.send(message).is_err() {
-                return Err(format_err!("Failed to send queued message"));
+                return Err(anyhow::anyhow!("Failed to send queued message"));
             }
         }
         Ok(())
@@ -938,12 +904,12 @@ impl EnhancedP2PNode {
 
     /// Send a message to a peer
     async fn send_message(stream: &mut TcpStream, message: &P2PMessage) -> Result<()> {
-        let data =
-            bincode::serialize(message).map_err(|e| format_err!("Serialization failed: {}", e))?;
+        let data = bincode::serialize(message)
+            .map_err(|e| anyhow::anyhow!("Serialization failed: {}", e))?;
         let len = data.len() as u32;
 
         if len > MAX_MESSAGE_SIZE as u32 {
-            return Err(format_err!("Message too large: {}", len));
+            return Err(anyhow::anyhow!("Message too large: {}", len));
         }
 
         // Send length prefix
@@ -963,11 +929,11 @@ impl EnhancedP2PNode {
         let len = u32::from_be_bytes(len_bytes) as usize;
 
         if len > MAX_MESSAGE_SIZE {
-            return Err(format_err!("Message too large: {}", len));
+            return Err(anyhow::anyhow!("Message too large: {}", len));
         }
 
         if len == 0 {
-            return Err(format_err!("Empty message"));
+            return Err(anyhow::anyhow!("Empty message"));
         }
 
         // Read data with timeout
@@ -976,7 +942,7 @@ impl EnhancedP2PNode {
 
         // Deserialize with error handling
         let message = bincode::deserialize(&data)
-            .map_err(|e| format_err!("Deserialization failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Deserialization failed: {}", e))?;
         Ok(message)
     }
 
@@ -1183,13 +1149,13 @@ impl EnhancedP2PNode {
                 connection
                     .message_tx
                     .send(message)
-                    .map_err(|e| format_err!("Failed to send to peer {}: {}", peer_id, e))?;
+                    .map_err(|e| anyhow::anyhow!("Failed to send to peer {}: {}", peer_id, e))?;
                 self.stats.lock().unwrap().messages_sent += 1;
             } else {
-                return Err(format_err!("Peer {} is not active", peer_id));
+                return Err(anyhow::anyhow!("Peer {} is not active", peer_id));
             }
         } else {
-            return Err(format_err!("Peer {} not connected", peer_id));
+            return Err(anyhow::anyhow!("Peer {} not connected", peer_id));
         }
         Ok(())
     }
@@ -1280,7 +1246,7 @@ impl EnhancedP2PNode {
     ) -> Result<()> {
         // Serialize message to bytes
         let message_data = bincode::serialize(&message)
-            .map_err(|e| format_err!("Failed to serialize message: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to serialize message: {}", e))?;
 
         let message_id = format!(
             "{:?}_{}",
@@ -1328,7 +1294,7 @@ impl EnhancedP2PNode {
             let manager = self
                 .network_manager
                 .lock()
-                .map_err(|_| format_err!("Failed to access network manager"))?;
+                .map_err(|_| anyhow::anyhow!("Failed to access network manager"))?;
             manager.get_network_topology().await
         };
         Ok(topology)
@@ -1341,7 +1307,7 @@ impl EnhancedP2PNode {
             let manager = self
                 .network_manager
                 .lock()
-                .map_err(|_| format_err!("Failed to access network manager"))?;
+                .map_err(|_| anyhow::anyhow!("Failed to access network manager"))?;
             manager.get_peer_info(peer_id).await
         }
     }
@@ -1353,7 +1319,7 @@ impl EnhancedP2PNode {
             let manager = self
                 .network_manager
                 .lock()
-                .map_err(|_| format_err!("Failed to access network manager"))?;
+                .map_err(|_| anyhow::anyhow!("Failed to access network manager"))?;
             manager.blacklist_peer(peer_id, reason).await
         }
     }
@@ -1365,7 +1331,7 @@ impl EnhancedP2PNode {
             let manager = self
                 .network_manager
                 .lock()
-                .map_err(|_| format_err!("Failed to access network manager"))?;
+                .map_err(|_| anyhow::anyhow!("Failed to access network manager"))?;
             manager.unblacklist_peer(peer_id).await
         }
     }
@@ -1379,7 +1345,7 @@ impl EnhancedP2PNode {
             let queue = self
                 .message_queue
                 .lock()
-                .map_err(|_| format_err!("Failed to access message queue"))?;
+                .map_err(|_| anyhow::anyhow!("Failed to access message queue"))?;
             queue.get_stats().await
         };
         Ok(stats)

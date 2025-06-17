@@ -3,14 +3,10 @@
 //! This module implements the settlement layer for the modular blockchain,
 //! handling batch settlements and dispute resolution.
 
-use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
-};
-use std::time::{
-    SystemTime,
-    UNIX_EPOCH,
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use super::traits::*;
@@ -58,16 +54,15 @@ impl PolyTorusSettlementLayer {
 
     /// Calculate settlement root from batches
     fn calculate_settlement_root(&self, batches: &[Hash]) -> Hash {
-        use crypto::digest::Digest;
-        use crypto::sha2::Sha256;
+        use sha2::{Digest, Sha256};
 
         let mut hasher = Sha256::new();
 
         for batch_id in batches {
-            hasher.input(batch_id.as_bytes());
+            hasher.update(batch_id.as_bytes());
         }
 
-        hasher.result_str()
+        hex::encode(hasher.finalize())
     }
 
     /// Verify batch integrity
@@ -139,7 +134,7 @@ impl SettlementLayer for PolyTorusSettlementLayer {
     fn settle_batch(&self, batch: &ExecutionBatch) -> Result<SettlementResult> {
         // Verify batch integrity
         if !self.verify_batch_integrity(batch) {
-            return Err(failure::format_err!("Batch integrity verification failed"));
+            return Err(anyhow::anyhow!("Batch integrity verification failed"));
         }
 
         let timestamp = SystemTime::now()

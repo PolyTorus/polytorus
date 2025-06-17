@@ -1,7 +1,6 @@
 //! Tests for the modular blockchain architecture
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use uuid::Uuid;
 
@@ -276,7 +275,7 @@ fn test_layer_builders() {
     // Test consensus layer builder
     let consensus_layer = super::consensus::ConsensusLayerBuilder::new()
         .with_data_context(test_ctx_consensus.get_data_context())
-        .as_validator()
+        .into_validator()
         .build();
 
     assert!(consensus_layer.is_ok());

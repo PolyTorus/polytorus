@@ -4,35 +4,18 @@
 //! for efficient network communication.
 
 use std::{
-    collections::{
-        HashMap,
-        VecDeque,
-    },
-    sync::{
-        Arc,
-        Mutex,
-    },
-    time::{
-        Duration,
-        Instant,
-    },
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
-use failure::format_err;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::{
-        RwLock,
-        Semaphore,
-    },
+    sync::{RwLock, Semaphore},
     time::sleep,
 };
 
-use crate::network::PeerId;
-use crate::Result;
+use crate::{network::PeerId, Result};
 
 /// Message priority levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -184,7 +167,7 @@ impl PriorityMessageQueue {
     /// Add a message to the appropriate priority queue
     pub fn enqueue(&mut self, message: PrioritizedMessage) -> Result<()> {
         if message.is_expired() {
-            return Err(format_err!("Message expired before queuing"));
+            return Err(anyhow::anyhow!("Message expired before queuing"));
         }
 
         let priority_index = message.priority as usize;

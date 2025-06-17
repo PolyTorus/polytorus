@@ -1,7 +1,122 @@
 # PolyTorus Configuration Guide
 
 ## Overview
-PolyTorus uses TOML configuration files to manage various aspects of the blockchain node, including network settings, mining parameters, wallet configurations, and API settings.
+PolyTorus uses a flexible configuration system supporting both TOML files and environment variables for maximum deployment flexibility, especially in containerized environments.
+
+## Latest Updates (June 2025)
+- ✅ **Environment Variable Support** - Full configuration via environment variables
+- ✅ **Docker Secrets Integration** - Secure secret management in Docker environments
+- ✅ **Flexible Configuration** - TOML files, environment variables, and Docker secrets
+- ✅ **Development vs Production** - Separate configurations for different environments
+- ✅ **Database Configuration** - Support for PostgreSQL, Redis, and SQLite
+
+## Configuration Methods
+
+### 1. TOML Configuration Files
+Traditional configuration file approach:
+
+```bash
+# Configuration file priority:
+1. --config command line argument
+2. POLYTORUS_CONFIG_PATH environment variable
+3. ./config.toml in current directory
+4. ~/.polytorus/config.toml in home directory
+```
+
+### 2. Environment Variables
+Full configuration support via environment variables:
+
+```bash
+# Network configuration
+export POLYTORUS_NETWORK_TYPE=mainnet
+export POLYTORUS_NETWORK_PORT=8333
+export POLYTORUS_NETWORK_BIND_ADDRESS=0.0.0.0
+
+# Database configuration
+export DATABASE_URL=postgres://user:pass@localhost/polytorus
+export REDIS_URL=redis://localhost:6379
+
+# Mining configuration
+export POLYTORUS_MINING_ENABLED=true
+export POLYTORUS_MINING_THREADS=4
+```
+
+### 3. Docker Secrets (Production)
+Secure secret management in Docker environments:
+
+```bash
+# Docker secrets are automatically loaded from:
+/run/secrets/database_password
+/run/secrets/redis_password
+/run/secrets/api_key
+```
+
+## Environment Variable Reference
+
+### Database Configuration
+```bash
+# Primary database
+DATABASE_URL=postgres://user:password@host:port/database
+DATABASE_MAX_CONNECTIONS=10
+DATABASE_MIN_CONNECTIONS=1
+
+# Redis configuration
+REDIS_URL=redis://host:port
+REDIS_MAX_CONNECTIONS=10
+REDIS_TIMEOUT=5
+
+# SQLite fallback
+SQLITE_DATABASE_PATH=./data/polytorus.db
+```
+
+### Network Configuration
+```bash
+POLYTORUS_NETWORK_TYPE=mainnet|testnet|development
+POLYTORUS_NETWORK_PORT=8333
+POLYTORUS_NETWORK_BIND_ADDRESS=0.0.0.0
+POLYTORUS_NETWORK_MAX_PEERS=50
+POLYTORUS_NETWORK_MIN_PEERS=3
+```
+
+### Mining Configuration
+```bash
+POLYTORUS_MINING_ENABLED=true|false
+POLYTORUS_MINING_THREADS=4
+POLYTORUS_MINING_DIFFICULTY_TARGET=0x1d00ffff
+POLYTORUS_MINING_REWARD=50
+```
+
+### Logging Configuration
+```bash
+RUST_LOG=info|debug|trace
+POLYTORUS_LOG_LEVEL=info
+POLYTORUS_LOG_FILE=/var/log/polytorus.log
+```
+
+## Docker Configuration
+
+### Development Environment
+Create `.env` file for development:
+
+```bash
+# .env (development)
+RUST_LOG=debug
+DATABASE_URL=postgres://postgres:password@db:5432/polytorus_dev
+REDIS_URL=redis://redis:6379
+POLYTORUS_NETWORK_TYPE=development
+POLYTORUS_MINING_ENABLED=true
+```
+
+### Production Environment
+Create `.env.secrets` file for production:
+
+```bash
+# .env.secrets (production - never commit to git)
+DATABASE_URL=postgres://user:secure_password@db:5432/polytorus
+REDIS_URL=redis://:secure_password@redis:6379
+POLYTORUS_API_KEY=your_secure_api_key
+POLYTORUS_NETWORK_TYPE=mainnet
+```
 
 ## Configuration File Location
 By default, PolyTorus looks for configuration files in the following order:

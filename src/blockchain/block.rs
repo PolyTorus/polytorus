@@ -1,31 +1,20 @@
 //! Type-safe block implementation with compile-time guarantees and Verkle tree support
 
-use std::marker::PhantomData;
-use std::time::SystemTime;
+use std::{marker::PhantomData, time::SystemTime};
 
 use bincode::serialize;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use failure::format_err;
 use log::info;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-use crate::blockchain::types::{
-    block_states,
-    network,
-    BlockState,
-    NetworkConfig,
+use crate::{
+    blockchain::types::{block_states, network, BlockState, NetworkConfig},
+    crypto::{
+        transaction::*,
+        verkle_tree::{VerklePoint, VerkleProof, VerkleTree},
+    },
+    Result,
 };
-use crate::crypto::transaction::*;
-use crate::crypto::verkle_tree::{
-    VerklePoint,
-    VerkleProof,
-    VerkleTree,
-};
-use crate::Result;
 
 #[cfg(test)]
 pub const TEST_DIFFICULTY: usize = 1;
@@ -365,8 +354,8 @@ impl<N: NetworkConfig> BuildingBlock<N> {
 
         let data = self.prepare_hash_data()?;
         let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
-        self.hash = hasher.result_str();
+        hasher.update(&data[..]);
+        self.hash = hex::encode(hasher.finalize());
 
         info!(
             "Block mined successfully! Mining time: {}ms, Nonce: {}, Hash: {}",
@@ -417,23 +406,25 @@ impl<N: NetworkConfig> MinedBlock<N> {
     pub fn validate(mut self) -> Result<ValidatedBlock<N>> {
         // Validate proof of work
         if !self.validate_pow()? {
-            return Err(format_err!("Invalid proof of work"));
+            return Err(anyhow::anyhow!("Invalid proof of work"));
         }
 
         // Basic transaction validation (more comprehensive validation would require UTXO set)
         if self.transactions.is_empty() {
-            return Err(format_err!("Block must contain at least one transaction"));
+            return Err(anyhow::anyhow!(
+                "Block must contain at least one transaction"
+            ));
         }
 
         // Check that the first transaction is coinbase
         if !self.transactions[0].is_coinbase() {
-            return Err(format_err!("First transaction must be coinbase"));
+            return Err(anyhow::anyhow!("First transaction must be coinbase"));
         }
 
         // Check that only the first transaction is coinbase
         for tx in &self.transactions[1..] {
             if tx.is_coinbase() {
-                return Err(format_err!("Only first transaction can be coinbase"));
+                return Err(anyhow::anyhow!("Only first transaction can be coinbase"));
             }
         }
 
@@ -481,8 +472,8 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
     fn validate_pow(&mut self) -> Result<bool> {
         let data = self.prepare_hash_data()?;
         let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
-        let hash_str = hasher.result_str();
+        hasher.update(&data[..]);
+        let hash_str = hex::encode(hasher.finalize());
         let prefix = "0".repeat(self.difficulty);
         Ok(hash_str.starts_with(&prefix))
     }
@@ -753,7 +744,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
                 let key = format!("tx_{:08x}", i);
                 let value = bincode::serialize(tx)?;
                 tree.insert(key.as_bytes(), &value).map_err(|e| {
-                    format_err!("Failed to insert transaction into Verkle tree: {}", e)
+                    anyhow::anyhow!("Failed to insert transaction into Verkle tree: {}", e)
                 })?;
             }
 
@@ -779,7 +770,7 @@ impl<S: BlockState, N: NetworkConfig> Block<S, N> {
         let tree = self.get_or_build_verkle_tree()?;
         let key = format!("tx_{:08x}", tx_index);
         tree.generate_proof(key.as_bytes())
-            .map_err(|e| format_err!("Failed to generate proof: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to generate proof: {}", e))
     }
     /// Verify a Verkle proof against this block's commitment
     pub fn verify_transaction_proof(&self, proof: &VerkleProof) -> bool {
