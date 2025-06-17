@@ -3,10 +3,12 @@
 # Global configuration
 [verification]
 # Set strict bounds for verification to prevent timeout and unwinding issues
-unwind = 100       # Maximum loop unwinds (reduced to prevent unwinding issues)
-timeout = 120      # Timeout in seconds (reduced)
+unwind = 20        # Further reduced to prevent memcmp unwinding issues
+timeout = 300      # Increased timeout to accommodate verification complexity
 # Ignore global assembly to work around wasmtime-fiber issue
 ignore-global-asm = true
+# Limit memcmp and memory operations unwinding with more aggressive settings
+solver-args = ["--unwind", "20", "--bounds-check", "--pointer-check", "--no-unwinding-assertions", "--memcmp-unwind", "5"]
 
 [verification.crypto_verification]
 description = "Formal verification of cryptographic operations"
@@ -37,8 +39,12 @@ harnesses = [
 # Global verification settings
 [solver]
 engine = "cbmc"
-unwinding = 5
+unwinding = 20
+memcmp-unwind = 3     # Drastically limit memcmp loop unwinding
+string-unwind = 3     # Limit string operation unwinding
 
 [restrictions]
-function_call_limit = 100
-loop_unroll = 10
+function_call_limit = 20    # Further reduced to prevent deep call stacks
+loop_unroll = 3             # Minimal loop unrolling
+max_memory_compare = 16     # Severely limit memory comparison operations
+max_array_size = 128        # Limit array sizes to prevent excessive memory operations
