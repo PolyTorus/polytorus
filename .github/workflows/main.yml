@@ -172,7 +172,8 @@ jobs:
           echo ""
           echo "--- PKG_CONFIG check ---"
           pkg-config --exists openfhe && \
-            echo "OpenFHE pkg-config found" || \            echo "OpenFHE pkg-config not found"
+            echo "OpenFHE pkg-config found" || \
+            echo "OpenFHE pkg-config not found"
 
       - name: Run tests
         env:
@@ -206,13 +207,16 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
-            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
-            libfftw3-dev autoconf automake libtool
+          sudo apt-get install -y build-essential cmake libssl-dev \
+            pkg-config libgmp-dev libntl-dev libboost-all-dev \
+            libgmp3-dev libmpfr-dev libfftw3-dev autoconf automake \
+            libtool
 
       - name: Setup OpenFHE
         run: |
-          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          git clone \
+            https://github.com/MachinaIO/openfhe-development.git \
+            /tmp/openfhe
           cd /tmp/openfhe
           git checkout feat/improve_determinant
           mkdir build && cd build
@@ -223,14 +227,17 @@ jobs:
                 -DBUILD_BENCHMARKS=OFF \
                 -DWITH_OPENMP=ON \
                 -DCMAKE_CXX_STANDARD=17 \
-                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG \
+                  -Wno-unused-parameter -Wno-unused-function \
+                  -Wno-missing-field-initializers" \
                 ..
           make -j$(nproc)
           sudo make install
           sudo ldconfig
           sudo mkdir -p /usr/local/lib/pkgconfig
           echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" \
+            >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" \
             >> $GITHUB_ENV
 
@@ -268,7 +275,8 @@ jobs:
         run: |
           echo "=== Environment for tarpaulin ==="
           echo "OPENFHE_ROOT: $OPENFHE_ROOT"
-          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"          echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
+          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+          echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
           echo ""
 
           # First try a simple compilation test
@@ -301,8 +309,10 @@ jobs:
               <coverage version="1">
                 <sources>
                   <source>.</source>
-                </sources>                <packages>
-                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
+                </sources>
+                <packages>
+                  <package name="polytorus" line-rate="0.0" \
+                    branch-rate="0.0" complexity="0">
                     <classes></classes>
                   </package>
                 </packages>
@@ -385,7 +395,9 @@ jobs:
 
       - name: Setup OpenFHE
         run: |
-          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+          git clone \
+            https://github.com/MachinaIO/openfhe-development.git \
+            /tmp/openfhe
           cd /tmp/openfhe
           git checkout feat/improve_determinant
           mkdir build && cd build
@@ -394,17 +406,20 @@ jobs:
                 -DBUILD_UNITTESTS=OFF \
                 -DBUILD_EXAMPLES=OFF \
                 -DBUILD_BENCHMARKS=OFF \
-                -DWITH_OPENMP=ON \
-                -DCMAKE_CXX_STANDARD=17 \
-                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+                -DWITH_OPENMP=ON \                -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG \
+                  -Wno-unused-parameter -Wno-unused-function \
+                  -Wno-missing-field-initializers" \
                 ..
           make -j$(nproc)
           sudo make install
           sudo ldconfig
           sudo mkdir -p /usr/local/lib/pkgconfig
           echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" \
+            >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" \
+            >> $GITHUB_ENV
 
       - name: Run security audit
         run: |
