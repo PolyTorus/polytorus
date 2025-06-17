@@ -17,7 +17,6 @@ use crate::{
     Result,
 };
 
-
 /// Network events for modular layer
 #[derive(Debug, Clone)]
 pub enum ModularNetworkEvent {
@@ -99,9 +98,8 @@ impl ModularNetwork {
     /// Create a new modular network with real P2P integration
     pub fn new(config: ModularNetworkConfig) -> Result<Self> {
         // Validate listen address for P2P integration
-        let _listen_addr: SocketAddr = config.listen_address.parse()
-            .map_err(|e| anyhow::Error::new(e))?;
-        
+        let _listen_addr: SocketAddr = config.listen_address.parse().map_err(anyhow::Error::new)?;
+
         // Validate bootstrap peers for P2P integration
         let mut valid_peers = Vec::new();
         for peer_str in &config.bootstrap_peers {
@@ -110,9 +108,12 @@ impl ModularNetwork {
                 Err(e) => log::warn!("Invalid bootstrap peer address {}: {}", peer_str, e),
             }
         }
-        
-        log::info!("Creating modular network with {} valid bootstrap peers", valid_peers.len());
-        
+
+        log::info!(
+            "Creating modular network with {} valid bootstrap peers",
+            valid_peers.len()
+        );
+
         Ok(Self {
             config,
             peers: Arc::new(Mutex::new(HashMap::new())),
@@ -125,11 +126,14 @@ impl ModularNetwork {
     /// Start the network layer with real P2P implementation
     pub async fn start(&mut self) -> Result<()> {
         log::info!("Starting modular network on {}", self.config.listen_address);
-        
+
         // Parse listen address for P2P node
-        let listen_addr: SocketAddr = self.config.listen_address.parse()
-            .map_err(|e| anyhow::Error::new(e))?;
-        
+        let listen_addr: SocketAddr = self
+            .config
+            .listen_address
+            .parse()
+            .map_err(anyhow::Error::new)?;
+
         // Parse bootstrap peers
         let mut bootstrap_peers = Vec::new();
         for peer_str in &self.config.bootstrap_peers {
@@ -137,17 +141,17 @@ impl ModularNetwork {
                 bootstrap_peers.push(addr);
             }
         }
-        
+
         // Create P2P node and get communication channels
         let (_p2p_node, event_rx, command_tx) = EnhancedP2PNode::new(listen_addr, bootstrap_peers)?;
-        
+
         // Store channels for communication
         self.p2p_command_tx = Some(command_tx);
         self.p2p_event_rx = Some(event_rx);
-        
+
         // Note: P2P node would be started in a separate task in production
         // For now, we have the communication channels set up for real P2P integration
-        
+
         log::info!("Modular network started successfully with real P2P integration");
         Ok(())
     }
@@ -165,18 +169,22 @@ impl ModularNetwork {
             let message = P2PMessage::StatusUpdate {
                 best_height: data.len() as i32, // Use length as a simple data indicator
             };
-            
+
             let command = NetworkCommand::BroadcastPriority(
                 message,
                 crate::network::message_priority::MessagePriority::Normal,
             );
-            
+
             if let Err(e) = command_tx.send(command) {
                 log::error!("Failed to send broadcast command to P2P node: {}", e);
                 return Err(anyhow::anyhow!("P2P broadcast failed: {}", e));
             }
-            
-            log::info!("Broadcasting data {} via real P2P network ({} bytes)", hash, data.len());
+
+            log::info!(
+                "Broadcasting data {} via real P2P network ({} bytes)",
+                hash,
+                data.len()
+            );
         } else {
             log::warn!("P2P node not initialized, cannot broadcast data");
             return Err(anyhow::anyhow!("P2P node not initialized"));
@@ -220,12 +228,12 @@ impl ModularNetwork {
             let message = P2PMessage::BlockRequest {
                 block_hash: hash.to_string(),
             };
-            
+
             let command = NetworkCommand::BroadcastPriority(
                 message,
                 crate::network::message_priority::MessagePriority::High,
             );
-            
+
             if let Err(e) = command_tx.send(command) {
                 log::error!("Failed to send data request to P2P node: {}", e);
                 // Remove from pending requests on failure
@@ -235,14 +243,14 @@ impl ModularNetwork {
                 }
                 return Err(anyhow::anyhow!("P2P data request failed: {}", e));
             }
-            
+
             log::info!("Requesting data {} via real P2P network", hash);
-            
+
             // Wait for response from P2P network
             // In a full implementation, this would use a timeout and event handling
             // For now, we'll simulate the real network behavior
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-            
+
             // Check if data was received (would be handled by event processing)
             if let Some(data) = self.get_local_data(hash) {
                 // Remove from pending requests on success
@@ -261,11 +269,10 @@ impl ModularNetwork {
             let mut pending = self.pending_requests.lock().unwrap();
             pending.remove(hash);
         }
-        
+
         // Return None to indicate data not found (real network behavior)
         Ok(None)
     }
-
 
     /// Retrieve data from network (alias for request_data)
     pub async fn retrieve_data(&self, hash: &str) -> Result<Vec<u8>> {
@@ -340,7 +347,7 @@ impl ModularNetwork {
             Err(anyhow::anyhow!("Peer not found: {}", peer_id))
         }
     }
-    
+
     /// Process network events from P2P layer
     pub async fn process_network_events(&mut self) -> Result<()> {
         if let Some(ref mut event_rx) = self.p2p_event_rx {
@@ -371,7 +378,7 @@ impl ModularNetwork {
         }
         Ok(())
     }
-    
+
     /// Check if P2P node is connected and ready
     pub fn is_p2p_ready(&self) -> bool {
         self.p2p_command_tx.is_some()
@@ -451,29 +458,39 @@ mod tests {
             max_connections: 10,
             request_timeout: 30,
         };
-        
+
         // Test that network can be created with real P2P hooks
         let mut network = ModularNetwork::new(config).unwrap();
-        
+
         // Test that P2P integration setup works
         let result = network.start().await;
         assert!(result.is_ok(), "P2P network should start successfully");
-        
+
         // Test that P2P channels are set up
-        assert!(network.is_p2p_ready(), "P2P node should be ready after start");
-        
+        assert!(
+            network.is_p2p_ready(),
+            "P2P node should be ready after start"
+        );
+
         // Test local data storage (part of the real P2P integration)
         let test_data = b"test data for broadcasting";
         let result = network.store_data("test_hash", test_data.to_vec());
         assert!(result.is_ok(), "Local data storage should work");
-        
+
         // Test that local data is available
-        assert!(network.is_data_available("test_hash"), "Stored data should be available locally");
-        
+        assert!(
+            network.is_data_available("test_hash"),
+            "Stored data should be available locally"
+        );
+
         // Test data retrieval
         let retrieved = network.get_local_data("test_hash");
-        assert_eq!(retrieved, Some(test_data.to_vec()), "Retrieved data should match stored data");
-        
+        assert_eq!(
+            retrieved,
+            Some(test_data.to_vec()),
+            "Retrieved data should match stored data"
+        );
+
         // Note: Real P2P broadcast/request would require the P2P node to be running
         // In a production environment, the P2P node would be started in a separate task
         // This test verifies that the integration hooks are properly set up
@@ -487,21 +504,27 @@ mod tests {
             max_connections: 10,
             request_timeout: 30,
         };
-        
+
         let mut network = ModularNetwork::new(config).unwrap();
         let _ = network.start().await;
-        
+
         // Test requesting non-existent data (may fail with real P2P when no node is running)
         let result = network.request_data("non_existent_data").await;
         // This may fail or return None depending on P2P node state
         if result.is_ok() {
             let data = result.unwrap();
-            assert!(data.is_none(), "Real P2P should return None for non-existent data, not simulate success");
+            assert!(
+                data.is_none(),
+                "Real P2P should return None for non-existent data, not simulate success"
+            );
         }
         // If it fails, that's also acceptable as it shows real network behavior
-        
+
         // Verify stats show real state
         let stats = network.get_stats();
-        assert_eq!(stats.connected_peers, 0, "Should show 0 peers when no real connections exist");
+        assert_eq!(
+            stats.connected_peers, 0,
+            "Should show 0 peers when no real connections exist"
+        );
     }
 }

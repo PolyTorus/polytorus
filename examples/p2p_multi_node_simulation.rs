@@ -3,11 +3,7 @@
 //! This example demonstrates real P2P communication between PolyTorus nodes
 //! without using HTTP APIs, showcasing actual blockchain network behavior.
 
-use std::{
-    net::SocketAddr,
-    sync::Arc,
-    time::Duration,
-};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use clap::{Arg, Command};
 use polytorus::{
@@ -18,7 +14,6 @@ use polytorus::{
     Result,
 };
 use serde::{Deserialize, Serialize};
-use bincode;
 use tokio::{
     sync::{mpsc, Mutex},
     time::{interval, sleep},
@@ -90,9 +85,9 @@ impl P2PMultiNodeSimulator {
         }
 
         for i in 0..self.config.num_nodes {
-            let node_id = format!("p2p-node-{}", i);
+            let node_id = format!("p2p-node-{i}");
             let p2p_addr = bootstrap_peers[i];
-            
+
             // Each node connects to all other nodes as bootstrap peers
             let mut node_bootstrap_peers = bootstrap_peers.clone();
             node_bootstrap_peers.remove(i); // Don't include self
@@ -100,7 +95,7 @@ impl P2PMultiNodeSimulator {
             let config = P2PNodeConfig {
                 node_id: node_id.clone(),
                 p2p_addr,
-                data_dir: format!("./data/simulation/p2p_node_{}", i),
+                data_dir: format!("./data/simulation/p2p_node_{i}"),
                 bootstrap_peers: node_bootstrap_peers,
             };
 
@@ -113,31 +108,40 @@ impl P2PMultiNodeSimulator {
     /// Initialize all P2P nodes with real network connections
     pub async fn initialize_nodes(&mut self) -> Result<()> {
         let node_configs = self.generate_node_configs();
-        println!("🚀 Initializing {} P2P nodes with real network connections...", node_configs.len());
+        println!(
+            "🚀 Initializing {} P2P nodes with real network connections...",
+            node_configs.len()
+        );
 
-        for (_i, config) in node_configs.into_iter().enumerate() {
+        for config in node_configs.into_iter() {
             // Create data context for the node
             let data_context = DataContext::new(config.data_dir.clone().into());
-            
+
             // Create modular config with P2P settings
             let mut modular_config = default_modular_config();
-            modular_config.data_availability.network_config.listen_addr = config.p2p_addr.to_string();
-            modular_config.data_availability.network_config.bootstrap_peers = 
-                config.bootstrap_peers.iter().map(|addr| addr.to_string()).collect();
+            modular_config.data_availability.network_config.listen_addr =
+                config.p2p_addr.to_string();
+            modular_config
+                .data_availability
+                .network_config
+                .bootstrap_peers = config
+                .bootstrap_peers
+                .iter()
+                .map(|addr| addr.to_string())
+                .collect();
 
             // Create unified modular orchestrator with defaults
             let orchestrator = Arc::new(
                 UnifiedModularOrchestrator::create_and_start_with_defaults(
                     modular_config,
                     data_context,
-                ).await?
+                )
+                .await?,
             );
 
             // Create real P2P node
-            let (mut p2p_node, event_rx, command_tx) = EnhancedP2PNode::new(
-                config.p2p_addr,
-                config.bootstrap_peers.clone(),
-            )?;
+            let (mut p2p_node, event_rx, command_tx) =
+                EnhancedP2PNode::new(config.p2p_addr, config.bootstrap_peers.clone())?;
 
             // Start P2P node in background using blocking task
             let node_id_clone = config.node_id.clone();
@@ -145,7 +149,7 @@ impl P2PMultiNodeSimulator {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(async move {
                     if let Err(e) = p2p_node.run().await {
-                        eprintln!("❌ P2P node {} error: {}", node_id_clone, e);
+                        eprintln!("❌ P2P node {node_id_clone} error: {e}");
                     }
                 });
             });
@@ -167,8 +171,11 @@ impl P2PMultiNodeSimulator {
 
             self.nodes.push(node_instance);
 
-            println!("✅ P2P Node {} initialized on {}", config.node_id, config.p2p_addr);
-            
+            println!(
+                "✅ P2P Node {} initialized on {}",
+                config.node_id, config.p2p_addr
+            );
+
             // Small delay between node startups to avoid port conflicts
             sleep(Duration::from_millis(500)).await;
         }
@@ -189,34 +196,45 @@ impl P2PMultiNodeSimulator {
         while let Some(event) = event_rx.recv().await {
             match event {
                 NetworkEvent::TransactionReceived(tx, peer_id) => {
-                    println!("📥 Node {} received transaction {} from peer {}", node_id, tx.id, peer_id);
-                    
+                    println!(
+                        "📥 Node {} received transaction {} from peer {}",
+                        node_id, tx.id, peer_id
+                    );
+
                     // Process transaction through the modular orchestrator
                     // Serialize transaction to bytes for processing
                     match bincode::serialize(&*tx) {
                         Ok(tx_bytes) => {
                             if let Err(e) = orchestrator.execute_transaction(tx_bytes).await {
-                                eprintln!("❌ Failed to process transaction on {}: {}", node_id, e);
+                                eprintln!("❌ Failed to process transaction on {node_id}: {e}");
                             }
                         }
                         Err(e) => {
-                            eprintln!("❌ Failed to serialize transaction on {}: {}", node_id, e);
+                            eprintln!("❌ Failed to serialize transaction on {node_id}: {e}");
                         }
                     }
                 }
                 NetworkEvent::BlockReceived(block, peer_id) => {
-                    println!("📦 Node {} received block {} from peer {}", node_id, block.get_hash(), peer_id);
-                    
+                    println!(
+                        "📦 Node {} received block {} from peer {}",
+                        node_id,
+                        block.get_hash(),
+                        peer_id
+                    );
+
                     // Process block through the modular orchestrator
                     // Note: For now, we'll log the block received but skip processing
                     // since block type conversion needs proper implementation
-                    println!("🔄 Block processing skipped for P2P demo - block {} received", block.get_hash());
+                    println!(
+                        "🔄 Block processing skipped for P2P demo - block {} received",
+                        block.get_hash()
+                    );
                 }
                 NetworkEvent::PeerConnected(peer_id) => {
-                    println!("🤝 Node {} connected to peer {}", node_id, peer_id);
+                    println!("🤝 Node {node_id} connected to peer {peer_id}");
                 }
                 NetworkEvent::PeerDisconnected(peer_id) => {
-                    println!("👋 Node {} disconnected from peer {}", node_id, peer_id);
+                    println!("👋 Node {node_id} disconnected from peer {peer_id}");
                 }
                 _ => {
                     // Handle other network events
@@ -235,7 +253,10 @@ impl P2PMultiNodeSimulator {
         // Create a real transaction
         let transaction = Transaction::new_coinbase(
             format!("wallet_{}", receiver_node.config.node_id),
-            format!("P2P Transaction {} from {} to {}", tx_id, sender_node.config.node_id, receiver_node.config.node_id),
+            format!(
+                "P2P Transaction {} from {} to {}",
+                tx_id, sender_node.config.node_id, receiver_node.config.node_id
+            ),
         )?;
 
         println!(
@@ -245,9 +266,9 @@ impl P2PMultiNodeSimulator {
 
         // Broadcast transaction via real P2P network
         let command = NetworkCommand::BroadcastTransaction(transaction.clone());
-        
+
         if let Err(e) = sender_node.p2p_command_tx.send(command) {
-            eprintln!("❌ Failed to broadcast transaction via P2P: {}", e);
+            eprintln!("❌ Failed to broadcast transaction via P2P: {e}");
             return Err(anyhow::anyhow!("P2P broadcast failed: {}", e));
         }
 
@@ -257,7 +278,10 @@ impl P2PMultiNodeSimulator {
             *tx_count += 1;
         }
 
-        println!("✅ Transaction {} broadcasted via P2P from {}", transaction.id, sender_node.config.node_id);
+        println!(
+            "✅ Transaction {} broadcasted via P2P from {}",
+            transaction.id, sender_node.config.node_id
+        );
         Ok(())
     }
 
@@ -270,8 +294,14 @@ impl P2PMultiNodeSimulator {
         println!("📊 Simulation parameters:");
         println!("   • Nodes: {}", self.config.num_nodes);
         println!("   • Duration: {}s", self.config.simulation_duration);
-        println!("   • Transaction interval: {}ms", self.config.transaction_interval);
-        println!("   • Transactions per batch: {}", self.config.transactions_per_batch);
+        println!(
+            "   • Transaction interval: {}ms",
+            self.config.transaction_interval
+        );
+        println!(
+            "   • Transactions per batch: {}",
+            self.config.transactions_per_batch
+        );
 
         // Set running flag
         {
@@ -280,7 +310,8 @@ impl P2PMultiNodeSimulator {
         }
 
         // Create transaction interval timer
-        let mut transaction_timer = interval(Duration::from_millis(self.config.transaction_interval));
+        let mut transaction_timer =
+            interval(Duration::from_millis(self.config.transaction_interval));
         let mut transaction_id = 1;
 
         let start_time = std::time::Instant::now();
@@ -304,7 +335,7 @@ impl P2PMultiNodeSimulator {
                         // Select random sender and receiver
                         let sender_idx = transaction_id as usize % self.nodes.len();
                         let mut receiver_idx = (transaction_id as usize + 1) % self.nodes.len();
-                        
+
                         // Ensure sender and receiver are different
                         if sender_idx == receiver_idx {
                             receiver_idx = (receiver_idx + 1) % self.nodes.len();
@@ -318,7 +349,7 @@ impl P2PMultiNodeSimulator {
                             receiver_node,
                             transaction_id,
                         ).await {
-                            eprintln!("❌ Failed to create transaction {}: {}", transaction_id, e);
+                            eprintln!("❌ Failed to create transaction {transaction_id}: {e}");
                         }
 
                         transaction_id += 1;
@@ -337,28 +368,32 @@ impl P2PMultiNodeSimulator {
     async fn print_final_statistics(&self) {
         println!("\n📊 Final P2P Simulation Statistics:");
         println!("═══════════════════════════════════");
-        
+
         let mut total_tx_sent = 0;
         let mut total_tx_received = 0;
 
         for node in &self.nodes {
             let tx_count = *node.tx_count.lock().await;
             let rx_count = *node.rx_count.lock().await;
-            
-            println!("🔸 {}: {} sent, {} received", node.config.node_id, tx_count, rx_count);
-            
+
+            println!(
+                "🔸 {}: {} sent, {} received",
+                node.config.node_id, tx_count, rx_count
+            );
+
             total_tx_sent += tx_count;
             total_tx_received += rx_count;
         }
 
         println!("═══════════════════════════════════");
-        println!("📈 Total transactions sent: {}", total_tx_sent);
-        println!("📉 Total transactions received: {}", total_tx_received);
-        println!("🌐 Network efficiency: {:.1}%", 
-            if total_tx_sent > 0 { 
-                (total_tx_received as f64 / total_tx_sent as f64) * 100.0 
-            } else { 
-                0.0 
+        println!("📈 Total transactions sent: {total_tx_sent}");
+        println!("📉 Total transactions received: {total_tx_received}");
+        println!(
+            "🌐 Network efficiency: {:.1}%",
+            if total_tx_sent > 0 {
+                (total_tx_received as f64 / total_tx_sent as f64) * 100.0
+            } else {
+                0.0
             }
         );
     }

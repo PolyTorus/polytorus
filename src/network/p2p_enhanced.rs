@@ -187,6 +187,7 @@ struct PeerConnection {
     message_queue: VecDeque<P2PMessage>,
     is_active: bool,
     ping_nonce: Option<u64>,
+    failure_count: u32,
 }
 
 impl PeerConnection {
@@ -207,6 +208,7 @@ impl PeerConnection {
             message_queue: VecDeque::new(),
             is_active: true,
             ping_nonce: None,
+            failure_count: 0,
         }
     }
 
@@ -496,7 +498,7 @@ impl EnhancedP2PNode {
         let peer_id_discovery = self.peer_id;
         let best_height_discovery = self.best_height.clone();
         tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(300)); // Every 5 minutes
+            let mut interval = interval(Duration::from_secs(30)); // Check every 30 seconds
             loop {
                 interval.tick().await;
 
@@ -506,10 +508,36 @@ impl EnhancedP2PNode {
                     known.iter().cloned().collect()
                 };
 
-                let current_peer_count = peers_discovery.lock().unwrap().len();
+                let current_peer_count = {
+                    let peers_guard = peers_discovery.lock().unwrap();
+                    let active_count = peers_guard.values().filter(|c| c.is_active).count();
+                    let total_count = peers_guard.len();
+                    log::debug!(
+                        "Network status: {}/{} active peers",
+                        active_count,
+                        total_count
+                    );
+
+                    // Log network health
+                    if active_count == 0 {
+                        log::error!("No active peers! Network is isolated.");
+                    } else if active_count < MAX_PEERS / 4 {
+                        log::warn!(
+                            "Low peer count: {} active peers (recommended: {})",
+                            active_count,
+                            MAX_PEERS / 2
+                        );
+                    }
+
+                    active_count
+                };
+
+                // Connect to new peers if we're below target
                 if current_peer_count < MAX_PEERS / 2 {
-                    for addr in known_addrs.iter().take(3) {
-                        // Try 3 new connections at a time
+                    let mut connection_attempts = 0;
+                    let max_attempts = 3;
+
+                    for addr in known_addrs.iter().take(max_attempts) {
                         let peers_clone = peers_discovery.clone();
                         let event_tx_clone = event_tx_discovery.clone();
                         let addr_clone = *addr;
@@ -517,7 +545,7 @@ impl EnhancedP2PNode {
                         let best_height_clone = best_height_discovery.clone();
 
                         tokio::spawn(async move {
-                            if let Err(e) = Self::connect_to_peer(
+                            match Self::connect_to_peer(
                                 addr_clone,
                                 peers_clone,
                                 event_tx_clone,
@@ -526,13 +554,56 @@ impl EnhancedP2PNode {
                             )
                             .await
                             {
-                                log::debug!(
-                                    "Failed to connect to discovered peer {}: {}",
-                                    addr_clone,
-                                    e
-                                );
+                                Ok(()) => {
+                                    log::info!(
+                                        "Successfully connected to peer {} during discovery",
+                                        addr_clone
+                                    );
+                                }
+                                Err(e) => {
+                                    log::debug!(
+                                        "Failed to connect to discovered peer {}: {}",
+                                        addr_clone,
+                                        e
+                                    );
+                                }
                             }
                         });
+
+                        connection_attempts += 1;
+
+                        // Small delay between connection attempts
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+                    }
+
+                    if connection_attempts > 0 {
+                        log::info!(
+                            "Attempted {} new peer connections during discovery",
+                            connection_attempts
+                        );
+                    }
+                }
+
+                // Cleanup inactive peers after extended failure
+                let mut peers_to_remove = Vec::new();
+                {
+                    let peers_guard = peers_discovery.lock().unwrap();
+                    for (peer_id, connection) in peers_guard.iter() {
+                        // Remove peers that have failed too many times and been inactive for a while
+                        if !connection.is_active
+                            && connection.failure_count > 10
+                            && connection.connected_at.elapsed() > Duration::from_secs(300)
+                        {
+                            peers_to_remove.push(*peer_id);
+                        }
+                    }
+                }
+
+                if !peers_to_remove.is_empty() {
+                    let mut peers_guard = peers_discovery.lock().unwrap();
+                    for peer_id in peers_to_remove {
+                        peers_guard.remove(&peer_id);
+                        log::info!("Removed permanently failed peer {}", peer_id);
                     }
                 }
             }
@@ -572,30 +643,86 @@ impl EnhancedP2PNode {
         });
     }
 
-    /// Connect to bootstrap peers
+    /// Connect to bootstrap peers with retry logic and connection management
     async fn connect_to_bootstrap_peers(&self) {
         let known_peers = self.known_peers.lock().unwrap().clone();
         log::info!("Connecting to {} bootstrap peers", known_peers.len());
 
-        for addr in known_peers {
+        if known_peers.is_empty() {
+            log::warn!("No bootstrap peers configured");
+            return;
+        }
+
+        // Connect to bootstrap peers with staggered timing to avoid overwhelming network
+        for (index, addr) in known_peers.iter().enumerate() {
             let peers = self.peers.clone();
             let event_tx = self.event_tx.clone();
             let peer_id = self.peer_id;
             let best_height = self.best_height.clone();
+            let addr = *addr;
 
             tokio::spawn(async move {
-                if let Err(e) =
-                    Self::connect_to_peer(addr, peers, event_tx, peer_id, best_height).await
-                {
-                    log::warn!("Failed to connect to bootstrap peer {}: {}", addr, e);
-                } else {
-                    log::info!("Successfully connected to bootstrap peer {}", addr);
+                // Stagger connections to avoid network congestion
+                tokio::time::sleep(Duration::from_millis((index as u64) * 500)).await;
+
+                // Retry logic for bootstrap connections
+                let mut retry_count = 0;
+                const MAX_RETRIES: usize = 3;
+                const RETRY_DELAY: u64 = 5; // seconds
+
+                while retry_count < MAX_RETRIES {
+                    match Self::connect_to_peer(
+                        addr,
+                        peers.clone(),
+                        event_tx.clone(),
+                        peer_id,
+                        best_height.clone(),
+                    )
+                    .await
+                    {
+                        Ok(()) => {
+                            log::info!(
+                                "Successfully connected to bootstrap peer {} on attempt {}",
+                                addr,
+                                retry_count + 1
+                            );
+                            break;
+                        }
+                        Err(e) => {
+                            retry_count += 1;
+                            if retry_count < MAX_RETRIES {
+                                log::warn!(
+                                    "Failed to connect to bootstrap peer {} (attempt {}): {}. Retrying in {}s...",
+                                    addr, retry_count, e, RETRY_DELAY
+                                );
+                                tokio::time::sleep(Duration::from_secs(RETRY_DELAY)).await;
+                            } else {
+                                log::error!(
+                                    "Failed to connect to bootstrap peer {} after {} attempts: {}",
+                                    addr,
+                                    MAX_RETRIES,
+                                    e
+                                );
+                            }
+                        }
+                    }
                 }
             });
         }
+
+        // Wait for initial connections to establish
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        // Log connection status
+        let connected_count = self.peers.lock().unwrap().len();
+        log::info!(
+            "Bootstrap connection phase completed. Connected to {}/{} peers",
+            connected_count,
+            known_peers.len()
+        );
     }
 
-    /// Connect to a specific peer
+    /// Connect to a specific peer with enhanced validation and error handling
     async fn connect_to_peer(
         addr: SocketAddr,
         peers: Arc<Mutex<HashMap<PeerId, PeerConnection>>>,
@@ -603,26 +730,59 @@ impl EnhancedP2PNode {
         our_peer_id: PeerId,
         best_height: Arc<Mutex<i32>>,
     ) -> Result<()> {
-        log::debug!("Connecting to peer at {}", addr);
+        log::debug!("Attempting to connect to peer at {}", addr);
 
         // Check if we're already connected to this address
         {
             let peers_guard = peers.lock().unwrap();
             for connection in peers_guard.values() {
-                if connection.address == addr {
-                    log::debug!("Already connected to {}", addr);
+                if connection.address == addr && connection.is_active {
+                    log::debug!("Already have active connection to {}", addr);
                     return Ok(());
                 }
             }
+
+            // Check connection limit
+            let active_connections = peers_guard.values().filter(|c| c.is_active).count();
+            if active_connections >= MAX_PEERS {
+                log::warn!(
+                    "Maximum peer connections reached ({}), cannot connect to {}",
+                    MAX_PEERS,
+                    addr
+                );
+                return Err(anyhow::anyhow!("Maximum peer connections reached"));
+            }
         }
 
-        let stream = timeout(Duration::from_secs(10), TcpStream::connect(addr)).await??;
+        // Validate address (don't connect to ourselves)
+        if addr.ip().is_loopback() && addr.port() == 0 {
+            return Err(anyhow::anyhow!("Invalid address: {}", addr));
+        }
 
-        // Send handshake
+        log::info!("Establishing TCP connection to {}", addr);
+
+        // Connect with timeout and enhanced error handling
+        let stream = match timeout(Duration::from_secs(10), TcpStream::connect(addr)).await {
+            Ok(Ok(stream)) => {
+                log::debug!("TCP connection established to {}", addr);
+                stream
+            }
+            Ok(Err(e)) => {
+                log::debug!("TCP connection failed to {}: {}", addr, e);
+                return Err(anyhow::anyhow!("TCP connection failed: {}", e));
+            }
+            Err(_) => {
+                log::debug!("TCP connection timed out to {}", addr);
+                return Err(anyhow::anyhow!("Connection timeout"));
+            }
+        };
+
+        // Send handshake with our node information
+        let current_height = *best_height.lock().unwrap();
         let handshake = P2PMessage::Handshake {
             peer_id: our_peer_id,
             protocol_version: PROTOCOL_VERSION,
-            best_height: *best_height.lock().unwrap(),
+            best_height: current_height,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -630,8 +790,33 @@ impl EnhancedP2PNode {
             node_type: "full_node".to_string(),
         };
 
-        Self::handle_peer_connection(stream, addr, peers, event_tx, our_peer_id, Some(handshake))
-            .await
+        log::debug!(
+            "Sending handshake to {} (our_id: {}, height: {})",
+            addr,
+            our_peer_id,
+            current_height
+        );
+
+        // Handle the peer connection with handshake
+        match Self::handle_peer_connection(
+            stream,
+            addr,
+            peers,
+            event_tx,
+            our_peer_id,
+            Some(handshake),
+        )
+        .await
+        {
+            Ok(()) => {
+                log::info!("Successfully established peer connection to {}", addr);
+                Ok(())
+            }
+            Err(e) => {
+                log::warn!("Failed to establish peer connection to {}: {}", addr, e);
+                Err(e)
+            }
+        }
     }
 
     /// Handle incoming connection
@@ -1111,31 +1296,81 @@ impl EnhancedP2PNode {
         Ok(())
     }
 
-    /// Broadcast a message to all connected peers
+    /// Broadcast a message to all connected peers with failure handling
     async fn broadcast_message(&self, message: P2PMessage) -> Result<()> {
         let peers = self.peers.lock().unwrap();
         let mut failed_peers = Vec::new();
+        let mut successful_sends = 0;
+        let total_active_peers = peers.values().filter(|c| c.is_active).count();
+
+        if total_active_peers == 0 {
+            log::warn!("No active peers available for broadcasting message");
+            return Err(anyhow::anyhow!("No active peers available"));
+        }
 
         for (peer_id, connection) in peers.iter() {
             if connection.is_active {
-                if let Err(e) = connection.message_tx.send(message.clone()) {
-                    log::debug!("Failed to send message to {}: {}", peer_id, e);
-                    failed_peers.push(*peer_id);
-                } else {
-                    self.stats.lock().unwrap().messages_sent += 1;
+                match connection.message_tx.send(message.clone()) {
+                    Ok(()) => {
+                        successful_sends += 1;
+                        self.stats.lock().unwrap().messages_sent += 1;
+                    }
+                    Err(e) => {
+                        log::debug!("Failed to send message to peer {}: {}", peer_id, e);
+                        failed_peers.push(*peer_id);
+                    }
                 }
             }
         }
 
-        // Mark failed peers as inactive
+        // Mark failed peers as inactive and log network health
         drop(peers);
         if !failed_peers.is_empty() {
             let mut peers = self.peers.lock().unwrap();
-            for peer_id in failed_peers {
-                if let Some(connection) = peers.get_mut(&peer_id) {
+            for peer_id in failed_peers.iter() {
+                if let Some(connection) = peers.get_mut(peer_id) {
                     connection.is_active = false;
+                    connection.failure_count += 1;
+                    log::warn!(
+                        "Peer {} failed (total failures: {}), marking as inactive",
+                        peer_id,
+                        connection.failure_count
+                    );
                 }
             }
+        }
+
+        // Calculate and log broadcast success rate
+        let success_rate = (successful_sends as f64 / total_active_peers as f64) * 100.0;
+        if success_rate < 50.0 {
+            log::error!(
+                "Low broadcast success rate: {:.1}% ({}/{} peers)",
+                success_rate,
+                successful_sends,
+                total_active_peers
+            );
+        } else if success_rate < 80.0 {
+            log::warn!(
+                "Moderate broadcast success rate: {:.1}% ({}/{} peers)",
+                success_rate,
+                successful_sends,
+                total_active_peers
+            );
+        } else {
+            log::debug!(
+                "Broadcast success rate: {:.1}% ({}/{} peers)",
+                success_rate,
+                successful_sends,
+                total_active_peers
+            );
+        }
+
+        // Return error if too many peers failed
+        if success_rate < 30.0 {
+            return Err(anyhow::anyhow!(
+                "Broadcast failed - too many peer failures: {:.1}% success rate",
+                success_rate
+            ));
         }
 
         Ok(())

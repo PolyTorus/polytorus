@@ -106,10 +106,10 @@ pub trait StorageLayer: Send + Sync {
 
     /// Get storage statistics
     fn get_stats(&self) -> Result<StorageStats>;
-    
+
     /// Store a transaction
     fn store_transaction(&self, tx: &crate::crypto::transaction::Transaction) -> Result<()>;
-    
+
     /// Retrieve a transaction by hash
     fn get_transaction(&self, hash: &str) -> Result<crate::crypto::transaction::Transaction>;
 }
@@ -485,15 +485,15 @@ impl StorageLayer for ModularStorage {
             db_size_bytes: total_size,
         })
     }
-    
+
     fn store_transaction(&self, tx: &crate::crypto::transaction::Transaction) -> Result<()> {
         // Serialize transaction
         let tx_data = bincode::serialize(tx)?;
-        
+
         // Store transaction by hash
         let tx_key = format!("tx_{}", tx.id);
         self.state_db.insert(tx_key, tx_data)?;
-        
+
         // Store transaction in each block's transaction list
         for input in &tx.vin {
             if !input.txid.is_empty() {
@@ -501,20 +501,22 @@ impl StorageLayer for ModularStorage {
                 self.index_db.insert(input_key, tx.id.as_bytes())?;
             }
         }
-        
+
         log::debug!("Stored transaction: {}", tx.id);
         Ok(())
     }
-    
+
     fn get_transaction(&self, hash: &str) -> Result<crate::crypto::transaction::Transaction> {
         let tx_key = format!("tx_{}", hash);
-        
-        let tx_data = self.state_db.get(&tx_key)?
+
+        let tx_data = self
+            .state_db
+            .get(&tx_key)?
             .ok_or_else(|| anyhow::anyhow!("Transaction not found: {}", hash))?;
-        
+
         let tx: crate::crypto::transaction::Transaction = bincode::deserialize(&tx_data)?;
         log::debug!("Retrieved transaction: {}", hash);
-        
+
         Ok(tx)
     }
 }
