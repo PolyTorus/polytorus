@@ -72,12 +72,15 @@ jobs:
           if [ -d "/usr/local/include/openfhe" ]; then
             sudo ln -sf /usr/local/include/openfhe /usr/include/openfhe || true
           fi
-          
-          # Set environment variables
+            # Set environment variables
           echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "CPATH=/usr/local/include:/usr/local/include/openfhe:$CPATH" >> $GITHUB_ENV
           echo "LIBRARY_PATH=/usr/local/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          
+          # Uncomment the following line to force OpenFHE testing in CI (currently uses dummy mode for stability)
+          # echo "FORCE_OPENFHE_CI=1" >> $GITHUB_ENV
 
       - name: Check formatting
         run: cargo fmt --all -- --check

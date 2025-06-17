@@ -8,7 +8,7 @@ use diamond_io::{
 use num_bigint::BigUint;
 use num_traits::Num;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondIOConfig {
@@ -167,6 +167,7 @@ impl DiamondIOIntegration {
         // Test basic OpenFHE functionality in non-dummy mode
         if !config.dummy_mode {
             info!("Testing OpenFHE basic functionality...");
+
             // Try to create a simple circuit to verify OpenFHE is working
             match std::panic::catch_unwind(|| {
                 let mut circuit = PolyCircuit::new();
@@ -177,11 +178,14 @@ impl DiamondIOIntegration {
                 }
                 info!("OpenFHE basic test successful");
             }) {
-                Ok(_) => info!("OpenFHE functionality test passed"),
+                Ok(_) => {
+                    info!("OpenFHE functionality test passed");
+                }
                 Err(e) => {
                     error!("OpenFHE functionality test failed: {:?}", e);
                     return Err(anyhow::anyhow!(
-                        "OpenFHE basic functionality test failed. This may indicate library linking issues."
+                        "OpenFHE basic functionality test failed. This may indicate library linking issues. Panic details: {:?}",
+                        e
                     ));
                 }
             }
