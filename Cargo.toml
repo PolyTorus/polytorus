@@ -114,6 +114,10 @@ kani-verifier = "0.56.0"
 [build-dependencies]
 reqwest = { version = "0.12", features = ["blocking"] }
 
+[[example]]
+name = "p2p_multi_node_simulation"
+path = "examples/p2p_multi_node_simulation.rs"
+
 [[bench]]
 name = "blockchain_bench"
 harness = false
