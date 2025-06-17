@@ -15,16 +15,23 @@ fn main() {
 }
 
 fn setup_openfhe() -> Result<(), String> {
-    println!("cargo::warning=Starting OpenFHE setup process");
+    // Only show verbose warnings if OPENFHE_DEBUG is set
+    let verbose = env::var("OPENFHE_DEBUG").is_ok();
+
+    if verbose {
+        println!("cargo::warning=Starting OpenFHE setup process");
+    }
 
     // Check if OpenFHE is installed
     let openfhe_root = env::var("OPENFHE_ROOT").unwrap_or_else(|_| "/usr/local".to_string());
     let lib_path = format!("{openfhe_root}/lib");
     let include_path = format!("{openfhe_root}/include");
 
-    println!("cargo::warning=OPENFHE_ROOT: {openfhe_root}");
-    println!("cargo::warning=Library path: {lib_path}");
-    println!("cargo::warning=Include path: {include_path}");
+    if verbose {
+        println!("cargo::warning=OPENFHE_ROOT: {openfhe_root}");
+        println!("cargo::warning=Library path: {lib_path}");
+        println!("cargo::warning=Include path: {include_path}");
+    }
 
     println!("cargo::rustc-env=OPENFHE_ROOT={openfhe_root}");
     println!("cargo::rustc-env=OPENFHE_LIB_DIR={lib_path}");
@@ -85,7 +92,9 @@ fn setup_openfhe() -> Result<(), String> {
             if found_any_header {
                 println!("cargo::include={path}");
                 println!("cargo::rustc-env=OPENFHE_INCLUDE_PATH={path}");
-                println!("cargo::warning=Found OpenFHE headers in: {path}");
+                if verbose {
+                    println!("cargo::warning=Found OpenFHE headers in: {path}");
+                }
                 found_include = true;
                 break;
             }
@@ -93,11 +102,13 @@ fn setup_openfhe() -> Result<(), String> {
     }
 
     if !found_include {
-        eprintln!("Warning: OpenFHE headers not found in any of: {include_paths:?}");
-        eprintln!("Please install OpenFHE or set OPENFHE_ROOT environment variable");
-        println!("cargo::warning=OpenFHE headers not found in: {include_paths:?}");
+        if verbose {
+            eprintln!("Warning: OpenFHE headers not found in any of: {include_paths:?}");
+            eprintln!("Please install OpenFHE or set OPENFHE_ROOT environment variable");
+            println!("cargo::warning=OpenFHE headers not found in: {include_paths:?}");
+        }
         // Continue anyway - might be available through pkg-config or CI cache
-    } else {
+    } else if verbose {
         println!("cargo::warning=OpenFHE headers found and verified");
     }
 
@@ -138,13 +149,17 @@ fn setup_openfhe() -> Result<(), String> {
     }
 
     if !found_libs {
-        eprintln!("Warning: OpenFHE libraries not found in standard locations");
-        eprintln!("Searched in: {lib_paths:?}");
-        eprintln!("Please install OpenFHE from https://github.com/MachinaIO/openfhe-development");
-        eprintln!("Using fallback library path: {lib_path}");
-        println!("cargo::warning=OpenFHE libraries not found, searched in: {lib_paths:?}");
+        if verbose {
+            eprintln!("Warning: OpenFHE libraries not found in standard locations");
+            eprintln!("Searched in: {lib_paths:?}");
+            eprintln!(
+                "Please install OpenFHE from https://github.com/MachinaIO/openfhe-development"
+            );
+            eprintln!("Using fallback library path: {lib_path}");
+            println!("cargo::warning=OpenFHE libraries not found, searched in: {lib_paths:?}");
+        }
         println!("cargo::rustc-link-search=native={lib_path}");
-    } else {
+    } else if verbose {
         println!("cargo::warning=OpenFHE libraries found in: {found_lib_path}");
     }
 
