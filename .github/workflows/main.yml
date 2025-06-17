@@ -17,7 +17,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 高速フィードバック用の基本チェック  quick-checks:
+  # 高速フィードバック用の基本チェック
+  quick-checks:
     name: Quick Checks
     runs-on: ubuntu-latest
     steps:
@@ -276,18 +277,18 @@ jobs:
                 <sources>
                   <source>.</source>
                 </sources>
-                <packages>
-                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
+                <packages>                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
                     <classes></classes>
                   </package>
                 </packages>
               </coverage>' > cobertura.xml
-            }      - name: Upload coverage reports to Codecov
+            }
+
+      - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: cobertura.xml
           fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
   # Kani形式検証（オプション）
