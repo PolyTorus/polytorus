@@ -25,6 +25,7 @@ struct HostContext {
     value: u64,
     state: Arc<Mutex<ContractState>>,
     logs: Arc<Mutex<Vec<String>>>,
+    state_changes: Arc<Mutex<HashMap<String, Vec<u8>>>>,
 }
 
 /// WASM contract execution engine
@@ -406,12 +407,14 @@ impl ContractEngine {
 
         // Create host context for actual processing
         let logs = Arc::new(Mutex::new(Vec::new()));
+        let state_changes = Arc::new(Mutex::new(HashMap::new()));
         let host_context = HostContext {
             contract_address: execution.contract_address.clone(),
             caller: execution.caller.clone(),
             value: execution.value,
             state: self.state.clone(),
             logs: logs.clone(),
+            state_changes: state_changes.clone(),
         };
 
         // Create store with host context
@@ -436,14 +439,18 @@ impl ContractEngine {
             vec![]
         };
 
-        // The state changes are now handled directly by the host functions
-        let state_changes = HashMap::new();
+        // Get state changes from host context
+        let tracked_state_changes = if let Ok(changes_guard) = state_changes.lock() {
+            changes_guard.clone()
+        } else {
+            HashMap::new()
+        };
 
         Ok(ContractResult {
             success: true,
             return_value: result,
             gas_used: gas_cost,
-            state_changes,
+            state_changes: tracked_state_changes,
             logs: execution_logs,
         })
     }
@@ -491,12 +498,14 @@ impl ContractEngine {
 
         // Create host context for actual processing
         let logs = Arc::new(Mutex::new(Vec::new()));
+        let state_changes = Arc::new(Mutex::new(HashMap::new()));
         let host_context = HostContext {
             contract_address: execution.contract_address.clone(),
             caller: execution.caller.clone(),
             value: execution.value,
             state: self.state.clone(),
             logs: logs.clone(),
+            state_changes: state_changes.clone(),
         };
 
         // Create store with host context
@@ -521,14 +530,18 @@ impl ContractEngine {
             vec![]
         };
 
-        // The state changes are now handled directly by the host functions
-        let state_changes = HashMap::new();
+        // Get state changes from host context
+        let tracked_state_changes = if let Ok(changes_guard) = state_changes.lock() {
+            changes_guard.clone()
+        } else {
+            HashMap::new()
+        };
 
         Ok(ContractResult {
             success: true,
             return_value: result,
             gas_used: gas_cost,
-            state_changes,
+            state_changes: tracked_state_changes,
             logs: execution_logs,
         })
     }
@@ -539,18 +552,28 @@ impl ContractEngine {
         linker: &mut Linker<HostContext>,
         _execution: &ContractExecution,
     ) -> Result<()> {
-        // Storage get function - reads from actual database
+        // Storage get function - reads from actual database with proper data handling
         linker
             .func_wrap(
                 "env",
                 "storage_get",
-                |mut caller: Caller<'_, HostContext>, key_ptr: i32, key_len: i32| -> i32 {
+                |mut caller: Caller<'_, HostContext>,
+                 key_ptr: i32,
+                 key_len: i32,
+                 value_ptr: i32,
+                 max_value_len: i32|
+                 -> i32 {
                     let ctx = caller.data().clone();
+
+                    // Memory safety: validate input parameters
+                    if !(0..=1024).contains(&key_len) || !(0..=64 * 1024).contains(&max_value_len) {
+                        return -1; // Invalid parameters
+                    }
 
                     // Get memory to read the key
                     let memory = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
-                        _ => return 0, // Return 0 if memory not found
+                        _ => return -2, // Memory not found
                     };
 
                     // Read key from WASM memory
@@ -559,12 +582,12 @@ impl ContractEngine {
                         .read(&caller, key_ptr as usize, &mut key_bytes)
                         .is_err()
                     {
-                        return 0;
+                        return -3; // Failed to read key
                     }
 
                     let key = match String::from_utf8(key_bytes) {
                         Ok(k) => k,
-                        Err(_) => return 0,
+                        Err(_) => return -4, // Invalid UTF-8 in key
                     };
 
                     // Read from database
@@ -572,25 +595,30 @@ impl ContractEngine {
                     if let Ok(state) = state_result {
                         match state.get(&ctx.contract_address, &key) {
                             Ok(Some(value)) => {
-                                // For simplicity, return the first 4 bytes as i32
-                                // In a real implementation, you might want to store the value
-                                // in memory and return a pointer
-                                if value.len() >= 4 {
-                                    i32::from_le_bytes([value[0], value[1], value[2], value[3]])
-                                } else {
-                                    0
+                                // Calculate how much data we can return
+                                let return_len = std::cmp::min(value.len(), max_value_len as usize);
+
+                                // Write value to WASM memory
+                                if memory
+                                    .write(&mut caller, value_ptr as usize, &value[..return_len])
+                                    .is_err()
+                                {
+                                    return -5; // Failed to write value to memory
                                 }
+
+                                return_len as i32 // Return actual length written
                             }
-                            _ => 0,
+                            Ok(None) => 0, // Key not found
+                            Err(_) => -6,  // Database error
                         }
                     } else {
-                        0
+                        -7 // Failed to lock state
                     }
                 },
             )
             .map_err(|e| anyhow::anyhow!("Failed to add storage_get: {}", e))?;
 
-        // Storage set function - writes to actual database
+        // Storage set function - writes to actual database with error handling
         linker
             .func_wrap(
                 "env",
@@ -599,13 +627,19 @@ impl ContractEngine {
                  key_ptr: i32,
                  key_len: i32,
                  value_ptr: i32,
-                 value_len: i32| {
+                 value_len: i32|
+                 -> i32 {
                     let ctx = caller.data().clone();
+
+                    // Memory safety: validate input parameters
+                    if !(0..=1024).contains(&key_len) || !(0..=64 * 1024).contains(&value_len) {
+                        return -1; // Invalid parameters
+                    }
 
                     // Get memory to read key and value
                     let memory = match caller.get_export("memory") {
                         Some(Extern::Memory(mem)) => mem,
-                        _ => return,
+                        _ => return -2, // Memory not found
                     };
 
                     // Read key from WASM memory
@@ -614,7 +648,7 @@ impl ContractEngine {
                         .read(&caller, key_ptr as usize, &mut key_bytes)
                         .is_err()
                     {
-                        return;
+                        return -3; // Failed to read key
                     }
 
                     // Read value from WASM memory
@@ -623,18 +657,30 @@ impl ContractEngine {
                         .read(&caller, value_ptr as usize, &mut value_bytes)
                         .is_err()
                     {
-                        return;
+                        return -4; // Failed to read value
                     }
 
                     let key = match String::from_utf8(key_bytes) {
                         Ok(k) => k,
-                        Err(_) => return,
+                        Err(_) => return -5, // Invalid UTF-8 in key
                     };
 
                     // Write to database
                     let state_result = ctx.state.lock();
                     if let Ok(state) = state_result {
-                        let _ = state.set(&ctx.contract_address, &key, &value_bytes);
+                        match state.set(&ctx.contract_address, &key, &value_bytes) {
+                            Ok(_) => {
+                                // Track state changes
+                                if let Ok(mut changes) = ctx.state_changes.lock() {
+                                    let full_key = format!("{}:{}", ctx.contract_address, key);
+                                    changes.insert(full_key, value_bytes);
+                                }
+                                1 // Success
+                            }
+                            Err(_) => -6, // Database write error
+                        }
+                    } else {
+                        -7 // Failed to lock state
                     }
                 },
             )
@@ -731,10 +777,68 @@ impl ContractEngine {
         Ok(result.to_le_bytes().to_vec())
     }
 
-    /// Load a simple contract that supports all needed functions
+    /// Load a simple contract that supports all needed functions and storage operations
     fn load_simple_contract(&self) -> Result<Vec<u8>> {
         let wat = r#"
             (module
+                (import "env" "storage_get" (func $storage_get (param i32 i32 i32 i32) (result i32)))
+                (import "env" "storage_set" (func $storage_set (param i32 i32 i32 i32) (result i32)))
+                (import "env" "log" (func $log (param i32 i32)))
+                (memory (export "memory") 1)
+                
+                ;; Memory layout:
+                ;; 100-106: "counter" (7 bytes)
+                ;; 200-203: i32 value 5 (4 bytes) 
+                ;; 300-303: read buffer for counter value (4 bytes)
+                ;; 400-407: "test_key" (8 bytes)
+                ;; 500-509: "test_value" (10 bytes)
+                ;; 600-631: read buffer for test_value (32 bytes)
+                
+                (data (i32.const 100) "counter")
+                (data (i32.const 200) "\05\00\00\00")  ;; i32 value 5 in little endian
+                (data (i32.const 400) "test_key")
+                (data (i32.const 500) "test_value")
+                
+                ;; Test storage operations
+                (func (export "test_storage") (result i32)
+                    ;; Store key "counter" with value 5
+                    (call $storage_set 
+                        (i32.const 100)  ;; key pointer
+                        (i32.const 7)    ;; key length ("counter")
+                        (i32.const 200)  ;; value pointer  
+                        (i32.const 4))   ;; value length (4 bytes for i32)
+                    
+                    ;; Return the result of storage_set
+                )
+                
+                ;; Read counter value from storage
+                (func (export "read_counter") (result i32)
+                    (call $storage_get
+                        (i32.const 100)  ;; key pointer
+                        (i32.const 7)    ;; key length
+                        (i32.const 300)  ;; output value pointer
+                        (i32.const 4))   ;; max value length
+                )
+                
+                ;; Initialize storage with test data
+                (func (export "storage_init") (result i32)
+                    ;; Store "test_key" with "test_value"
+                    (call $storage_set
+                        (i32.const 400)  ;; key pointer
+                        (i32.const 8)    ;; key length ("test_key")
+                        (i32.const 500)  ;; value pointer
+                        (i32.const 10))  ;; value length ("test_value")
+                )
+                
+                ;; Read storage test
+                (func (export "storage_read") (result i32)
+                    (call $storage_get
+                        (i32.const 400)  ;; key pointer ("test_key")
+                        (i32.const 8)    ;; key length
+                        (i32.const 600)  ;; output value pointer
+                        (i32.const 32))  ;; max value length
+                )
+                
                 (func (export "main") (result i32)
                     i32.const 42)
                 (func (export "init") (result i32)

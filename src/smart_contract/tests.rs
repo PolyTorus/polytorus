@@ -260,4 +260,171 @@ mod smart_contract_tests {
         // The execution should succeed with real host function implementations
         // rather than failing with dummy implementations
     }
+
+    #[test]
+    fn test_storage_persistence_with_wasm_calls() {
+        let temp_dir = tempdir().unwrap();
+        let state = ContractState::new(temp_dir.path().to_str().unwrap()).unwrap();
+        let engine = ContractEngine::new(state).unwrap();
+
+        let contract_address = "storage_test_contract";
+
+        // Test 1: Write data using WASM contract storage_set host function
+        let write_execution = ContractExecution {
+            contract_address: contract_address.to_string(),
+            function_name: "test_storage".to_string(),
+            arguments: vec![],
+            gas_limit: 100000,
+            caller: "test_caller".to_string(),
+            value: 0,
+        };
+
+        let write_result = engine.execute_contract(write_execution).unwrap();
+        assert!(write_result.success, "Storage write operation failed");
+
+        // The test_storage function should return success (1) from storage_set
+        assert_eq!(
+            write_result.return_value,
+            vec![1, 0, 0, 0],
+            "Storage set should return success"
+        );
+
+        // Verify state changes were tracked
+        assert!(
+            !write_result.state_changes.is_empty(),
+            "State changes should be tracked"
+        );
+
+        // Test 2: Read data using WASM contract storage_get host function
+        let read_execution = ContractExecution {
+            contract_address: contract_address.to_string(),
+            function_name: "read_counter".to_string(),
+            arguments: vec![],
+            gas_limit: 100000,
+            caller: "test_caller".to_string(),
+            value: 0,
+        };
+
+        let read_result = engine.execute_contract(read_execution).unwrap();
+        assert!(read_result.success, "Storage read operation failed");
+
+        // The read_counter function should return the length of data read (4 bytes)
+        assert_eq!(
+            read_result.return_value,
+            vec![4, 0, 0, 0],
+            "Should read 4 bytes of data"
+        );
+
+        // Test 3: Verify data persistence by reading directly from state
+        {
+            let state_guard = engine.get_state().lock().unwrap();
+            let stored_value = state_guard.get(contract_address, "counter").unwrap();
+            assert!(
+                stored_value.is_some(),
+                "Data should be persisted in storage"
+            );
+
+            let value = stored_value.unwrap();
+            assert_eq!(
+                value,
+                vec![5, 0, 0, 0],
+                "Stored value should be 5 in little endian"
+            );
+        }
+    }
+
+    #[test]
+    fn test_storage_persistence_across_contract_calls() {
+        let temp_dir = tempdir().unwrap();
+        let state = ContractState::new(temp_dir.path().to_str().unwrap()).unwrap();
+        let engine = ContractEngine::new(state).unwrap();
+
+        let contract_address = "persistence_test_contract";
+
+        // Step 1: Initialize storage with test data
+        let init_execution = ContractExecution {
+            contract_address: contract_address.to_string(),
+            function_name: "storage_init".to_string(),
+            arguments: vec![],
+            gas_limit: 100000,
+            caller: "test_caller".to_string(),
+            value: 0,
+        };
+
+        let init_result = engine.execute_contract(init_execution).unwrap();
+        assert!(init_result.success, "Storage initialization failed");
+        assert_eq!(
+            init_result.return_value,
+            vec![1, 0, 0, 0],
+            "Storage init should succeed"
+        );
+
+        // Step 2: In a separate contract call, read the stored data
+        let read_execution = ContractExecution {
+            contract_address: contract_address.to_string(),
+            function_name: "storage_read".to_string(),
+            arguments: vec![],
+            gas_limit: 100000,
+            caller: "test_caller".to_string(),
+            value: 0,
+        };
+
+        let read_result = engine.execute_contract(read_execution).unwrap();
+        assert!(read_result.success, "Storage read failed");
+
+        // Should read 10 bytes ("test_value")
+        assert_eq!(
+            read_result.return_value,
+            vec![10, 0, 0, 0],
+            "Should read 10 bytes of test_value"
+        );
+
+        // Step 3: Verify the data is correctly persisted
+        {
+            let state_guard = engine.get_state().lock().unwrap();
+            let stored_value = state_guard.get(contract_address, "test_key").unwrap();
+            assert!(stored_value.is_some(), "test_key should exist in storage");
+
+            let value = stored_value.unwrap();
+            assert_eq!(
+                value,
+                b"test_value".to_vec(),
+                "Stored value should be 'test_value'"
+            );
+        }
+    }
+
+    #[test]
+    fn test_storage_error_handling() {
+        let temp_dir = tempdir().unwrap();
+        let state = ContractState::new(temp_dir.path().to_str().unwrap()).unwrap();
+        let engine = ContractEngine::new(state).unwrap();
+
+        // Test reading non-existent key
+        {
+            let state_guard = engine.get_state().lock().unwrap();
+            let result = state_guard.get("test_contract", "nonexistent_key").unwrap();
+            assert!(result.is_none(), "Non-existent key should return None");
+        }
+
+        // Test that storage operations work with proper error codes
+        let execution = ContractExecution {
+            contract_address: "error_test_contract".to_string(),
+            function_name: "read_counter".to_string(), // Try to read before writing
+            arguments: vec![],
+            gas_limit: 100000,
+            caller: "test_caller".to_string(),
+            value: 0,
+        };
+
+        let result = engine.execute_contract(execution).unwrap();
+        assert!(result.success, "Contract execution should succeed");
+
+        // Reading non-existent key should return 0 (key not found)
+        assert_eq!(
+            result.return_value,
+            vec![0, 0, 0, 0],
+            "Reading non-existent key should return 0"
+        );
+    }
 }
