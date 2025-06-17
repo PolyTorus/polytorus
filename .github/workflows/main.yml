@@ -271,8 +271,7 @@ jobs:
             --out xml \
             --exclude-files "target/*" \
             --exclude-files "*/build.rs" \
-            --exclude-files "kani-verification/*" \
-            --skip-clean || {
+            --exclude-files "kani-verification/*" \            --skip-clean || {
               echo "Tarpaulin failed, generating fallback coverage"
               # Generate a minimal coverage report
               echo '<?xml version="1.0" encoding="UTF-8"?>
@@ -280,7 +279,8 @@ jobs:
                 <sources>
                   <source>.</source>
                 </sources>
-                <packages>                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
+                <packages>
+                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
                     <classes></classes>
                   </package>
                 </packages>
@@ -293,62 +293,6 @@ jobs:
           file: cobertura.xml
           fail_ci_if_error: false
         continue-on-error: true
-
-  # Kani形式検証（オプション）
-  kani-verification:
-    name: Kani Formal Verification
-    runs-on: ubuntu-latest
-    needs: quick-checks
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt, clippy
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
-            libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
-            libfftw3-dev autoconf automake libtool
-
-      - name: Setup OpenFHE
-        run: |
-          git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
-          cd /tmp/openfhe
-          git checkout feat/improve_determinant
-          mkdir build && cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DBUILD_UNITTESTS=OFF \
-                -DBUILD_EXAMPLES=OFF \
-                -DBUILD_BENCHMARKS=OFF \
-                -DWITH_OPENMP=ON \
-                -DCMAKE_CXX_STANDARD=17 \
-                -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
-                ..
-          make -j$(nproc)
-          sudo make install
-          sudo ldconfig
-          sudo mkdir -p /usr/local/lib/pkgconfig
-          echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-
-      - name: Install Kani
-        run: |
-          cargo install --locked kani-verifier
-          cargo kani setup
-
-      - name: Run Kani verification
-        run: cargo kani --verbose
 
   # Dockerビルドとプッシュ（タグ時のみ）
   docker:
