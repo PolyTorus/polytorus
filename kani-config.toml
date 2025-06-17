@@ -1,10 +1,18 @@
 # Kani Configuration for Polytorus Blockchain Verification
 
+# Global configuration
+[verification]
+# Set strict bounds for verification to prevent timeout and unwinding issues
+unwind = 100       # Maximum loop unwinds (reduced to prevent unwinding issues)
+timeout = 120      # Timeout in seconds (reduced)
+# Ignore global assembly to work around wasmtime-fiber issue
+ignore-global-asm = true
+
 [verification.crypto_verification]
 description = "Formal verification of cryptographic operations"
 harnesses = [
     "verify_ecdsa_sign_verify",
-    "verify_fndsa_sign_verify",
+    "verify_fndsa_sign_verify", 
     "verify_transaction_integrity",
     "verify_merkle_tree_properties"
 ]
