@@ -70,13 +70,22 @@ fn setup_openfhe() -> Result<(), String> {
         if Path::new(path).exists() {
             // Check for key OpenFHE headers that are referenced in the error messages
             let critical_headers = vec![
+                // Primary patterns from CI errors
                 format!("{path}/openfhe/core/lattice/hal/lat-backend.h"),
                 format!("{path}/openfhe/binfhe/lwe-ciphertext-fwd.h"),
+                format!("{path}/openfhe/core/utils/exception.h"),
+                // Alternative include patterns
                 format!("{path}/openfhe/core/include/lattice/hal/lat-backend.h"),
                 format!("{path}/openfhe/binfhe/include/lwe-ciphertext-fwd.h"),
-                // Fallback patterns
+                format!("{path}/openfhe/core/include/utils/exception.h"),
+                // Direct directory patterns (fallback)
                 format!("{path}/core/lattice/hal/lat-backend.h"),
                 format!("{path}/binfhe/lwe-ciphertext-fwd.h"),
+                format!("{path}/core/utils/exception.h"),
+                // Additional critical OpenFHE headers
+                format!("{path}/openfhe/core/lattice/hal/lat-hal.h"),
+                format!("{path}/openfhe/pke/include/scheme/scheme-id.h"),
+                format!("{path}/openfhe/binfhe/include/binfhe.h"),
             ];
 
             // Also check for common OpenFHE headers to verify installation
@@ -133,6 +142,19 @@ fn setup_openfhe() -> Result<(), String> {
                 if verbose {
                     let header_type = if found_critical { "critical" } else { "common" };
                     println!("cargo::warning=Found OpenFHE {header_type} headers in: {path}");
+
+                    // List some of the found headers for debugging
+                    println!("cargo::warning=Verified header files:");
+                    for header in &critical_headers {
+                        if Path::new(header).exists() {
+                            println!("cargo::warning=  ✅ {header}");
+                        }
+                    }
+                    for header in &common_headers {
+                        if Path::new(header).exists() {
+                            println!("cargo::warning=  ✅ {header}");
+                        }
+                    }
                 }
                 found_include = true;
                 break;
@@ -206,9 +228,35 @@ fn setup_openfhe() -> Result<(), String> {
     println!("cargo::rustc-env=CXXFLAGS=-std=c++17 -O2 -DNDEBUG");
     println!("cargo::rustc-env=CXX_FLAGS=-std=c++17 -O2 -DNDEBUG");
 
+    // Set include paths for C++ compilation
+    if found_include {
+        for path in &include_paths {
+            if Path::new(path).exists() {
+                println!("cargo::rustc-env=CPATH={path}");
+                // Also set individual include directories
+                let openfhe_subdir = format!("{path}/openfhe");
+                if Path::new(&openfhe_subdir).exists() {
+                    println!("cargo::rustc-env=CPATH={openfhe_subdir}");
+                }
+                break; // Use the first valid path
+            }
+        }
+    }
+
     // Disable problematic compiler warnings that cause errors
-    env::set_var("CXXFLAGS", "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers");
-    env::set_var("CXX_FLAGS", "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers");
+    let cxx_flags = "-std=c++17 -O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers";
+    env::set_var("CXXFLAGS", cxx_flags);
+    env::set_var("CXX_FLAGS", cxx_flags);
+
+    // Set additional include paths in environment
+    if let Ok(existing_cpath) = env::var("CPATH") {
+        env::set_var(
+            "CPATH",
+            format!("{existing_cpath}:/usr/local/include:/usr/local/include/openfhe"),
+        );
+    } else {
+        env::set_var("CPATH", "/usr/local/include:/usr/local/include/openfhe");
+    }
 
     // Check for pkg-config
     if let Ok(output) = Command::new("pkg-config")

@@ -271,7 +271,8 @@ jobs:
             --out xml \
             --exclude-files "target/*" \
             --exclude-files "*/build.rs" \
-            --exclude-files "kani-verification/*" \            --skip-clean || {
+            --exclude-files "kani-verification/*" \
+            --skip-clean || {
               echo "Tarpaulin failed, generating fallback coverage"
               # Generate a minimal coverage report
               echo '<?xml version="1.0" encoding="UTF-8"?>
@@ -279,15 +280,12 @@ jobs:
                 <sources>
                   <source>.</source>
                 </sources>
-                <packages>
-                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
+                <packages>                  <package name="polytorus" line-rate="0.0" branch-rate="0.0" complexity="0">
                     <classes></classes>
                   </package>
                 </packages>
               </coverage>' > cobertura.xml
-            }
-
-      - name: Upload coverage reports to Codecov
+            }      - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: cobertura.xml

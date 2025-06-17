@@ -42,13 +42,70 @@ jobs:
 
     - name: Install Kani
       run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+          libgmp-dev libntl-dev libboost-all-dev libgmp3-dev libmpfr-dev \
+          libfftw3-dev autoconf automake libtool
         cargo install --locked kani-verifier
         cargo kani setup
 
-    - name: Install system dependencies
+    - name: Setup OpenFHE
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config
+        echo "=== Installing OpenFHE from source ==="
+        git clone https://github.com/MachinaIO/openfhe-development.git /tmp/openfhe
+        cd /tmp/openfhe
+        git checkout feat/improve_determinant
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_UNITTESTS=OFF \
+              -DBUILD_EXAMPLES=OFF \
+              -DBUILD_BENCHMARKS=OFF \
+              -DWITH_OPENMP=ON \
+              -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_CXX_FLAGS="-O2 -DNDEBUG -Wno-unused-parameter -Wno-unused-function -Wno-missing-field-initializers" \
+              ..
+        make -j$(nproc)
+        sudo make install
+        sudo ldconfig
+        
+        echo "=== Verifying OpenFHE installation ==="
+        echo "Headers in /usr/local/include:"
+        find /usr/local/include -name "*openfhe*" -type d || echo "No OpenFHE headers found"
+        echo "Libraries in /usr/local/lib:"
+        ls -la /usr/local/lib/libOPENFHE* || echo "No OpenFHE libraries found"
+        
+        # Create symlinks for easier header discovery
+        if [ -d "/usr/local/include/openfhe" ]; then
+          sudo ln -sf /usr/local/include/openfhe /usr/include/openfhe || true
+        fi
+        
+        # Set environment variables
+        echo "OPENFHE_ROOT=/usr/local" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "CPATH=/usr/local/include:/usr/local/include/openfhe:$CPATH" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=/usr/local/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+
+    - name: Verify OpenFHE installation
+      run: |
+        echo "=== OpenFHE Installation Verification ==="
+        echo "OPENFHE_ROOT: $OPENFHE_ROOT"
+        echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+        echo "CPATH: $CPATH"
+        echo ""
+        echo "--- Critical header files ---"
+        for header in \
+          "/usr/local/include/openfhe/core/lattice/hal/lat-backend.h" \
+          "/usr/local/include/openfhe/binfhe/lwe-ciphertext-fwd.h" \
+          "/usr/local/include/openfhe/core/utils/exception.h"; do
+          if [ -f "$header" ]; then
+            echo "✅ Found: $header"
+          else
+            echo "❌ Missing: $header"
+            find /usr/local/include -name "$(basename $header)" 2>/dev/null || echo "Not found anywhere"
+          fi
+        done
 
     - name: Check dependency resolution
       run: |
