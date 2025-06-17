@@ -120,11 +120,11 @@ async fn test_circuit_evaluation() {
     // More detailed assertion with full error information
     if let Err(ref e) = outputs {
         eprintln!("\n=== DETAILED ERROR ANALYSIS ===");
-        eprintln!("Main error: {}", e);
-        eprintln!("Debug representation: {:?}", e);
+        eprintln!("Main error: {e}");
+        eprintln!("Debug representation: {e:?}");
 
         // Check if it's an OpenFHE-related error
-        let error_string = format!("{:?}", e);
+        let error_string = format!("{e:?}");
         if error_string.contains("OpenFHE") {
             eprintln!("This appears to be an OpenFHE-related error");
         }
@@ -139,9 +139,7 @@ async fn test_circuit_evaluation() {
 
         // Panic with detailed message
         panic!(
-            "Circuit evaluation failed with error: {}\nDebug: {:?}\nFull error chain has been printed above.",
-            e,
-            e
+            "Circuit evaluation failed with error: {e}\nDebug: {e:?}\nFull error chain has been printed above."
         );
     }
 
