@@ -41,7 +41,7 @@ fn verify_ecdsa_sign_verify() {
 
     // Property: A signature created by a private key should be verifiable by its corresponding public key
     // Note: This is a simplified harness - in practice, you'd need proper key derivation
-    let is_valid = crypto.verify(&public_key, &message, &signature);
+    let _is_valid = crypto.verify(&public_key, &message, &signature); // Prefix with underscore to silence warning
 
     // Assert that the signature verification process doesn't panic
     // The actual verification result depends on key pair correctness

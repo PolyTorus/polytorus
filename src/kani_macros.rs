@@ -161,7 +161,7 @@ pub fn create_symbolic_signature(size: usize) -> Vec<u8> {
 #[cfg(kani)]
 pub fn create_bounded_symbolic_value<T>(min: T, max: T) -> T
 where
-    T: PartialOrd + Copy,
+    T: PartialOrd + Copy + kani::Arbitrary,
 {
     let value: T = kani::any();
     kani::assume(value >= min && value <= max);

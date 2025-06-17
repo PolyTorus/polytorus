@@ -12,11 +12,30 @@ pub struct TXInput {
     pub pub_key: Vec<u8>,
 }
 
+impl TXInput {
+    /// Create a new TXInput with validation
+    pub fn new(txid: String, vout: i32, signature: Vec<u8>, pub_key: Vec<u8>) -> Self {
+        assert!(vout >= 0, "vout must be non-negative");
+        assert!(!signature.is_empty(), "signature cannot be empty");
+        assert!(!pub_key.is_empty(), "pub_key cannot be empty");
+        TXInput { txid, vout, signature, pub_key }
+    }
+}
+
 /// Transaction output structure for verification
 #[derive(Debug, Clone)]
 pub struct TXOutput {
     pub value: i32,
     pub pub_key_hash: Vec<u8>,
+}
+
+impl TXOutput {
+    /// Create a new TXOutput with validation
+    pub fn new(value: i32, pub_key_hash: Vec<u8>) -> Self {
+        assert!(value >= 0, "value must be non-negative");
+        assert!(!pub_key_hash.is_empty(), "pub_key_hash cannot be empty");
+        TXOutput { value, pub_key_hash }
+    }
 }
 
 /// Transaction structure for verification
@@ -91,20 +110,25 @@ fn verify_transaction_integrity() {
     let vout: i32 = kani::any();
     let value: i32 = kani::any();
 
-    // Assume valid ranges    kani::assume(vout >= 0 && vout < 1000);
+    // Assume valid ranges
+    kani::assume(vout >= 0 && vout < 1000);
     kani::assume(value >= 0 && value <= 1_000_000);
 
-    let tx_input = TXInput {
-        txid: "test_tx".to_string(),
-        vout,
-        signature: [1u8; 64].to_vec(), // ECDSA signature size
-        pub_key: [2u8; 33].to_vec(),   // Compressed public key
-    };
+    // Validate vout before usage - explicit check for Kani
+    assert!(vout >= 0, "vout must be non-negative");
+    assert!(value >= 0, "value must be non-negative");
 
-    let tx_output = TXOutput {
+    let tx_input = TXInput::new(
+        "test_tx".to_string(),
+        vout,
+        [1u8; 64].to_vec(), // ECDSA signature size
+        [2u8; 33].to_vec(), // Compressed public key
+    );
+
+    let tx_output = TXOutput::new(
         value,
-        pub_key_hash: [3u8; 20].to_vec(), // Hash160 size
-    };
+        [3u8; 20].to_vec(), // Hash160 size
+    );
 
     let transaction = Transaction {
         id: "verified_tx".to_string(),
