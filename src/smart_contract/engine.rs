@@ -17,6 +17,16 @@ use crate::{
     Result,
 };
 
+/// Host function execution context
+#[derive(Clone)]
+struct HostContext {
+    contract_address: String,
+    caller: String,
+    value: u64,
+    state: Arc<Mutex<ContractState>>,
+    logs: Arc<Mutex<Vec<String>>>,
+}
+
 /// WASM contract execution engine
 pub struct ContractEngine {
     engine: Engine,
@@ -35,6 +45,12 @@ impl ContractEngine {
             gas_config: GasConfig::default(),
             erc20_contracts: Arc::new(Mutex::new(HashMap::new())),
         })
+    }
+
+    /// Get access to the contract state for testing
+    #[cfg(test)]
+    pub fn get_state(&self) -> &Arc<Mutex<ContractState>> {
+        &self.state
     }
 
     /// Deploy an ERC20 token contract
@@ -388,52 +404,47 @@ impl ContractEngine {
         let module = Module::new(&self.engine, &bytecode)
             .map_err(|e| anyhow::anyhow!("Failed to create WASM module: {}", e))?;
 
-        // Create store
-        let mut store = Store::new(&self.engine, ());
+        // Create host context for actual processing
+        let logs = Arc::new(Mutex::new(Vec::new()));
+        let host_context = HostContext {
+            contract_address: execution.contract_address.clone(),
+            caller: execution.caller.clone(),
+            value: execution.value,
+            state: self.state.clone(),
+            logs: logs.clone(),
+        };
 
-        // Create linker with minimal host functions
+        // Create store with host context
+        let mut store = Store::new(&self.engine, host_context);
+
+        // Create linker with actual host functions
         let mut linker = Linker::new(&self.engine);
-        self.add_minimal_host_functions(&mut linker)?;
+        self.add_host_functions(&mut linker, &execution)?;
 
         // Instantiate the module
         let instance = linker
             .instantiate(&mut store, &module)
             .map_err(|e| anyhow::anyhow!("Failed to instantiate module: {}", e))?;
 
-        // Call the function
+        // Call the function - state changes are now handled by host functions
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
 
-        // Simulate some state changes for persistence tests
-        let mut state_changes = HashMap::new();
-        if execution.function_name == "increment" || execution.function_name == "init" {
-            state_changes.insert("counter".to_string(), vec![1, 0, 0, 0]);
-        } else if execution.function_name == "get" {
-            // For get operations, show the current state to satisfy persistence tests
-            state_changes.insert("counter_value".to_string(), vec![3, 0, 0, 0]);
-        }
+        // Get logs from host context
+        let execution_logs = if let Ok(logs_guard) = logs.lock() {
+            logs_guard.clone()
+        } else {
+            vec![]
+        };
 
-        // Apply state changes to the database if there are any
-        if !state_changes.is_empty() {
-            if let Ok(state) = self.state.lock() {
-                // Convert state_changes to proper format for apply_changes
-                let mut db_changes = HashMap::new();
-                for (key, value) in &state_changes {
-                    let storage_key = format!("state:{}:{}", execution.contract_address, key);
-                    db_changes.insert(storage_key, value.clone());
-                }
-
-                if let Err(e) = state.apply_changes(&db_changes) {
-                    eprintln!("Failed to apply state changes: {}", e);
-                }
-            }
-        }
+        // The state changes are now handled directly by the host functions
+        let state_changes = HashMap::new();
 
         Ok(ContractResult {
             success: true,
             return_value: result,
             gas_used: gas_cost,
             state_changes,
-            logs: vec![],
+            logs: execution_logs,
         })
     }
 
@@ -478,76 +489,222 @@ impl ContractEngine {
         let module = Module::new(&self.engine, &bytecode)
             .map_err(|e| anyhow::anyhow!("Failed to create WASM module: {}", e))?;
 
-        // Create store
-        let mut store = Store::new(&self.engine, ());
+        // Create host context for actual processing
+        let logs = Arc::new(Mutex::new(Vec::new()));
+        let host_context = HostContext {
+            contract_address: execution.contract_address.clone(),
+            caller: execution.caller.clone(),
+            value: execution.value,
+            state: self.state.clone(),
+            logs: logs.clone(),
+        };
 
-        // Create linker with minimal host functions
+        // Create store with host context
+        let mut store = Store::new(&self.engine, host_context);
+
+        // Create linker with actual host functions
         let mut linker = Linker::new(&self.engine);
-        self.add_minimal_host_functions(&mut linker)?;
+        self.add_host_functions(&mut linker, &execution)?;
 
         // Instantiate the module
         let instance = linker
             .instantiate(&mut store, &module)
             .map_err(|e| anyhow::anyhow!("Failed to instantiate module: {}", e))?;
 
-        // Call the function
+        // Call the function - state changes are now handled by host functions
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
 
-        // Simulate some state changes for persistence tests
-        let mut state_changes = HashMap::new();
-        if execution.function_name == "increment" || execution.function_name == "init" {
-            state_changes.insert("counter".to_string(), vec![1, 0, 0, 0]);
-        } else if execution.function_name == "get" {
-            // For get operations, show the current state to satisfy persistence tests
-            state_changes.insert("counter_value".to_string(), vec![3, 0, 0, 0]);
-        }
+        // Get logs from host context
+        let execution_logs = if let Ok(logs_guard) = logs.lock() {
+            logs_guard.clone()
+        } else {
+            vec![]
+        };
 
-        // Apply state changes to the database if there are any
-        if !state_changes.is_empty() {
-            if let Ok(state) = self.state.lock() {
-                // Convert state_changes to proper format for apply_changes
-                let mut db_changes = HashMap::new();
-                for (key, value) in &state_changes {
-                    let storage_key = format!("state:{}:{}", execution.contract_address, key);
-                    db_changes.insert(storage_key, value.clone());
-                }
-
-                if let Err(e) = state.apply_changes(&db_changes) {
-                    eprintln!("Failed to apply state changes: {}", e);
-                }
-            }
-        }
+        // The state changes are now handled directly by the host functions
+        let state_changes = HashMap::new();
 
         Ok(ContractResult {
             success: true,
             return_value: result,
             gas_used: gas_cost,
             state_changes,
-            logs: vec![],
+            logs: execution_logs,
         })
     }
 
-    /// Add minimal host functions to avoid deadlocks
-    fn add_minimal_host_functions(&self, linker: &mut Linker<()>) -> Result<()> {
-        // Storage functions - completely dummy implementations
+    /// Add host functions with actual implementations
+    fn add_host_functions(
+        &self,
+        linker: &mut Linker<HostContext>,
+        _execution: &ContractExecution,
+    ) -> Result<()> {
+        // Storage get function - reads from actual database
         linker
-            .func_wrap("env", "storage_get", |_: i32, _: i32| -> i32 { 0 })
+            .func_wrap(
+                "env",
+                "storage_get",
+                |mut caller: Caller<'_, HostContext>, key_ptr: i32, key_len: i32| -> i32 {
+                    let ctx = caller.data().clone();
+
+                    // Get memory to read the key
+                    let memory = match caller.get_export("memory") {
+                        Some(Extern::Memory(mem)) => mem,
+                        _ => return 0, // Return 0 if memory not found
+                    };
+
+                    // Read key from WASM memory
+                    let mut key_bytes = vec![0u8; key_len as usize];
+                    if memory
+                        .read(&caller, key_ptr as usize, &mut key_bytes)
+                        .is_err()
+                    {
+                        return 0;
+                    }
+
+                    let key = match String::from_utf8(key_bytes) {
+                        Ok(k) => k,
+                        Err(_) => return 0,
+                    };
+
+                    // Read from database
+                    let state_result = ctx.state.lock();
+                    if let Ok(state) = state_result {
+                        match state.get(&ctx.contract_address, &key) {
+                            Ok(Some(value)) => {
+                                // For simplicity, return the first 4 bytes as i32
+                                // In a real implementation, you might want to store the value
+                                // in memory and return a pointer
+                                if value.len() >= 4 {
+                                    i32::from_le_bytes([value[0], value[1], value[2], value[3]])
+                                } else {
+                                    0
+                                }
+                            }
+                            _ => 0,
+                        }
+                    } else {
+                        0
+                    }
+                },
+            )
             .map_err(|e| anyhow::anyhow!("Failed to add storage_get: {}", e))?;
 
+        // Storage set function - writes to actual database
         linker
-            .func_wrap("env", "storage_set", |_: i32, _: i32, _: i32, _: i32| {})
+            .func_wrap(
+                "env",
+                "storage_set",
+                |mut caller: Caller<'_, HostContext>,
+                 key_ptr: i32,
+                 key_len: i32,
+                 value_ptr: i32,
+                 value_len: i32| {
+                    let ctx = caller.data().clone();
+
+                    // Get memory to read key and value
+                    let memory = match caller.get_export("memory") {
+                        Some(Extern::Memory(mem)) => mem,
+                        _ => return,
+                    };
+
+                    // Read key from WASM memory
+                    let mut key_bytes = vec![0u8; key_len as usize];
+                    if memory
+                        .read(&caller, key_ptr as usize, &mut key_bytes)
+                        .is_err()
+                    {
+                        return;
+                    }
+
+                    // Read value from WASM memory
+                    let mut value_bytes = vec![0u8; value_len as usize];
+                    if memory
+                        .read(&caller, value_ptr as usize, &mut value_bytes)
+                        .is_err()
+                    {
+                        return;
+                    }
+
+                    let key = match String::from_utf8(key_bytes) {
+                        Ok(k) => k,
+                        Err(_) => return,
+                    };
+
+                    // Write to database
+                    let state_result = ctx.state.lock();
+                    if let Ok(state) = state_result {
+                        let _ = state.set(&ctx.contract_address, &key, &value_bytes);
+                    }
+                },
+            )
             .map_err(|e| anyhow::anyhow!("Failed to add storage_set: {}", e))?;
 
+        // Log function - captures actual logs
         linker
-            .func_wrap("env", "log", |_: i32, _: i32| {})
+            .func_wrap(
+                "env",
+                "log",
+                |mut caller: Caller<'_, HostContext>, msg_ptr: i32, msg_len: i32| {
+                    let ctx = caller.data().clone();
+
+                    // Get memory to read the log message
+                    let memory = match caller.get_export("memory") {
+                        Some(Extern::Memory(mem)) => mem,
+                        _ => return,
+                    };
+
+                    // Read message from WASM memory
+                    let mut msg_bytes = vec![0u8; msg_len as usize];
+                    if memory
+                        .read(&caller, msg_ptr as usize, &mut msg_bytes)
+                        .is_err()
+                    {
+                        return;
+                    }
+
+                    let message = match String::from_utf8(msg_bytes) {
+                        Ok(msg) => msg,
+                        Err(_) => return,
+                    };
+
+                    // Add to logs
+                    let logs_result = ctx.logs.lock();
+                    if let Ok(mut logs) = logs_result {
+                        logs.push(format!("[{}] {}", ctx.contract_address, message));
+                    }
+                },
+            )
             .map_err(|e| anyhow::anyhow!("Failed to add log: {}", e))?;
 
+        // Get caller function - returns actual caller address
         linker
-            .func_wrap("env", "get_caller", || -> i32 { 42 })
+            .func_wrap(
+                "env",
+                "get_caller",
+                |caller: Caller<'_, HostContext>| -> i32 {
+                    let ctx = caller.data();
+                    // Convert caller address to a simple hash for demonstration
+                    // In a real implementation, you might want to store addresses
+                    // in memory and return pointers
+                    ctx.caller
+                        .as_bytes()
+                        .iter()
+                        .fold(0i32, |acc, &b| acc.wrapping_add(b as i32))
+                },
+            )
             .map_err(|e| anyhow::anyhow!("Failed to add get_caller: {}", e))?;
 
+        // Get value function - returns actual transaction value
         linker
-            .func_wrap("env", "get_value", || -> i64 { 0 })
+            .func_wrap(
+                "env",
+                "get_value",
+                |caller: Caller<'_, HostContext>| -> i64 {
+                    let ctx = caller.data();
+                    ctx.value as i64
+                },
+            )
             .map_err(|e| anyhow::anyhow!("Failed to add get_value: {}", e))?;
 
         Ok(())
@@ -556,7 +713,7 @@ impl ContractEngine {
     /// Call a simple function without complex argument handling
     fn call_simple_function(
         &self,
-        store: &mut Store<()>,
+        store: &mut Store<HostContext>,
         instance: &Instance,
         function_name: &str,
     ) -> Result<Vec<u8>> {
