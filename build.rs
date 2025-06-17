@@ -68,32 +68,71 @@ fn setup_openfhe() -> Result<(), String> {
     let mut found_include = false;
     for path in &include_paths {
         if Path::new(path).exists() {
-            // Check for key OpenFHE headers in multiple possible locations
-            let header_patterns = vec![
-                format!("{path}/core/include/lattice/lat-hal.h"),
-                format!("{path}/pke/include/scheme/scheme-id.h"),
-                format!("{path}/binfhe/include/binfhe.h"),
+            // Check for key OpenFHE headers that are referenced in the error messages
+            let critical_headers = vec![
+                format!("{path}/openfhe/core/lattice/hal/lat-backend.h"),
+                format!("{path}/openfhe/binfhe/lwe-ciphertext-fwd.h"),
+                format!("{path}/openfhe/core/include/lattice/hal/lat-backend.h"),
+                format!("{path}/openfhe/binfhe/include/lwe-ciphertext-fwd.h"),
+                // Fallback patterns
+                format!("{path}/core/lattice/hal/lat-backend.h"),
+                format!("{path}/binfhe/lwe-ciphertext-fwd.h"),
+            ];
+
+            // Also check for common OpenFHE headers to verify installation
+            let common_headers = vec![
                 format!("{path}/openfhe/core/include/lattice/lat-hal.h"),
                 format!("{path}/openfhe/pke/include/scheme/scheme-id.h"),
                 format!("{path}/openfhe/binfhe/include/binfhe.h"),
-                format!("{path}/lattice/lat-hal.h"),
-                format!("{path}/scheme/scheme-id.h"),
-                format!("{path}/binfhe.h"),
+                format!("{path}/core/include/lattice/lat-hal.h"),
+                format!("{path}/pke/include/scheme/scheme-id.h"),
+                format!("{path}/binfhe/include/binfhe.h"),
             ];
 
-            let mut found_any_header = false;
-            for header in &header_patterns {
+            let mut found_critical = false;
+            let mut found_common = false;
+
+            // Check for critical headers
+            for header in &critical_headers {
                 if Path::new(header).exists() {
-                    found_any_header = true;
+                    found_critical = true;
+                    if verbose {
+                        println!("cargo::warning=Found critical header: {header}");
+                    }
                     break;
                 }
             }
 
-            if found_any_header {
-                println!("cargo::include={path}");
+            // Check for common headers as fallback
+            if !found_critical {
+                for header in &common_headers {
+                    if Path::new(header).exists() {
+                        found_common = true;
+                        if verbose {
+                            println!("cargo::warning=Found common header: {header}");
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if found_critical || found_common {
                 println!("cargo::rustc-env=OPENFHE_INCLUDE_PATH={path}");
+
+                // Also add openfhe subdirectory if it exists
+                let openfhe_subdir = format!("{path}/openfhe");
+                if Path::new(&openfhe_subdir).exists() {
+                    println!("cargo::rustc-env=OPENFHE_INCLUDE_SUBDIR={openfhe_subdir}");
+                    if verbose {
+                        println!(
+                            "cargo::warning=Also including OpenFHE subdirectory: {openfhe_subdir}"
+                        );
+                    }
+                }
+
                 if verbose {
-                    println!("cargo::warning=Found OpenFHE headers in: {path}");
+                    let header_type = if found_critical { "critical" } else { "common" };
+                    println!("cargo::warning=Found OpenFHE {header_type} headers in: {path}");
                 }
                 found_include = true;
                 break;
