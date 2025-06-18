@@ -96,6 +96,22 @@ async fn test_circuit_evaluation() {
         }
     };
 
+    // Create and obfuscate the circuit first
+    let circuit = integration.create_demo_circuit();
+    println!(
+        "Created demo circuit with {} inputs and {} outputs",
+        circuit.num_input(),
+        circuit.num_output()
+    );
+
+    println!("Obfuscating circuit...");
+    let obfuscation_result = integration.obfuscate_circuit(circuit).await;
+    if let Err(ref e) = obfuscation_result {
+        eprintln!("Circuit obfuscation failed with error: {e:?}");
+        panic!("Failed to obfuscate circuit: {e}");
+    }
+    println!("✓ Circuit obfuscation successful");
+
     let inputs = vec![true, false, true, true];
     println!("Testing circuit evaluation with inputs: {inputs:?}");
 
