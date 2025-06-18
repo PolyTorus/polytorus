@@ -51,12 +51,15 @@ impl ModernCli {
             .arg(
                 Arg::new("createwallet")
                     .long("createwallet")
-                    .help("Create a new wallet"),
+                    .help("Create a new wallet")
+                    .action(clap::ArgAction::SetTrue)
+                    .required(false),
             )
             .arg(
                 Arg::new("listaddresses")
                     .long("listaddresses")
-                    .help("List all addresses in wallets"),
+                    .help("List all addresses in wallets")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("getbalance")
@@ -67,17 +70,20 @@ impl ModernCli {
             .arg(
                 Arg::new("modular-init")
                     .long("modular-init")
-                    .help("Initialize modular architecture"),
+                    .help("Initialize modular architecture")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("modular-status")
                     .long("modular-status")
-                    .help("Show modular system status"),
+                    .help("Show modular system status")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("modular-config")
                     .long("modular-config")
-                    .help("Show modular configuration"),
+                    .help("Show modular configuration")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("smart-contract-deploy")
@@ -130,7 +136,8 @@ impl ModernCli {
             .arg(
                 Arg::new("erc20-list")
                     .long("erc20-list")
-                    .help("List all deployed ERC20 contracts"),
+                    .help("List all deployed ERC20 contracts")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("governance-propose")
@@ -147,12 +154,14 @@ impl ModernCli {
             .arg(
                 Arg::new("network-start")
                     .long("network-start")
-                    .help("Start P2P network node"),
+                    .help("Start P2P network node")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-status")
                     .long("network-status")
-                    .help("Show network status"),
+                    .help("Show network status")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-connect")
@@ -163,22 +172,26 @@ impl ModernCli {
             .arg(
                 Arg::new("network-peers")
                     .long("network-peers")
-                    .help("List connected peers"),
+                    .help("List connected peers")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-sync")
                     .long("network-sync")
-                    .help("Force blockchain synchronization"),
+                    .help("Force blockchain synchronization")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("modular-start")
                     .long("modular-start")
-                    .help("Start modular blockchain with P2P network"),
+                    .help("Start modular blockchain with P2P network")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-health")
                     .long("network-health")
-                    .help("Show network health information"),
+                    .help("Show network health information")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-blacklist")
@@ -189,39 +202,41 @@ impl ModernCli {
             .arg(
                 Arg::new("network-queue-stats")
                     .long("network-queue-stats")
-                    .help("Show message queue statistics"),
+                    .help("Show message queue statistics")
+                    .action(clap::ArgAction::SetTrue),
             )
             .get_matches(); // Extract common options
         let config_path = matches.get_one::<String>("config");
         let data_dir = matches.get_one::<String>("data-dir");
         let http_port = matches.get_one::<String>("http-port");
 
-        if matches.contains_id("createwallet") {
+
+        if matches.get_flag("createwallet") {
             self.cmd_create_wallet().await?;
-        } else if matches.contains_id("listaddresses") {
+        } else if matches.get_flag("listaddresses") {
             self.cmd_list_addresses().await?;
         } else if let Some(address) = matches.get_one::<String>("getbalance") {
             self.cmd_get_balance(address).await?;
-        } else if matches.contains_id("modular-init") {
+        } else if matches.get_flag("modular-init") {
             self.cmd_modular_init_with_options(
                 config_path.as_ref().map(|s| s.as_str()),
                 data_dir.as_ref().map(|s| s.as_str()),
             )
             .await?;
-        } else if matches.contains_id("modular-start") {
+        } else if matches.get_flag("modular-start") {
             self.cmd_modular_start_with_options(
                 config_path.as_ref().map(|s| s.as_str()),
                 data_dir.as_ref().map(|s| s.as_str()),
                 http_port.as_ref().map(|s| s.as_str()),
             )
             .await?;
-        } else if matches.contains_id("modular-status") {
+        } else if matches.get_flag("modular-status") {
             self.cmd_modular_status_with_options(
                 config_path.as_ref().map(|s| s.as_str()),
                 data_dir.as_ref().map(|s| s.as_str()),
             )
             .await?;
-        } else if matches.contains_id("modular-config") {
+        } else if matches.get_flag("modular-config") {
             self.cmd_modular_config().await?;
         } else if let Some(contract_path) = matches.get_one::<String>("smart-contract-deploy") {
             self.cmd_smart_contract_deploy(contract_path).await?;
@@ -239,27 +254,27 @@ impl ModernCli {
             self.cmd_erc20_allowance(params).await?;
         } else if let Some(contract_address) = matches.get_one::<String>("erc20-info") {
             self.cmd_erc20_info(contract_address).await?;
-        } else if matches.contains_id("erc20-list") {
+        } else if matches.get_flag("erc20-list") {
             self.cmd_erc20_list().await?;
         } else if let Some(proposal_data) = matches.get_one::<String>("governance-propose") {
             self.cmd_governance_propose(proposal_data).await?;
         } else if let Some(proposal_id) = matches.get_one::<String>("governance-vote") {
             self.cmd_governance_vote(proposal_id).await?;
-        } else if matches.contains_id("network-start") {
+        } else if matches.get_flag("network-start") {
             self.cmd_network_start().await?;
-        } else if matches.contains_id("network-status") {
+        } else if matches.get_flag("network-status") {
             self.cmd_network_status().await?;
         } else if let Some(address) = matches.get_one::<String>("network-connect") {
             self.cmd_network_connect(address).await?;
-        } else if matches.contains_id("network-peers") {
+        } else if matches.get_flag("network-peers") {
             self.cmd_network_peers().await?;
-        } else if matches.contains_id("network-sync") {
+        } else if matches.get_flag("network-sync") {
             self.cmd_network_sync().await?;
-        } else if matches.contains_id("network-health") {
+        } else if matches.get_flag("network-health") {
             self.cmd_network_health().await?;
         } else if let Some(peer_id) = matches.get_one::<String>("network-blacklist") {
             self.cmd_network_blacklist(peer_id).await?;
-        } else if matches.contains_id("network-queue-stats") {
+        } else if matches.get_flag("network-queue-stats") {
             self.cmd_network_queue_stats().await?;
         } else {
             println!("Use --help for usage information");
