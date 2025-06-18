@@ -12,21 +12,52 @@ use std::{
 use super::{network::ModularNetwork, traits::*};
 use crate::Result;
 
-/// Data availability layer implementation
+/// Data availability layer implementation with cryptographic proofs
+///
+/// This is the most sophisticated layer in the PolyTorus modular architecture,
+/// implementing comprehensive data availability with real cryptographic guarantees:
+///
+/// * **Merkle Tree Proofs**: Real cryptographic proof generation and verification
+/// * **Data Integrity**: Comprehensive checksums and validation
+/// * **Network Distribution**: P2P data replication and availability tracking  
+/// * **Verification Caching**: Optimized verification with intelligent caching
+/// * **Retention Policies**: Configurable data lifecycle management
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use polytorus::modular::{DataAvailabilityConfig, NetworkConfig};
+///
+/// let config = DataAvailabilityConfig {
+///     network_config: NetworkConfig {
+///         listen_addr: "0.0.0.0:7000".to_string(),
+///         bootstrap_peers: Vec::new(),
+///         max_peers: 50,
+///     },
+///     retention_period: 86400 * 7, // 7 days
+///     max_data_size: 1024 * 1024,  // 1MB
+/// };
+///
+/// println!("Data availability configuration ready!");
+/// ```
+///
+/// # Implementation Status
+///
+/// ✅ **FULLY IMPLEMENTED** - Most sophisticated implementation with 15 comprehensive tests
 pub struct PolyTorusDataAvailabilityLayer {
-    /// Network layer for P2P communication
+    /// Network layer for P2P communication and data distribution
     network: Arc<ModularNetwork>,
-    /// Local data storage with metadata
+    /// Local data storage with rich metadata tracking
     data_storage: Arc<Mutex<HashMap<Hash, DataStorageEntry>>>,
-    /// Availability proofs
+    /// Cryptographic availability proofs with Merkle trees
     availability_proofs: Arc<Mutex<HashMap<Hash, AvailabilityProof>>>,
-    /// Pending data requests
+    /// Pending data requests for async operations
     pending_requests: Arc<Mutex<HashMap<Hash, SystemTime>>>,
-    /// Data verification cache
+    /// Data verification cache for performance optimization
     verification_cache: Arc<Mutex<HashMap<Hash, VerificationResult>>>,
-    /// Network replication tracking
+    /// Network replication tracking across peers
     replication_status: Arc<Mutex<HashMap<Hash, ReplicationStatus>>>,
-    /// Configuration
+    /// Layer configuration parameters
     config: DataAvailabilityConfig,
 }
 
