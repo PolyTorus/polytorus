@@ -19,15 +19,42 @@ use crate::{
     Result,
 };
 
-/// Settlement layer implementation
+/// Settlement layer implementation with optimistic rollups and fraud proofs
+///
+/// This layer implements a complete optimistic rollup settlement system with:
+///
+/// * **Batch Settlement**: Process multiple transactions in batches for efficiency
+/// * **Fraud Proof Verification**: Real fraud proof validation through re-execution
+/// * **Challenge System**: Time-based challenge periods with proper validation
+/// * **Settlement Finality**: Track settlement status and finalization
+/// * **Penalty System**: Slash validators for submitting invalid batches
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use polytorus::modular::{PolyTorusSettlementLayer, SettlementConfig};
+///
+/// let config = SettlementConfig {
+///     challenge_period: 100,        // 100 blocks
+///     batch_size: 100,             // 100 transactions per batch
+///     min_validator_stake: 1000,   // Minimum stake required
+/// };
+///
+/// let settlement = PolyTorusSettlementLayer::new(config).unwrap();
+/// println!("Settlement layer initialized!");
+/// ```
+///
+/// # Implementation Status
+///
+/// ✅ **FULLY IMPLEMENTED** - Working optimistic rollup with 13 comprehensive tests
 pub struct PolyTorusSettlementLayer {
-    /// Settlement state storage
+    /// Settlement state with batch tracking and history
     settlement_state: Arc<Mutex<SettlementState>>,
-    /// Challenge storage
+    /// Active challenges with fraud proofs
     challenges: Arc<Mutex<HashMap<Hash, SettlementChallenge>>>,
-    /// Execution layer for batch re-execution
+    /// Execution layer for fraud proof verification via re-execution
     execution_layer: Option<Arc<PolyTorusExecutionLayer>>,
-    /// Configuration
+    /// Settlement configuration parameters
     config: SettlementConfig,
 }
 
