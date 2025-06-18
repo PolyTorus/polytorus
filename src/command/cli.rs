@@ -406,6 +406,10 @@ impl ModernCli {
         Ok(())
     }
 
+    pub async fn cmd_modular_status(&self) -> Result<()> {
+        self.cmd_modular_status_with_options(None, None).await
+    }
+
     async fn cmd_modular_status_with_options(
         &self,
         _config_path: Option<&str>,
@@ -445,7 +449,7 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_modular_config(&self) -> Result<()> {
+    pub async fn cmd_modular_config(&self) -> Result<()> {
         let config = default_modular_config();
         let data_context = DataContext::default();
         let orchestrator =
@@ -465,7 +469,7 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_smart_contract_deploy(&self, contract_path: &str) -> Result<()> {
+    pub async fn cmd_smart_contract_deploy(&self, contract_path: &str) -> Result<()> {
         println!("Deploying smart contract from: {}", contract_path);
 
         // Check if contract file exists
@@ -525,7 +529,7 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_smart_contract_call(&self, contract_address: &str) -> Result<()> {
+    pub async fn cmd_smart_contract_call(&self, contract_address: &str) -> Result<()> {
         println!("Calling smart contract: {}", contract_address);
 
         // Initialize contract engine
