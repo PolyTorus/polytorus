@@ -584,7 +584,7 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_governance_propose(&self, proposal_data: &str) -> Result<()> {
+    pub async fn cmd_governance_propose(&self, proposal_data: &str) -> Result<()> {
         println!("Creating governance proposal: {}", proposal_data);
 
         let config = default_modular_config();
@@ -658,7 +658,7 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_governance_vote(&self, proposal_id: &str) -> Result<()> {
+    pub async fn cmd_governance_vote(&self, proposal_id: &str) -> Result<()> {
         println!("Voting on governance proposal: {}", proposal_id);
 
         let config = default_modular_config();
