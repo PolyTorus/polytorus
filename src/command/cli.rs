@@ -14,7 +14,9 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ModernCli {}
+pub struct ModernCli {
+    test_data_context: Option<DataContext>,
+}
 
 impl Default for ModernCli {
     fn default() -> Self {
@@ -24,7 +26,22 @@ impl Default for ModernCli {
 
 impl ModernCli {
     pub fn new() -> ModernCli {
-        ModernCli {}
+        ModernCli {
+            test_data_context: None,
+        }
+    }
+
+    /// Create a new ModernCli with a specific data context for testing
+    #[cfg(test)]
+    pub fn new_with_test_context(data_context: DataContext) -> ModernCli {
+        ModernCli {
+            test_data_context: Some(data_context),
+        }
+    }
+
+    /// Get the data context to use (test context if available, otherwise default)
+    fn get_data_context(&self) -> DataContext {
+        self.test_data_context.clone().unwrap_or_default()
     }
     pub async fn run(&self) -> Result<()> {
         let matches = Command::new("Polytorus - Modern Blockchain")
@@ -1075,7 +1092,7 @@ impl ModernCli {
         println!("Owner: {}", owner);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -1123,13 +1140,13 @@ impl ModernCli {
         println!("Amount: {}", amount);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
 
         // Use first available wallet address as caller
-        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let wallets = Wallets::new_with_context(data_context.clone())?;
         let addresses = wallets.get_all_addresses();
         let caller = if addresses.is_empty() {
             "alice".to_string()
@@ -1181,7 +1198,7 @@ impl ModernCli {
         println!("Address: {}", address);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -1230,13 +1247,13 @@ impl ModernCli {
         println!("Amount: {}", amount);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
 
         // Use first available wallet address as caller
-        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let wallets = Wallets::new_with_context(data_context.clone())?;
         let addresses = wallets.get_all_addresses();
         let caller = if addresses.is_empty() {
             "alice".to_string()
@@ -1290,7 +1307,7 @@ impl ModernCli {
         println!("Spender: {}", spender);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -1327,7 +1344,7 @@ impl ModernCli {
         println!("Contract: {}", contract_address);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -1357,7 +1374,7 @@ impl ModernCli {
         println!("Listing all deployed ERC20 contracts...");
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;

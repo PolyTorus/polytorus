@@ -592,7 +592,18 @@ max_peers = 50
 
     #[tokio::test]
     async fn test_erc20_cli_commands() {
-        let cli = ModernCli::new();
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        // Create a unique test context to avoid race conditions
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let temp_dir = format!("./data/test_erc20_cli_{}", timestamp);
+        let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
+        data_context.ensure_directories().unwrap();
+
+        let cli = ModernCli::new_with_test_context(data_context);
 
         // Test ERC20 deployment
         let result = cli
@@ -607,6 +618,58 @@ max_peers = 50
         // Test ERC20 contract listing
         let result = cli.cmd_erc20_list().await;
         assert!(result.is_ok(), "ERC20 listing should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_erc20_cli_parallel_execution() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        use tokio::spawn;
+
+        // Test that ERC20 CLI commands can run in parallel without race conditions
+        let mut handles = Vec::new();
+
+        for i in 0..5 {
+            let handle = spawn(async move {
+                // Each task gets its own unique database path
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis();
+                let temp_dir = format!("./data/test_erc20_parallel_{}_{}", timestamp, i);
+                let data_context = DataContext::new(std::path::PathBuf::from(&temp_dir));
+                data_context.ensure_directories().unwrap();
+
+                let cli = ModernCli::new_with_test_context(data_context);
+
+                // Deploy a contract with unique symbol for this task
+                let symbol = format!("TOK{}", i);
+                let deploy_params = format!("TestToken{},{},18,1000000,alice", i, symbol);
+                let result = cli.cmd_erc20_deploy(&deploy_params).await;
+                assert!(
+                    result.is_ok(),
+                    "ERC20 deployment should succeed in parallel"
+                );
+
+                // Test balance check
+                let balance_params = format!("erc20_{},alice", symbol.to_lowercase());
+                let result = cli.cmd_erc20_balance(&balance_params).await;
+                assert!(
+                    result.is_ok(),
+                    "ERC20 balance check should succeed in parallel"
+                );
+
+                // Test contract listing
+                let result = cli.cmd_erc20_list().await;
+                assert!(result.is_ok(), "ERC20 listing should succeed in parallel");
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all tasks to complete
+        for handle in handles {
+            handle.await.unwrap();
+        }
     }
 
     #[test]
