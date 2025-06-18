@@ -18,7 +18,11 @@ async fn test_basic_integration() {
 #[tokio::test]
 async fn test_circuit_execution() {
     let config = DiamondIOConfig::testing();
-    let integration = DiamondIOIntegration::new(config).unwrap();
+    let mut integration = DiamondIOIntegration::new(config).unwrap();
+
+    // Set a unique obfuscation directory for this test
+    integration.set_obfuscation_dir("test_circuit_execution_obfuscation".to_string());
+
     let circuit = integration.create_demo_circuit();
 
     let result = integration.obfuscate_circuit(circuit).await;
@@ -96,6 +100,22 @@ async fn test_circuit_evaluation() {
         }
     };
 
+    // Create and obfuscate the circuit first
+    let circuit = integration.create_demo_circuit();
+    println!(
+        "Created demo circuit with {} inputs and {} outputs",
+        circuit.num_input(),
+        circuit.num_output()
+    );
+
+    println!("Obfuscating circuit...");
+    let obfuscation_result = integration.obfuscate_circuit(circuit).await;
+    if let Err(ref e) = obfuscation_result {
+        eprintln!("Circuit obfuscation failed with error: {e:?}");
+        panic!("Failed to obfuscate circuit: {e}");
+    }
+    println!("✓ Circuit obfuscation successful");
+
     let inputs = vec![true, false, true, true];
     println!("Testing circuit evaluation with inputs: {inputs:?}");
 
@@ -155,27 +175,13 @@ async fn test_circuit_evaluation() {
 }
 
 #[tokio::test]
-async fn test_contract_obfuscation() {
-    let config = DiamondIOConfig::testing();
-    let mut integration = DiamondIOIntegration::new(config).unwrap();
-    let circuit = integration.create_demo_circuit();
-
-    // Test obfuscation directory setting (no-op)
-    integration.set_obfuscation_dir("test_contract_obfuscation".to_string());
-
-    // Test circuit obfuscation
-    let obfuscation_result = integration.obfuscate_circuit(circuit).await;
-    assert!(obfuscation_result.is_ok());
-
-    let inputs = vec![true, false, true, false];
-    let outputs = integration.execute_circuit_detailed(&inputs).await;
-    assert!(outputs.is_ok());
-}
-
-#[tokio::test]
 async fn test_simple_circuit_operations() {
     let config = DiamondIOConfig::testing();
-    let integration = DiamondIOIntegration::new(config).unwrap();
+    let mut integration = DiamondIOIntegration::new(config).unwrap();
+
+    // Set a unique obfuscation directory for this test
+    integration.set_obfuscation_dir("test_simple_circuit_operations_obfuscation".to_string());
+
     let circuit = integration.create_demo_circuit();
 
     let obfuscation_result = integration.obfuscate_circuit(circuit).await;

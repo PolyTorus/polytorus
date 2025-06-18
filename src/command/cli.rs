@@ -13,7 +13,10 @@ use crate::{
     Result,
 };
 
-pub struct ModernCli {}
+#[derive(Debug)]
+pub struct ModernCli {
+    test_data_context: Option<DataContext>,
+}
 
 impl Default for ModernCli {
     fn default() -> Self {
@@ -23,7 +26,22 @@ impl Default for ModernCli {
 
 impl ModernCli {
     pub fn new() -> ModernCli {
-        ModernCli {}
+        ModernCli {
+            test_data_context: None,
+        }
+    }
+
+    /// Create a new ModernCli with a specific data context for testing
+    #[cfg(test)]
+    pub fn new_with_test_context(data_context: DataContext) -> ModernCli {
+        ModernCli {
+            test_data_context: Some(data_context),
+        }
+    }
+
+    /// Get the data context to use (test context if available, otherwise default)
+    fn get_data_context(&self) -> DataContext {
+        self.test_data_context.clone().unwrap_or_default()
     }
     pub async fn run(&self) -> Result<()> {
         let matches = Command::new("Polytorus - Modern Blockchain")
@@ -51,12 +69,15 @@ impl ModernCli {
             .arg(
                 Arg::new("createwallet")
                     .long("createwallet")
-                    .help("Create a new wallet"),
+                    .help("Create a new wallet")
+                    .action(clap::ArgAction::SetTrue)
+                    .required(false),
             )
             .arg(
                 Arg::new("listaddresses")
                     .long("listaddresses")
-                    .help("List all addresses in wallets"),
+                    .help("List all addresses in wallets")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("getbalance")
@@ -67,17 +88,20 @@ impl ModernCli {
             .arg(
                 Arg::new("modular-init")
                     .long("modular-init")
-                    .help("Initialize modular architecture"),
+                    .help("Initialize modular architecture")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("modular-status")
                     .long("modular-status")
-                    .help("Show modular system status"),
+                    .help("Show modular system status")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("modular-config")
                     .long("modular-config")
-                    .help("Show modular configuration"),
+                    .help("Show modular configuration")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("smart-contract-deploy")
@@ -130,7 +154,8 @@ impl ModernCli {
             .arg(
                 Arg::new("erc20-list")
                     .long("erc20-list")
-                    .help("List all deployed ERC20 contracts"),
+                    .help("List all deployed ERC20 contracts")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("governance-propose")
@@ -147,12 +172,14 @@ impl ModernCli {
             .arg(
                 Arg::new("network-start")
                     .long("network-start")
-                    .help("Start P2P network node"),
+                    .help("Start P2P network node")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-status")
                     .long("network-status")
-                    .help("Show network status"),
+                    .help("Show network status")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-connect")
@@ -163,22 +190,26 @@ impl ModernCli {
             .arg(
                 Arg::new("network-peers")
                     .long("network-peers")
-                    .help("List connected peers"),
+                    .help("List connected peers")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-sync")
                     .long("network-sync")
-                    .help("Force blockchain synchronization"),
+                    .help("Force blockchain synchronization")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("modular-start")
                     .long("modular-start")
-                    .help("Start modular blockchain with P2P network"),
+                    .help("Start modular blockchain with P2P network")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-health")
                     .long("network-health")
-                    .help("Show network health information"),
+                    .help("Show network health information")
+                    .action(clap::ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("network-blacklist")
@@ -189,39 +220,40 @@ impl ModernCli {
             .arg(
                 Arg::new("network-queue-stats")
                     .long("network-queue-stats")
-                    .help("Show message queue statistics"),
+                    .help("Show message queue statistics")
+                    .action(clap::ArgAction::SetTrue),
             )
             .get_matches(); // Extract common options
         let config_path = matches.get_one::<String>("config");
         let data_dir = matches.get_one::<String>("data-dir");
         let http_port = matches.get_one::<String>("http-port");
 
-        if matches.contains_id("createwallet") {
+        if matches.get_flag("createwallet") {
             self.cmd_create_wallet().await?;
-        } else if matches.contains_id("listaddresses") {
+        } else if matches.get_flag("listaddresses") {
             self.cmd_list_addresses().await?;
         } else if let Some(address) = matches.get_one::<String>("getbalance") {
             self.cmd_get_balance(address).await?;
-        } else if matches.contains_id("modular-init") {
+        } else if matches.get_flag("modular-init") {
             self.cmd_modular_init_with_options(
                 config_path.as_ref().map(|s| s.as_str()),
                 data_dir.as_ref().map(|s| s.as_str()),
             )
             .await?;
-        } else if matches.contains_id("modular-start") {
+        } else if matches.get_flag("modular-start") {
             self.cmd_modular_start_with_options(
                 config_path.as_ref().map(|s| s.as_str()),
                 data_dir.as_ref().map(|s| s.as_str()),
                 http_port.as_ref().map(|s| s.as_str()),
             )
             .await?;
-        } else if matches.contains_id("modular-status") {
+        } else if matches.get_flag("modular-status") {
             self.cmd_modular_status_with_options(
                 config_path.as_ref().map(|s| s.as_str()),
                 data_dir.as_ref().map(|s| s.as_str()),
             )
             .await?;
-        } else if matches.contains_id("modular-config") {
+        } else if matches.get_flag("modular-config") {
             self.cmd_modular_config().await?;
         } else if let Some(contract_path) = matches.get_one::<String>("smart-contract-deploy") {
             self.cmd_smart_contract_deploy(contract_path).await?;
@@ -239,27 +271,27 @@ impl ModernCli {
             self.cmd_erc20_allowance(params).await?;
         } else if let Some(contract_address) = matches.get_one::<String>("erc20-info") {
             self.cmd_erc20_info(contract_address).await?;
-        } else if matches.contains_id("erc20-list") {
+        } else if matches.get_flag("erc20-list") {
             self.cmd_erc20_list().await?;
         } else if let Some(proposal_data) = matches.get_one::<String>("governance-propose") {
             self.cmd_governance_propose(proposal_data).await?;
         } else if let Some(proposal_id) = matches.get_one::<String>("governance-vote") {
             self.cmd_governance_vote(proposal_id).await?;
-        } else if matches.contains_id("network-start") {
+        } else if matches.get_flag("network-start") {
             self.cmd_network_start().await?;
-        } else if matches.contains_id("network-status") {
+        } else if matches.get_flag("network-status") {
             self.cmd_network_status().await?;
         } else if let Some(address) = matches.get_one::<String>("network-connect") {
             self.cmd_network_connect(address).await?;
-        } else if matches.contains_id("network-peers") {
+        } else if matches.get_flag("network-peers") {
             self.cmd_network_peers().await?;
-        } else if matches.contains_id("network-sync") {
+        } else if matches.get_flag("network-sync") {
             self.cmd_network_sync().await?;
-        } else if matches.contains_id("network-health") {
+        } else if matches.get_flag("network-health") {
             self.cmd_network_health().await?;
         } else if let Some(peer_id) = matches.get_one::<String>("network-blacklist") {
             self.cmd_network_blacklist(peer_id).await?;
-        } else if matches.contains_id("network-queue-stats") {
+        } else if matches.get_flag("network-queue-stats") {
             self.cmd_network_queue_stats().await?;
         } else {
             println!("Use --help for usage information");
@@ -302,8 +334,45 @@ impl ModernCli {
 
     pub async fn cmd_get_balance(&self, address: &str) -> Result<()> {
         println!("Getting balance for address: {}", address);
-        println!("Balance functionality not yet implemented in unified orchestrator");
-        println!("Address: {}", address);
+
+        let config = default_modular_config();
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+
+        let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+            config,
+            data_context.clone(),
+        )
+        .await?;
+
+        // Get blockchain state to determine if we have a functioning system
+        let state = orchestrator.get_state().await;
+        println!("🔗 Blockchain status:");
+        println!("   Current block height: {}", state.current_block_height);
+        println!("   Pending transactions: {}", state.pending_transactions);
+
+        // For now, simulate balance retrieval since the orchestrator doesn't have
+        // UTXO/balance tracking built-in yet. In a full implementation, this would
+        // query the execution layer for account balances.
+        println!("💰 Balance functionality:");
+        println!("   Address: {}", address);
+
+        // Use UTXO processor for balance calculation
+        use crate::modular::eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig};
+        let utxo_processor = EUtxoProcessor::new(EUtxoProcessorConfig::default());
+
+        match utxo_processor.get_balance(address) {
+            Ok(balance) => {
+                println!("   Balance: {} satoshis", balance);
+                let btc_balance = balance as f64 / 100_000_000.0;
+                println!("   Equivalent: {:.8} BTC", btc_balance);
+            }
+            Err(e) => {
+                println!("   ⚠️  Could not calculate balance: {}", e);
+                println!("   Note: This address may have no UTXOs or transactions");
+                println!("   Balance: 0 satoshis");
+            }
+        }
 
         Ok(())
     }
@@ -335,6 +404,10 @@ impl ModernCli {
         }
 
         Ok(())
+    }
+
+    pub async fn cmd_modular_status(&self) -> Result<()> {
+        self.cmd_modular_status_with_options(None, None).await
     }
 
     async fn cmd_modular_status_with_options(
@@ -376,7 +449,7 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_modular_config(&self) -> Result<()> {
+    pub async fn cmd_modular_config(&self) -> Result<()> {
         let config = default_modular_config();
         let data_context = DataContext::default();
         let orchestrator =
@@ -396,30 +469,292 @@ impl ModernCli {
         Ok(())
     }
 
-    async fn cmd_smart_contract_deploy(&self, contract_path: &str) -> Result<()> {
+    pub async fn cmd_smart_contract_deploy(&self, contract_path: &str) -> Result<()> {
         println!("Deploying smart contract from: {}", contract_path);
-        println!("Smart contract functionality not yet implemented in unified orchestrator");
+
+        // Check if contract file exists
+        if !std::path::Path::new(contract_path).exists() {
+            println!("❌ Contract file not found: {}", contract_path);
+            return Ok(());
+        }
+
+        // Read contract bytecode
+        let contract_bytecode = match std::fs::read(contract_path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                println!("❌ Failed to read contract file: {}", e);
+                return Ok(());
+            }
+        };
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+
+        // Use smart contract engine for deployment
+        let state = crate::smart_contract::ContractState::new(&data_context.contracts_db_path)?;
+        let engine = crate::smart_contract::ContractEngine::new(state)?;
+
+        // Generate contract address
+        let contract_address = format!(
+            "contract_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+
+        println!("📄 Contract details:");
+        println!("   Size: {} bytes", contract_bytecode.len());
+        println!("   Target address: {}", contract_address);
+
+        // Create a SmartContract instance for deployment
+        use crate::smart_contract::contract::SmartContract;
+        let contract = SmartContract::new(
+            contract_bytecode,
+            contract_address.clone(),
+            vec![], // constructor args
+            None,   // ABI
+        )?;
+
+        // Deploy the contract
+        match engine.deploy_contract(&contract) {
+            Ok(_) => {
+                println!("✅ Smart contract deployed successfully!");
+                println!("📍 Contract address: {}", contract_address);
+                println!("🔗 Use this address to interact with the contract");
+            }
+            Err(e) => {
+                println!("❌ Failed to deploy smart contract: {}", e);
+            }
+        }
 
         Ok(())
     }
 
-    async fn cmd_smart_contract_call(&self, contract_address: &str) -> Result<()> {
+    pub async fn cmd_smart_contract_call(&self, contract_address: &str) -> Result<()> {
         println!("Calling smart contract: {}", contract_address);
-        println!("Smart contract functionality not yet implemented in unified orchestrator");
+
+        // Initialize contract engine
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+
+        let state = crate::smart_contract::ContractState::new(&data_context.contracts_db_path)?;
+        let engine = crate::smart_contract::ContractEngine::new(state)?;
+
+        // For now, call a default function. In a full implementation,
+        // this would parse function name and arguments from the CLI
+        let function_name = "execute";
+        let args = vec![];
+
+        // Get caller address from wallets
+        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let addresses = wallets.get_all_addresses();
+        let caller = if addresses.is_empty() {
+            println!("⚠️  No wallets found. Creating default caller address...");
+            "default_caller".to_string()
+        } else {
+            addresses[0].clone()
+        };
+
+        println!("📞 Contract call details:");
+        println!("   Contract: {}", contract_address);
+        println!("   Function: {}", function_name);
+        println!("   Caller: {}", caller);
+
+        // Create contract execution
+        use crate::smart_contract::types::ContractExecution;
+        let execution = ContractExecution {
+            contract_address: contract_address.to_string(),
+            function_name: function_name.to_string(),
+            arguments: args,
+            caller,
+            value: 0,
+            gas_limit: 1000000,
+        };
+
+        // Execute the contract
+        match engine.execute_contract(execution) {
+            Ok(result) => {
+                if result.success {
+                    println!("✅ Contract call successful!");
+                    println!(
+                        "📄 Return value: {}",
+                        String::from_utf8_lossy(&result.return_value)
+                    );
+
+                    if !result.logs.is_empty() {
+                        println!("📝 Logs:");
+                        for log in result.logs {
+                            println!("   {}", log);
+                        }
+                    }
+
+                    println!("⛽ Gas used: {}", result.gas_used);
+                } else {
+                    println!("❌ Contract call failed");
+                    println!(
+                        "   Error: {}",
+                        String::from_utf8_lossy(&result.return_value)
+                    );
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to call smart contract: {}", e);
+                println!("   Make sure the contract is deployed and the address is correct");
+            }
+        }
 
         Ok(())
     }
 
-    async fn cmd_governance_propose(&self, proposal_data: &str) -> Result<()> {
+    pub async fn cmd_governance_propose(&self, proposal_data: &str) -> Result<()> {
         println!("Creating governance proposal: {}", proposal_data);
-        println!("Governance functionality not yet implemented in unified orchestrator");
+
+        let config = default_modular_config();
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+
+        let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+            config,
+            data_context.clone(),
+        )
+        .await?;
+
+        // Get proposer address from wallets
+        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let addresses = wallets.get_all_addresses();
+        let proposer = if addresses.is_empty() {
+            println!("❌ No wallets found. Create a wallet first with --createwallet");
+            return Ok(());
+        } else {
+            addresses[0].clone()
+        };
+
+        // Create governance proposal
+        let proposal_id = format!(
+            "proposal_{}",
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        );
+
+        println!("🗳️  Governance proposal details:");
+        println!("   Proposal ID: {}", proposal_id);
+        println!("   Proposer: {}", proposer);
+        println!("   Description: {}", proposal_data);
+
+        // Store the proposal in a governance file for tracking
+        // In a full implementation, this would be stored in the blockchain state
+        let governance_dir = data_context.data_dir.join("governance");
+        std::fs::create_dir_all(&governance_dir)?;
+
+        let proposal_file = governance_dir.join(format!("{}.json", proposal_id));
+        let proposal_json = serde_json::json!({
+            "id": proposal_id,
+            "proposer": proposer,
+            "description": proposal_data,
+            "created_at": chrono::Utc::now().timestamp(),
+            "status": "active",
+            "votes": {}
+        });
+
+        match std::fs::write(&proposal_file, proposal_json.to_string()) {
+            Ok(_) => {
+                println!("✅ Governance proposal created successfully!");
+                println!("📋 Proposal ID: {}", proposal_id);
+                println!("⏰ Voting period has started");
+                println!(
+                    "💡 Use --governance-vote {} to vote on this proposal",
+                    proposal_id
+                );
+
+                // Also broadcast the proposal through the orchestrator
+                let message_type = "governance_proposal".to_string();
+                let payload = proposal_id.as_bytes().to_vec();
+                if let Err(e) = orchestrator.broadcast_message(message_type, payload).await {
+                    println!("⚠️  Warning: Failed to broadcast proposal: {}", e);
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to create governance proposal: {}", e);
+            }
+        }
 
         Ok(())
     }
 
-    async fn cmd_governance_vote(&self, proposal_id: &str) -> Result<()> {
+    pub async fn cmd_governance_vote(&self, proposal_id: &str) -> Result<()> {
         println!("Voting on governance proposal: {}", proposal_id);
-        println!("Governance functionality not yet implemented in unified orchestrator");
+
+        let config = default_modular_config();
+        let data_context = DataContext::default();
+        data_context.ensure_directories()?;
+
+        let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
+            config,
+            data_context.clone(),
+        )
+        .await?;
+
+        // Get voter address from wallets
+        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let addresses = wallets.get_all_addresses();
+        let voter = if addresses.is_empty() {
+            println!("❌ No wallets found. Create a wallet first with --createwallet");
+            return Ok(());
+        } else {
+            addresses[0].clone()
+        };
+
+        // For simplicity, default to "yes" vote. In a full implementation,
+        // this would prompt the user or take vote as a parameter
+        let vote = "yes";
+
+        println!("🗳️  Voting details:");
+        println!("   Proposal ID: {}", proposal_id);
+        println!("   Voter: {}", voter);
+        println!("   Vote: {}", vote);
+
+        // Find and update the proposal file
+        let governance_dir = data_context.data_dir.join("governance");
+        let proposal_file = governance_dir.join(format!("{}.json", proposal_id));
+
+        if !proposal_file.exists() {
+            println!("❌ Proposal not found: {}", proposal_id);
+            println!("   Use --governance-propose to create a proposal first");
+            return Ok(());
+        }
+
+        // Read existing proposal
+        let proposal_content = std::fs::read_to_string(&proposal_file)?;
+        let mut proposal_json: serde_json::Value = serde_json::from_str(&proposal_content)?;
+
+        // Add vote
+        if let Some(votes) = proposal_json["votes"].as_object_mut() {
+            votes.insert(voter.clone(), serde_json::Value::String(vote.to_string()));
+        }
+
+        // Update vote count for tracking
+        proposal_json["last_vote_at"] =
+            serde_json::Value::Number(serde_json::Number::from(chrono::Utc::now().timestamp()));
+
+        match std::fs::write(&proposal_file, proposal_json.to_string()) {
+            Ok(_) => {
+                println!("✅ Vote submitted successfully!");
+                println!("📊 Your vote has been recorded");
+
+                // Broadcast the vote through the orchestrator
+                let message_type = "governance_vote".to_string();
+                let payload = format!("{}:{}", proposal_id, vote).as_bytes().to_vec();
+                if let Err(e) = orchestrator.broadcast_message(message_type, payload).await {
+                    println!("⚠️  Warning: Failed to broadcast vote: {}", e);
+                }
+
+                // Show current vote tally
+                if let Some(votes) = proposal_json["votes"].as_object() {
+                    println!("📊 Current votes: {} total", votes.len());
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to submit vote: {}", e);
+            }
+        }
 
         Ok(())
     }
@@ -451,17 +786,74 @@ impl ModernCli {
 
     async fn cmd_network_status(&self) -> Result<()> {
         println!("=== Network Status ===");
-        println!("Implementation: Enhanced P2P with blockchain integration");
-        println!("Status: Active (simulated - requires running network node)");
 
-        // In a real implementation, this would connect to the running network node
-        // and get actual status information
-        println!("Connected peers: 0 (no active node)");
-        println!("Blockchain height: 0");
-        println!("Sync status: Not syncing");
-        println!("Mempool transactions: 0");
+        // Try to get status from a running orchestrator
+        let config = default_modular_config();
+        let data_context = DataContext::default();
 
-        println!("\nTo start the network, use: --network-start");
+        match UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context).await
+        {
+            Ok(orchestrator) => {
+                let state = orchestrator.get_state().await;
+                let metrics = orchestrator.get_metrics().await;
+
+                println!("🔗 Blockchain Status:");
+                println!("   Running: {}", state.is_running);
+                println!("   Block height: {}", state.current_block_height);
+                println!("   Pending transactions: {}", state.pending_transactions);
+                println!("   Active layers: {}", state.active_layers.len());
+
+                println!("📊 Performance Metrics:");
+                println!(
+                    "   Total blocks processed: {}",
+                    metrics.total_blocks_processed
+                );
+                println!(
+                    "   Total transactions: {}",
+                    metrics.total_transactions_processed
+                );
+                println!(
+                    "   Average block time: {:.2}ms",
+                    metrics.average_block_time_ms
+                );
+                println!("   Error rate: {:.2}%", metrics.error_rate * 100.0);
+
+                // Try to get network-specific status
+                match orchestrator.get_network_status().await {
+                    Ok(network_status) => {
+                        println!("🌐 Network Status:");
+                        if let Some(status) = network_status {
+                            println!("   {}", status);
+                        } else {
+                            println!("   Network layer not initialized");
+                        }
+                    }
+                    Err(_) => {
+                        println!("🌐 Network Status: Not available (network layer not active)");
+                    }
+                }
+
+                // Try to get connected peers
+                match orchestrator.get_connected_peers().await {
+                    Ok(peers) => {
+                        println!("👥 Connected Peers: {}", peers.len());
+                        for peer in peers.iter().take(5) {
+                            println!("   📡 {}", peer);
+                        }
+                        if peers.len() > 5 {
+                            println!("   ... and {} more", peers.len() - 5);
+                        }
+                    }
+                    Err(_) => {
+                        println!("👥 Connected Peers: 0 (network not active)");
+                    }
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to get network status: {}", e);
+                println!("🔧 Try starting the network with: --modular-start");
+            }
+        }
 
         Ok(())
     }
@@ -704,7 +1096,7 @@ impl ModernCli {
         println!("Owner: {}", owner);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -752,13 +1144,13 @@ impl ModernCli {
         println!("Amount: {}", amount);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
 
         // Use first available wallet address as caller
-        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let wallets = Wallets::new_with_context(data_context.clone())?;
         let addresses = wallets.get_all_addresses();
         let caller = if addresses.is_empty() {
             "alice".to_string()
@@ -810,7 +1202,7 @@ impl ModernCli {
         println!("Address: {}", address);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -859,13 +1251,13 @@ impl ModernCli {
         println!("Amount: {}", amount);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
 
         // Use first available wallet address as caller
-        let wallets = Wallets::new_with_context(DataContext::default())?;
+        let wallets = Wallets::new_with_context(data_context.clone())?;
         let addresses = wallets.get_all_addresses();
         let caller = if addresses.is_empty() {
             "alice".to_string()
@@ -919,7 +1311,7 @@ impl ModernCli {
         println!("Spender: {}", spender);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -956,7 +1348,7 @@ impl ModernCli {
         println!("Contract: {}", contract_address);
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -986,7 +1378,7 @@ impl ModernCli {
         println!("Listing all deployed ERC20 contracts...");
 
         // Initialize contract engine
-        let data_context = DataContext::default();
+        let data_context = self.get_data_context();
         data_context.ensure_directories()?;
         let state = ContractState::new(&data_context.contracts_db_path)?;
         let engine = ContractEngine::new(state)?;
@@ -1020,9 +1412,9 @@ impl ModernCli {
 }
 
 #[derive(Debug, Clone)]
-struct NetworkConfig {
-    listen_addr: std::net::SocketAddr,
-    bootstrap_peers: Vec<std::net::SocketAddr>,
-    max_peers: usize,
-    connection_timeout: u64,
+pub struct NetworkConfig {
+    pub listen_addr: std::net::SocketAddr,
+    pub bootstrap_peers: Vec<std::net::SocketAddr>,
+    pub max_peers: usize,
+    pub connection_timeout: u64,
 }
