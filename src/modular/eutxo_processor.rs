@@ -6,6 +6,7 @@
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -93,6 +94,11 @@ impl EUtxoProcessor {
         let mut result = TransactionResult {
             success: false,
             gas_used: self.config.utxo_base_gas,
+            gas_cost: self.config.utxo_base_gas * 1000, // Simple gas cost calculation
+            fee_paid: self.config.utxo_base_gas * 1000,
+            processing_time: Duration::from_millis(0),
+            validation_time: Duration::from_millis(0),
+            execution_time: Duration::from_millis(0),
             error: None,
             events: Vec::new(),
             state_changes: HashMap::new(),
@@ -338,6 +344,11 @@ impl EUtxoProcessor {
         let mut result = TransactionResult {
             success: false,
             gas_used: self.config.utxo_base_gas,
+            gas_cost: self.config.utxo_base_gas * 1000, // Simple gas cost calculation
+            fee_paid: self.config.utxo_base_gas * 1000,
+            processing_time: Duration::from_millis(0),
+            validation_time: Duration::from_millis(0),
+            execution_time: Duration::from_millis(0),
             error: None,
             events: Vec::new(),
             state_changes: HashMap::new(),
