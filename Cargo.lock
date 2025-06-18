@@ -2847,6 +2847,7 @@ dependencies = [
  "itertools 0.14.0",
  "kani-verifier",
  "keccak-asm",
+ "libc",
  "log",
  "memory-stats",
  "merkle-cbt",

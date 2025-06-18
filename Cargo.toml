@@ -91,6 +91,7 @@ wat = "1.0"
 hex = "0.4"
 toml = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
+libc = "0.2"
 
 # Diamond IO dependencies
 diamond-io = { git = "https://github.com/MachinaIO/diamond-io" }
