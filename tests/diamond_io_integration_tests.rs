@@ -19,10 +19,10 @@ async fn test_basic_integration() {
 async fn test_circuit_execution() {
     let config = DiamondIOConfig::testing();
     let mut integration = DiamondIOIntegration::new(config).unwrap();
-    
+
     // Set a unique obfuscation directory for this test
     integration.set_obfuscation_dir("test_circuit_execution_obfuscation".to_string());
-    
+
     let circuit = integration.create_demo_circuit();
 
     let result = integration.obfuscate_circuit(circuit).await;
@@ -174,15 +174,14 @@ async fn test_circuit_evaluation() {
     assert!(!outputs.outputs.is_empty());
 }
 
-
 #[tokio::test]
 async fn test_simple_circuit_operations() {
     let config = DiamondIOConfig::testing();
     let mut integration = DiamondIOIntegration::new(config).unwrap();
-    
+
     // Set a unique obfuscation directory for this test
     integration.set_obfuscation_dir("test_simple_circuit_operations_obfuscation".to_string());
-    
+
     let circuit = integration.create_demo_circuit();
 
     let obfuscation_result = integration.obfuscate_circuit(circuit).await;

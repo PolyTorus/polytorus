@@ -266,16 +266,18 @@ impl DiamondIOIntegration {
 
         // Perform actual Diamond IO obfuscation
         info!("Performing Diamond IO circuit obfuscation with real parameters...");
-        
+
         // Create Diamond IO obfuscator with real parameters
-        let obfuscation_result = std::panic::catch_unwind(|| {
-            self.perform_real_obfuscation(&circuit)
-        });
+        let obfuscation_result =
+            std::panic::catch_unwind(|| self.perform_real_obfuscation(&circuit));
 
         match obfuscation_result {
             Ok(Ok(())) => {
                 let obfuscation_time = start_time.elapsed();
-                info!("Real Diamond IO obfuscation completed in: {:?}", obfuscation_time);
+                info!(
+                    "Real Diamond IO obfuscation completed in: {:?}",
+                    obfuscation_time
+                );
                 Ok(())
             }
             Ok(Err(e)) => {
@@ -294,15 +296,18 @@ impl DiamondIOIntegration {
     /// Perform the actual Diamond IO obfuscation process
     fn perform_real_obfuscation(&self, circuit: &PolyCircuit) -> anyhow::Result<()> {
         info!("Creating Diamond IO scheme with real parameters...");
-        
+
         // For now, create a sophisticated simulation using actual Diamond IO components
         // This implements real polynomial operations but falls back to safe simulation
         // when the full IO scheme is not available
-        
+
         info!("Using Diamond IO polynomial parameters for obfuscation...");
-        info!("Circuit has {} inputs and {} outputs", 
-              circuit.num_input(), circuit.num_output());
-        
+        info!(
+            "Circuit has {} inputs and {} outputs",
+            circuit.num_input(),
+            circuit.num_output()
+        );
+
         // Save circuit information to obfuscation directory
         let circuit_info = format!(
             "Circuit Info:\nInputs: {}\nOutputs: {}\nRing Dimension: {}\nCRT Depth: {}\n",
@@ -311,15 +316,18 @@ impl DiamondIOIntegration {
             self.config.ring_dimension,
             self.config.crt_depth
         );
-        
+
         let info_path = Path::new(&self.obfuscation_dir).join("circuit_info.txt");
         std::fs::write(&info_path, circuit_info)?;
-        
+
         // Create a marker file indicating obfuscation is complete
         let obf_path = Path::new(&self.obfuscation_dir).join("obfuscated_circuit.bin");
         std::fs::write(&obf_path, b"OBFUSCATED_CIRCUIT_PLACEHOLDER")?;
-        
-        info!("Diamond IO obfuscation simulation completed, data saved to: {:?}", obf_path);
+
+        info!(
+            "Diamond IO obfuscation simulation completed, data saved to: {:?}",
+            obf_path
+        );
         Ok(())
     }
     /// Evaluate an obfuscated circuit using Diamond IO
@@ -343,9 +351,8 @@ impl DiamondIOIntegration {
         eval_inputs.resize(self.config.input_size, false);
 
         // Perform actual Diamond IO evaluation
-        let evaluation_result = std::panic::catch_unwind(|| {
-            self.perform_real_evaluation(&eval_inputs)
-        });
+        let evaluation_result =
+            std::panic::catch_unwind(|| self.perform_real_evaluation(&eval_inputs));
 
         match evaluation_result {
             Ok(Ok(result)) => {
@@ -369,12 +376,13 @@ impl DiamondIOIntegration {
     /// Perform the actual Diamond IO evaluation process
     fn perform_real_evaluation(&self, inputs: &[bool]) -> anyhow::Result<Vec<bool>> {
         info!("Loading obfuscated circuit for evaluation...");
-        
+
         // Load obfuscated circuit
         let obf_path = Path::new(&self.obfuscation_dir).join("obfuscated_circuit.bin");
         if !obf_path.exists() {
             return Err(anyhow::anyhow!(
-                "Obfuscated circuit not found at: {:?}", obf_path
+                "Obfuscated circuit not found at: {:?}",
+                obf_path
             ));
         }
 
@@ -384,12 +392,15 @@ impl DiamondIOIntegration {
             return Err(anyhow::anyhow!("Invalid obfuscated circuit format"));
         }
 
-        info!("Evaluating obfuscated circuit with {} inputs...", inputs.len());
-        
+        info!(
+            "Evaluating obfuscated circuit with {} inputs...",
+            inputs.len()
+        );
+
         // Perform sophisticated evaluation using Diamond IO principles
         // This simulates the polynomial evaluation process
         let mut result = Vec::new();
-        
+
         // Apply Diamond IO evaluation logic based on configuration
         for i in 0..std::cmp::max(1, inputs.len() / 2) {
             let input_pair = if i * 2 + 1 < inputs.len() {
@@ -397,7 +408,7 @@ impl DiamondIOIntegration {
             } else {
                 (inputs[i * 2], false)
             };
-            
+
             // Simulate polynomial evaluation with noise
             let evaluated = match self.config.ring_dimension {
                 ring_dim if ring_dim >= 1024 => {
@@ -413,19 +424,18 @@ impl DiamondIOIntegration {
                     input_pair.0 || input_pair.1
                 }
             };
-            
+
             result.push(evaluated);
         }
-        
+
         // Ensure we have at least one output
         if result.is_empty() {
             result.push(inputs.iter().fold(false, |acc, &x| acc ^ x));
         }
-        
+
         info!("Evaluation produced {} outputs", result.len());
         Ok(result)
     }
-
 
     /// Execute circuit and return detailed result
     pub async fn execute_circuit_detailed(
@@ -461,10 +471,8 @@ impl DiamondIOIntegration {
         } else {
             // Use actual Diamond IO encryption
             info!("Encrypting data using Diamond IO with real parameters...");
-            
-            let encryption_result = std::panic::catch_unwind(|| {
-                self.perform_real_encryption(data)
-            });
+
+            let encryption_result = std::panic::catch_unwind(|| self.perform_real_encryption(data));
 
             match encryption_result {
                 Ok(Ok(result)) => {
@@ -488,25 +496,23 @@ impl DiamondIOIntegration {
     /// Perform actual Diamond IO encryption
     fn perform_real_encryption(&self, data: &[bool]) -> anyhow::Result<Vec<u8>> {
         info!("Creating encryption scheme with Diamond IO...");
-        
+
         // Perform sophisticated encryption using Diamond IO principles
         // This implements polynomial-based encryption with noise
         let mut result = Vec::new();
-        
+
         // Create encryption header with parameters
         let header = format!(
             "DIO_ENC:{}:{}:{}",
-            self.config.ring_dimension,
-            self.config.crt_depth,
-            self.config.p_sigma
+            self.config.ring_dimension, self.config.crt_depth, self.config.p_sigma
         );
         result.extend_from_slice(header.as_bytes());
         result.push(0); // Null terminator
-        
+
         // Encrypt data chunks using polynomial operations
         for chunk in data.chunks(8) {
             let mut encrypted_byte = 0u8;
-            
+
             for (i, &bit) in chunk.iter().enumerate() {
                 if bit {
                     // Apply polynomial noise based on configuration
@@ -524,22 +530,26 @@ impl DiamondIOIntegration {
                             ((i as u16 * 17) % 256) as u8
                         }
                     };
-                    
+
                     encrypted_byte |= (1 << i) ^ (noise_factor & (1 << i));
                 }
             }
-            
+
             result.push(encrypted_byte);
         }
-        
-        info!("Encrypted {} bits of data into {} bytes using Diamond IO principles", data.len(), result.len());
+
+        info!(
+            "Encrypted {} bits of data into {} bytes using Diamond IO principles",
+            data.len(),
+            result.len()
+        );
         Ok(result)
     }
 
     /// Simple fallback encryption when Diamond IO is not available
     fn simple_encrypt_data(&self, data: &[bool]) -> anyhow::Result<Vec<u8>> {
         let mut result = Vec::new();
-        
+
         for chunk in data.chunks(8) {
             let mut byte = 0u8;
             for (i, &bit) in chunk.iter().enumerate() {
@@ -549,7 +559,7 @@ impl DiamondIOIntegration {
             }
             result.push(byte);
         }
-        
+
         info!("Performed simple encryption");
         Ok(result)
     }
@@ -561,10 +571,9 @@ impl DiamondIOIntegration {
         }
 
         info!("Decrypting data using Diamond IO...");
-        
-        let decryption_result = std::panic::catch_unwind(|| {
-            self.perform_real_decryption(encrypted_data)
-        });
+
+        let decryption_result =
+            std::panic::catch_unwind(|| self.perform_real_decryption(encrypted_data));
 
         match decryption_result {
             Ok(Ok(result)) => {
@@ -587,36 +596,44 @@ impl DiamondIOIntegration {
     /// Perform actual Diamond IO decryption
     fn perform_real_decryption(&self, encrypted_data: &[u8]) -> anyhow::Result<Vec<bool>> {
         info!("Decrypting data with Diamond IO...");
-        
+
         // Find the null terminator to separate header from data
-        let header_end = encrypted_data.iter().position(|&x| x == 0)
-            .ok_or_else(|| anyhow::anyhow!("Invalid encrypted data format: no header terminator"))?;
-        
+        let header_end = encrypted_data.iter().position(|&x| x == 0).ok_or_else(|| {
+            anyhow::anyhow!("Invalid encrypted data format: no header terminator")
+        })?;
+
         let header = String::from_utf8_lossy(&encrypted_data[..header_end]);
         let encrypted_bytes = &encrypted_data[header_end + 1..];
-        
+
         // Parse header to verify encryption parameters
         if !header.starts_with("DIO_ENC:") {
             return Err(anyhow::anyhow!("Invalid Diamond IO encryption header"));
         }
-        
-        let parts: Vec<&str> = header.strip_prefix("DIO_ENC:").unwrap().split(':').collect();
+
+        let parts: Vec<&str> = header
+            .strip_prefix("DIO_ENC:")
+            .unwrap()
+            .split(':')
+            .collect();
         if parts.len() != 3 {
             return Err(anyhow::anyhow!("Invalid encryption header format"));
         }
-        
-        let encrypted_ring_dim: u32 = parts[0].parse()
+
+        let encrypted_ring_dim: u32 = parts[0]
+            .parse()
             .map_err(|_| anyhow::anyhow!("Invalid ring dimension in header"))?;
-        
+
         // Verify parameters match current configuration
         if encrypted_ring_dim != self.config.ring_dimension {
-            info!("Warning: Encrypted data uses different ring dimension ({} vs {})", 
-                  encrypted_ring_dim, self.config.ring_dimension);
+            info!(
+                "Warning: Encrypted data uses different ring dimension ({} vs {})",
+                encrypted_ring_dim, self.config.ring_dimension
+            );
         }
-        
+
         // Decrypt data using reverse polynomial operations
         let mut result = Vec::new();
-        
+
         for &encrypted_byte in encrypted_bytes {
             for i in 0..8 {
                 // Apply reverse polynomial noise based on original configuration
@@ -634,27 +651,31 @@ impl DiamondIOIntegration {
                         ((i as u16 * 17) % 256) as u8
                     }
                 };
-                
+
                 // Reverse the encryption by applying the same noise
                 let decrypted_bit = ((encrypted_byte ^ (noise_factor & (1 << i))) & (1 << i)) != 0;
                 result.push(decrypted_bit);
             }
         }
-        
-        info!("Decrypted {} bytes into {} bits using Diamond IO principles", encrypted_data.len(), result.len());
+
+        info!(
+            "Decrypted {} bytes into {} bits using Diamond IO principles",
+            encrypted_data.len(),
+            result.len()
+        );
         Ok(result)
     }
 
     /// Simple fallback decryption
     fn simple_decrypt_data(&self, encrypted_data: &[u8]) -> anyhow::Result<Vec<bool>> {
         let mut result = Vec::new();
-        
+
         for &encrypted_byte in encrypted_data {
             for i in 0..8 {
                 result.push((encrypted_byte & (1 << i)) != 0);
             }
         }
-        
+
         info!("Performed simple decryption");
         Ok(result)
     }
@@ -740,11 +761,11 @@ mod tests {
         let integration = DiamondIOIntegration::new(config).unwrap();
 
         let original_data = vec![true, false, true, true, false, false, true, false];
-        
+
         // Test encryption
         let encrypted = integration.encrypt_data(&original_data).unwrap();
         assert!(!encrypted.is_empty());
-        
+
         // Test decryption
         let decrypted = integration.decrypt_data(&encrypted).unwrap();
         assert_eq!(decrypted.len(), original_data.len());
@@ -754,21 +775,27 @@ mod tests {
     #[tokio::test]
     async fn test_real_mode_circuit_obfuscation() {
         let config = DiamondIOConfig::testing();
-        
+
         // This test may fail if OpenFHE is not properly installed
         match DiamondIOIntegration::new(config) {
             Ok(integration) => {
                 let circuit = integration.create_demo_circuit();
                 let result = integration.obfuscate_circuit(circuit).await;
-                
+
                 // Should either succeed or fail gracefully
                 match result {
                     Ok(_) => println!("Real mode obfuscation succeeded"),
-                    Err(e) => println!("Real mode obfuscation failed (expected if OpenFHE not available): {}", e),
+                    Err(e) => println!(
+                        "Real mode obfuscation failed (expected if OpenFHE not available): {}",
+                        e
+                    ),
                 }
             }
             Err(e) => {
-                println!("Integration creation failed (expected if OpenFHE not available): {}", e);
+                println!(
+                    "Integration creation failed (expected if OpenFHE not available): {}",
+                    e
+                );
             }
         }
     }
@@ -776,28 +803,31 @@ mod tests {
     #[tokio::test]
     async fn test_production_config_parameters() {
         let config = DiamondIOConfig::production();
-        
+
         // Verify production parameters are appropriate for security
         assert!(config.ring_dimension >= 1024);
         assert!(config.crt_depth >= 8);
         assert!(config.input_size >= 32);
         assert!(!config.dummy_mode);
-        
+
         // Creation should work even if actual obfuscation might fail without OpenFHE
         match DiamondIOIntegration::new(config) {
             Ok(_) => println!("Production config integration created successfully"),
-            Err(e) => println!("Production config failed (expected if OpenFHE not available): {}", e),
+            Err(e) => println!(
+                "Production config failed (expected if OpenFHE not available): {}",
+                e
+            ),
         }
     }
 
     #[test]
     fn test_config_serialization() {
         let config = DiamondIOConfig::testing();
-        
+
         // Test that configuration can be serialized and deserialized
         let serialized = serde_json::to_string(&config).unwrap();
         let deserialized: DiamondIOConfig = serde_json::from_str(&serialized).unwrap();
-        
+
         assert_eq!(config.ring_dimension, deserialized.ring_dimension);
         assert_eq!(config.crt_depth, deserialized.crt_depth);
         assert_eq!(config.dummy_mode, deserialized.dummy_mode);
@@ -810,7 +840,7 @@ mod tests {
 
         let inputs = vec![true, false, true];
         let result = integration.execute_circuit_detailed(&inputs).await;
-        
+
         assert!(result.is_ok());
         let detailed_result = result.unwrap();
         assert!(detailed_result.success);
