@@ -92,6 +92,105 @@ pub enum ContractTransactionType {
 }
 
 impl Transaction {
+    /// Create a simple transaction for modern blockchain
+    pub fn new(from: String, to: String, amount: u64) -> Self {
+        let tx_output = TXOutput::new(amount as i32, to.clone()).unwrap_or_else(|_| TXOutput {
+            value: amount as i32,
+            pub_key_hash: to.as_bytes().to_vec(),
+            script: None,
+            datum: None,
+            reference_script: None,
+        });
+
+        let mut tx = Transaction {
+            id: String::new(),
+            vin: vec![TXInput {
+                txid: String::new(),
+                vout: 0,
+                signature: Vec::new(),
+                pub_key: from.as_bytes().to_vec(),
+                redeemer: None,
+            }],
+            vout: vec![tx_output],
+            contract_data: None,
+        };
+
+        tx.id = tx
+            .hash()
+            .unwrap_or_else(|_| format!("tx_{}", rand::thread_rng().gen::<u64>()));
+        tx
+    }
+
+    /// Create a genesis allocation transaction
+    pub fn new_genesis_allocation(address: String, amount: u64, nonce: u64) -> Self {
+        let mut tx = Self::new("genesis".to_string(), address, amount);
+        tx.id = format!("genesis_alloc_{}_{}", nonce, amount);
+        tx
+    }
+
+    /// Create a validator registration transaction
+    pub fn new_validator_registration(
+        address: String,
+        stake: u64,
+        public_key: String,
+        commission_rate: f64,
+    ) -> Self {
+        let validator_data = format!("validator:{}:{}:{}", stake, public_key, commission_rate);
+        let mut tx = Self::new("genesis".to_string(), address, stake);
+        tx.id = format!("validator_reg_{}", hex::encode(validator_data.as_bytes()));
+        tx
+    }
+
+    /// Create a governance setup transaction
+    pub fn new_governance_setup(
+        governance_config: crate::modular::genesis::GovernanceConfig,
+    ) -> Self {
+        let config_data = serde_json::to_string(&governance_config).unwrap_or_default();
+        let mut tx = Self::new("genesis".to_string(), "governance".to_string(), 0);
+        tx.id = format!("governance_setup_{}", hex::encode(config_data.as_bytes()));
+        tx
+    }
+
+    /// Create a protocol setup transaction
+    pub fn new_protocol_setup(protocol_params: crate::modular::genesis::ProtocolParams) -> Self {
+        let params_data = serde_json::to_string(&protocol_params).unwrap_or_default();
+        let mut tx = Self::new("genesis".to_string(), "protocol".to_string(), 0);
+        tx.id = format!("protocol_setup_{}", hex::encode(params_data.as_bytes()));
+        tx
+    }
+
+    /// Get transaction ID
+    pub fn get_id(&self) -> String {
+        self.id.clone()
+    }
+
+    /// Get from address (simplified)
+    pub fn get_from(&self) -> String {
+        if let Some(input) = self.vin.first() {
+            String::from_utf8_lossy(&input.pub_key).to_string()
+        } else {
+            "unknown".to_string()
+        }
+    }
+
+    /// Get to address (simplified)
+    pub fn get_to(&self) -> String {
+        if let Some(output) = self.vout.first() {
+            String::from_utf8_lossy(&output.pub_key_hash).to_string()
+        } else {
+            "unknown".to_string()
+        }
+    }
+
+    /// Get transaction amount
+    pub fn get_amount(&self) -> u64 {
+        if let Some(output) = self.vout.first() {
+            output.value as u64
+        } else {
+            0
+        }
+    }
+
     // Legacy UTXO transaction creation - disabled in Phase 4
     /*
     /// NewUTXOTransaction creates a new transaction

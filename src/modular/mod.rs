@@ -16,8 +16,13 @@ pub mod data_availability;
 pub mod diamond_io_layer;
 pub mod eutxo_processor;
 pub mod execution;
+pub mod genesis;
+pub mod mempool;
 pub mod network;
+pub mod peer_discovery;
+pub mod rpc_api;
 pub mod settlement;
+pub mod state_sync;
 pub mod storage;
 pub mod traits;
 pub mod transaction_processor;
@@ -43,16 +48,36 @@ pub use diamond_io_layer::{
 };
 pub use eutxo_processor::{EUtxoProcessor, EUtxoProcessorConfig, UtxoState, UtxoStats};
 pub use execution::PolyTorusExecutionLayer;
+pub use genesis::{
+    create_mainnet_genesis, create_testnet_genesis, GenesisAllocation, GenesisConfig,
+    GenesisCreator, GovernanceConfig, ProtocolParams, ValidatorConfig,
+};
 pub use layer_factory::{
     create_default_enhanced_config, EnhancedModularConfig, GlobalConfig, LayerConfig,
     LayerImplementation, ModularLayerFactory, PerformanceMode,
+};
+pub use mempool::{
+    MempoolConfig, MempoolEvent, MempoolStats, MempoolTransaction, TransactionMempool,
+    TransactionPriority, TransactionStatus,
 };
 pub use message_bus::{
     HealthStatus, LayerInfo, LayerType, MessageBuilder, MessagePayload, MessagePriority,
     MessageType, ModularMessage, ModularMessageBus,
 };
 pub use network::{ModularNetwork, ModularNetworkConfig, ModularNetworkStats};
+pub use peer_discovery::{
+    BootstrapConfig, DiscoveryEvent, NetworkNode, NetworkTopology, NodeCapabilities, NodeId,
+    PeerDiscoveryService,
+};
+pub use rpc_api::{
+    AccountInfo, BlockInfo, JsonRpcRequest, JsonRpcResponse, NetworkInfo, NodeStatus, RpcApiServer,
+    TransactionInfo,
+};
 pub use settlement::PolyTorusSettlementLayer;
+pub use state_sync::{
+    BlockBody, BlockHeader, StateEntry, StateSynchronizer, SyncConfig, SyncEvent, SyncRequest,
+    SyncResponse, SyncState,
+};
 pub use storage::{
     BlockMetadata, ModularStorage, StorageConfig, StorageLayer, StorageLayerBuilder, StorageStats,
 };

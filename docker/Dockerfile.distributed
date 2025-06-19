@@ -1,0 +1,62 @@
+# Multi-stage build for PolyTorus distributed deployment
+FROM rust:1.87-slim-bullseye AS builder
+
+# Install system dependencies for OpenFHE and building
+RUN apt-get update && apt-get install -y \
+    cmake \
+    libgmp-dev \
+    libntl-dev \
+    libboost-all-dev \
+    build-essential \
+    git \
+    pkg-config \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Build the release binary
+RUN cargo build --release
+
+# Runtime stage
+FROM debian:bullseye-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libgmp10 \
+    libntl43 \
+    libboost-system1.74.0 \
+    libboost-filesystem1.74.0 \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN useradd -m -u 1000 polytorus
+
+# Create necessary directories
+RUN mkdir -p /app/data /app/config /app/logs \
+    && chown -R polytorus:polytorus /app
+
+# Copy binary from builder
+COPY --from=builder /app/target/release/polytorus /usr/local/bin/polytorus
+
+# Copy configuration templates
+COPY --from=builder /app/ec2-config /app/config/
+
+USER polytorus
+WORKDIR /app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose ports
+EXPOSE 8000 8080 8545 8900
+
+# Default command
+CMD ["polytorus", "--modular-start", "--config", "/app/config/ec2-testnet.toml", "--http-port", "8080"]

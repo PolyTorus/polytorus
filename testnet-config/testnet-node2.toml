@@ -1,0 +1,36 @@
+[network]
+chain_id = "polytorus-testnet-1"
+network_name = "PolyTorus Testnet"
+p2p_port = 8001
+rpc_port = 8546
+discovery_port = 8901
+max_peers = 50
+
+[consensus]
+block_time = 6000  # 6秒
+difficulty = 2     # テストネット用低難易度
+max_block_size = 1048576  # 1MB
+
+[diamond_io]
+mode = "Testing"
+ring_dimension = 1024
+noise_bound = 6.4
+
+[storage]
+data_dir = "./testnet-data-2"
+cache_size = 1000
+
+[bootstrap]
+nodes = [
+    "127.0.0.1:8000"  # First node as bootstrap
+]
+
+[mempool]
+max_transactions = 10000
+max_transaction_age = "3600s"
+min_fee = 1
+
+[rpc]
+enabled = true
+bind_address = "127.0.0.1:8546"
+max_connections = 100
