@@ -563,7 +563,7 @@ impl AnonymousEUtxoProcessor {
     /// Create ring signature for unlinkability
     pub async fn create_ring_signature<R: RngCore + CryptoRng>(
         &self,
-        _utxo_id: &str,
+        utxo_id: &str,
         secret_key: &[u8],
         rng: &mut R,
     ) -> Result<RingSignature> {
@@ -587,15 +587,17 @@ impl AnonymousEUtxoProcessor {
             }
         }
 
-        // Create key image for double-spend prevention
+        // Create key image for double-spend prevention (includes UTXO ID for uniqueness)
         let mut hasher = Sha256::new();
         hasher.update(secret_key);
+        hasher.update(utxo_id.as_bytes());
         hasher.update(b"key_image");
         let key_image = hasher.finalize().to_vec();
 
         // Create signature (simplified)
         let mut hasher = Sha256::new();
         hasher.update(secret_key);
+        hasher.update(utxo_id.as_bytes());
         for key in &ring {
             hasher.update(key);
         }
