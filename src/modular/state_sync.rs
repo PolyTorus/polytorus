@@ -568,10 +568,10 @@ impl StateSynchronizer {
         let current_height = self.get_current_height().await?;
         let block_height = block.get_height() as u64;
 
-        if block_height == (current_height + 1) as u64 {
+        if block_height == current_height + 1 {
             // Next block in sequence - add directly
             self.add_block_to_chain(block).await?;
-        } else if block_height > (current_height + 1) as u64 {
+        } else if block_height > current_height + 1 {
             // Future block - keep in pending
             log::debug!(
                 "Keeping future block {} at height {}",
