@@ -69,6 +69,16 @@ impl Wallet {
 
         format!("{}{}", base_address, encryption_suffix)
     }
+
+    /// Create a wallet with a specific address (for genesis)
+    pub fn new_with_address(address: String) -> Self {
+        // Create a simple wallet for genesis purposes
+        Wallet {
+            secret_key: vec![0; 32], // Genesis wallets don't need real keys
+            public_key: address.as_bytes().to_vec(),
+            encryption_type: EncryptionType::FNDSA,
+        }
+    }
 }
 
 impl Default for Wallet {
@@ -170,6 +180,56 @@ impl Wallets {
         db.flush()?;
         drop(db);
         Ok(())
+    }
+}
+
+/// Modern wallet manager for testnet
+use std::sync::{Arc, RwLock};
+
+#[derive(Clone)]
+pub struct WalletManager {
+    wallets: Arc<RwLock<HashMap<String, Wallet>>>,
+}
+
+impl WalletManager {
+    pub fn new() -> Self {
+        Self {
+            wallets: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn add_wallet(&self, address: String, wallet: Wallet) -> Result<()> {
+        let mut wallets = self.wallets.write().unwrap();
+        wallets.insert(address, wallet);
+        Ok(())
+    }
+
+    pub async fn get_wallet(&self, address: &str) -> Option<Wallet> {
+        let wallets = self.wallets.read().unwrap();
+        wallets.get(address).cloned()
+    }
+
+    pub async fn list_addresses(&self) -> Vec<String> {
+        let wallets = self.wallets.read().unwrap();
+        wallets.keys().cloned().collect()
+    }
+
+    pub async fn create_wallet(&self, encryption_type: EncryptionType) -> Result<String> {
+        let wallet = Wallet::new(encryption_type);
+        let address = wallet.get_address();
+
+        {
+            let mut wallets = self.wallets.write().unwrap();
+            wallets.insert(address.clone(), wallet);
+        }
+
+        Ok(address)
+    }
+}
+
+impl Default for WalletManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

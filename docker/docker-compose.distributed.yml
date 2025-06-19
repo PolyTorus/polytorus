@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  polytorus-node-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.distributed
+    container_name: polytorus-testnet-node-1
+    environment:
+      - RUST_LOG=info
+      - POLYTORUS_DATA_DIR=/app/data
+    ports:
+      - "8000:8000"   # P2P
+      - "8080:8080"   # HTTP API
+      - "8545:8545"   # RPC
+      - "8900:8900"   # Discovery
+    volumes:
+      - node1_data:/app/data
+      - ./logs:/app/logs
+    networks:
+      polytorus_network:
+        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+
+  polytorus-node-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.distributed
+    container_name: polytorus-testnet-node-2
+    environment:
+      - RUST_LOG=info
+      - POLYTORUS_DATA_DIR=/app/data
+    ports:
+      - "8001:8000"   # P2P
+      - "8081:8080"   # HTTP API
+      - "8546:8545"   # RPC
+      - "8901:8900"   # Discovery
+    volumes:
+      - node2_data:/app/data
+      - ./logs:/app/logs
+    networks:
+      polytorus_network:
+        ipv4_address: 172.20.0.11
+    depends_on:
+      - polytorus-node-1
+    restart: unless-stopped
+    command: >
+      sh -c "
+        sleep 10 &&
+        polytorus --modular-start 
+        --config /app/config/ec2-testnet.toml 
+        --http-port 8080
+        --data-dir /app/data
+      "
+
+  polytorus-node-3:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.distributed
+    container_name: polytorus-testnet-node-3
+    environment:
+      - RUST_LOG=info
+      - POLYTORUS_DATA_DIR=/app/data
+    ports:
+      - "8002:8000"   # P2P
+      - "8082:8080"   # HTTP API
+      - "8547:8545"   # RPC
+      - "8902:8900"   # Discovery
+    volumes:
+      - node3_data:/app/data
+      - ./logs:/app/logs
+    networks:
+      polytorus_network:
+        ipv4_address: 172.20.0.12
+    depends_on:
+      - polytorus-node-2
+    restart: unless-stopped
+    command: >
+      sh -c "
+        sleep 15 &&
+        polytorus --modular-start 
+        --config /app/config/ec2-testnet.toml 
+        --http-port 8080
+        --data-dir /app/data
+      "
+
+networks:
+  polytorus_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  node1_data:
+    driver: local
+  node2_data:
+    driver: local
+  node3_data:
+    driver: local

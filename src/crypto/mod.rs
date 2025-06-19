@@ -25,4 +25,4 @@ pub use production_stark_circuits::*;
 pub use real_diamond_io::*;
 pub use transaction::*;
 pub use verkle_tree::*;
-pub use zk_starks_anonymous_eutxo::*;
+pub use wallets::WalletManager;

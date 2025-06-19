@@ -1,0 +1,50 @@
+[network]
+chain_id = "polytorus-testnet-global"
+network_name = "PolyTorus Global Testnet"
+p2p_port = 8000
+rpc_port = 8545
+discovery_port = 8900
+max_peers = 100
+# Bind to all interfaces for EC2
+bind_address = "0.0.0.0"
+
+[consensus]
+block_time = 6000  # 6秒
+difficulty = 3     # Medium difficulty for global testnet
+max_block_size = 2097152  # 2MB
+
+[diamond_io]
+mode = "Testing"
+ring_dimension = 1024
+noise_bound = 6.4
+
+[storage]
+data_dir = "./polytorus-data"
+cache_size = 2000
+
+# Bootstrap nodes - to be filled with actual EC2 public IPs
+[bootstrap]
+nodes = [
+    # "FIRST_EC2_IP:8000",
+    # "SECOND_EC2_IP:8000"
+]
+
+[mempool]
+max_transactions = 20000
+max_transaction_age = "7200s"  # 2 hours
+min_fee = 1
+
+[rpc]
+enabled = true
+bind_address = "0.0.0.0:8545"  # Allow external connections
+max_connections = 200
+
+[security]
+# Enable firewall rules for production
+enable_rate_limiting = true
+max_requests_per_minute = 1000
+allowed_origins = ["*"]  # Configure for production
+
+[logging]
+level = "info"
+file = "polytorus-node.log"

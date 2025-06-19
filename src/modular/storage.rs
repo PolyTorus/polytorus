@@ -521,6 +521,148 @@ impl StorageLayer for ModularStorage {
     }
 }
 
+impl ModularStorage {
+    /// Get the latest block height
+    pub async fn get_latest_block_height(&self) -> Result<u64> {
+        self.get_height()
+    }
+
+    /// Get block by height
+    pub async fn get_block_by_height(
+        &self,
+        height: u64,
+    ) -> Result<Option<crate::blockchain::block::FinalizedBlock>> {
+        let height_key = format!("height_{}", height);
+
+        if let Some(hash_bytes) = self.index_db.get(&height_key)? {
+            let hash = String::from_utf8(hash_bytes.to_vec())?;
+            let block = self.get_block(&hash)?;
+
+            // Convert Block to FinalizedBlock if needed
+            // For now, assume Block implements the necessary conversion
+            Ok(Some(block.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get block by hash  
+    pub async fn get_block_by_hash(
+        &self,
+        hash: &str,
+    ) -> Result<Option<crate::blockchain::block::FinalizedBlock>> {
+        if self.block_exists(&hash.to_string())? {
+            let block = self.get_block(&hash.to_string())?;
+            Ok(Some(block.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Update best block
+    pub async fn update_best_block(&self, hash: &str, height: u64) -> Result<()> {
+        self.set_tip(&hash.to_string())?;
+
+        // Also update height index
+        let height_key = format!("height_{}", height);
+        self.index_db.insert(height_key, hash.as_bytes())?;
+
+        Ok(())
+    }
+
+    /// Store account state for genesis
+    pub async fn store_account_state(&self, address: &str, balance: u64, nonce: u64) -> Result<()> {
+        let account_key = format!("account_{}", address);
+        let account_data = serde_json::json!({
+            "balance": balance,
+            "nonce": nonce
+        });
+
+        let serialized = serde_json::to_vec(&account_data)?;
+        self.state_db.insert(account_key, serialized)?;
+
+        log::debug!(
+            "Stored account state for {}: balance={}, nonce={}",
+            address,
+            balance,
+            nonce
+        );
+        Ok(())
+    }
+
+    /// Store contract code
+    pub async fn store_contract_code(&self, address: &str, code: &str) -> Result<()> {
+        let code_key = format!("contract_code_{}", address);
+        self.state_db.insert(code_key, code.as_bytes())?;
+
+        log::debug!("Stored contract code for {}", address);
+        Ok(())
+    }
+
+    /// Store contract storage
+    pub async fn store_contract_storage(
+        &self,
+        address: &str,
+        key: &str,
+        value: &str,
+    ) -> Result<()> {
+        let storage_key = format!("contract_storage_{}_{}", address, key);
+        self.state_db.insert(storage_key, value.as_bytes())?;
+
+        log::debug!("Stored contract storage for {}: {}={}", address, key, value);
+        Ok(())
+    }
+
+    /// Store validator information
+    pub async fn store_validator_info(
+        &self,
+        address: &str,
+        stake: u64,
+        public_key: &str,
+        commission_rate: f64,
+    ) -> Result<()> {
+        let validator_key = format!("validator_{}", address);
+        let validator_data = serde_json::json!({
+            "address": address,
+            "stake": stake,
+            "public_key": public_key,
+            "commission_rate": commission_rate
+        });
+
+        let serialized = serde_json::to_vec(&validator_data)?;
+        self.state_db.insert(validator_key, serialized)?;
+
+        log::debug!("Stored validator info for {}: stake={}", address, stake);
+        Ok(())
+    }
+
+    /// Store governance configuration
+    pub async fn store_governance_config(
+        &self,
+        config: &crate::modular::genesis::GovernanceConfig,
+    ) -> Result<()> {
+        let governance_key = "governance_config";
+        let serialized = serde_json::to_vec(config)?;
+        self.state_db.insert(governance_key, serialized)?;
+
+        log::debug!("Stored governance configuration");
+        Ok(())
+    }
+
+    /// Store protocol parameters
+    pub async fn store_protocol_params(
+        &self,
+        params: &crate::modular::genesis::ProtocolParams,
+    ) -> Result<()> {
+        let params_key = "protocol_params";
+        let serialized = serde_json::to_vec(params)?;
+        self.state_db.insert(params_key, serialized)?;
+
+        log::debug!("Stored protocol parameters");
+        Ok(())
+    }
+}
+
 /// Storage layer builder for configuration
 pub struct StorageLayerBuilder {
     config: Option<StorageConfig>,
