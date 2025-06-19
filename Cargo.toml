@@ -93,6 +93,10 @@ toml = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 libc = "0.2"
 
+# TUI dependencies
+ratatui = "0.29"
+crossterm = "0.28"
+
 # Diamond IO dependencies
 diamond-io = { git = "https://github.com/MachinaIO/diamond-io" }
 openfhe = { git = "https://github.com/MachinaIO/openfhe-rs.git", branch = "exp/reimpl_trapdoor" }
@@ -126,3 +130,7 @@ path = "examples/p2p_multi_node_simulation.rs"
 [[bench]]
 name = "blockchain_bench"
 harness = false
+
+[[bin]]
+name = "polytorus_tui"
+path = "src/bin/polytorus_tui.rs"

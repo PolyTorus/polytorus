@@ -1,5 +1,0 @@
-Circuit Info:
-Inputs: 16
-Outputs: 1
-Ring Dimension: 128
-CRT Depth: 8
