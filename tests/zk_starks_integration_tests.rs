@@ -3,9 +3,7 @@
 //! This module tests the complete ZK-STARKs anonymous eUTXO workflow including
 //! quantum-resistant proofs, stealth addresses, and post-quantum security.
 
-use polytorus::crypto::zk_starks_anonymous_eutxo::{
-    StarkAnonymityStats, ZkStarksEUtxoConfig, ZkStarksEUtxoProcessor,
-};
+use polytorus::crypto::zk_starks_anonymous_eutxo::{ZkStarksEUtxoConfig, ZkStarksEUtxoProcessor};
 use rand_core::OsRng;
 
 /// Test complete ZK-STARKs anonymous eUTXO workflow
@@ -94,7 +92,7 @@ async fn test_complete_zk_starks_eutxo_workflow() {
     assert_eq!(range_proof.public_inputs[0], amount);
 
     println!("✅ STARK range proof created");
-    println!("   💰 Amount: {}", amount);
+    println!("   💰 Amount: {amount}");
     println!(
         "   📏 Proof size: {} bytes",
         range_proof.metadata.proof_size
@@ -113,8 +111,8 @@ async fn test_complete_zk_starks_eutxo_workflow() {
     assert!(range_valid);
 
     println!("✅ STARK proof verification successful");
-    println!("   🔐 Ownership proof valid: {}", ownership_valid);
-    println!("   📊 Range proof valid: {}", range_valid);
+    println!("   🔐 Ownership proof valid: {ownership_valid}");
+    println!("   📊 Range proof valid: {range_valid}");
 
     // Test 5: Security level verification
     println!("\nTesting security levels...");
@@ -135,8 +133,8 @@ async fn test_complete_zk_starks_eutxo_workflow() {
     assert!(production_security >= 100);
 
     println!("✅ Security levels validated");
-    println!("   🧪 Testing security: {} bits", testing_security);
-    println!("   🏭 Production security: {} bits", production_security);
+    println!("   🧪 Testing security: {testing_security} bits");
+    println!("   🏭 Production security: {production_security} bits");
 
     println!("\n🎉 ZK-STARKs anonymous eUTXO workflow completed successfully!");
 }
@@ -215,7 +213,7 @@ async fn test_stark_proof_performance() {
     for i in 0..5 {
         let start = std::time::Instant::now();
         let proof = processor
-            .create_generic_stark_proof(&format!("benchmark_{}", i), 42 + i as u64, &mut rng)
+            .create_generic_stark_proof(&format!("benchmark_{i}"), 42 + i as u64, &mut rng)
             .await
             .unwrap();
         let generation_time = start.elapsed();
@@ -238,9 +236,9 @@ async fn test_stark_proof_performance() {
     let avg_size = proof_sizes.iter().sum::<usize>() / proof_sizes.len();
 
     println!("📊 Performance Results:");
-    println!("   ⚡ Average generation time: {:?}", avg_generation);
-    println!("   🔍 Average verification time: {:?}", avg_verification);
-    println!("   📏 Average proof size: {} bytes", avg_size);
+    println!("   ⚡ Average generation time: {avg_generation:?}");
+    println!("   🔍 Average verification time: {avg_verification:?}");
+    println!("   📏 Average proof size: {avg_size} bytes");
 
     // Performance expectations for STARK proofs
     assert!(avg_generation.as_millis() < 10000); // Less than 10 seconds
@@ -331,7 +329,7 @@ async fn test_stark_block_advancement() {
     assert_eq!(final_block, 11);
 
     println!("✅ STARK block advancement works correctly");
-    println!("📦 Final block height: {}", final_block);
+    println!("📦 Final block height: {final_block}");
 }
 
 /// Test error handling with disabled features

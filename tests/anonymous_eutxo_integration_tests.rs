@@ -3,14 +3,9 @@
 //! This module tests the complete anonymous eUTXO workflow including
 //! stealth addresses, ring signatures, nullifiers, and privacy proofs.
 
-use std::collections::HashMap;
-
 use polytorus::crypto::{
-    anonymous_eutxo::{
-        AnonymousEUtxoConfig, AnonymousEUtxoProcessor, AnonymousUtxo, StealthAddress,
-    },
+    anonymous_eutxo::{AnonymousEUtxoConfig, AnonymousEUtxoProcessor, StealthAddress},
     enhanced_privacy::EnhancedPrivacyConfig,
-    transaction::{TXOutput, Transaction},
 };
 use rand_core::OsRng;
 
@@ -81,7 +76,7 @@ async fn test_complete_anonymous_eutxo_workflow() {
     assert_eq!(stats.average_ring_size, 3);
 
     println!("✅ Anonymity statistics correct");
-    println!("📊 Current stats: {:?}", stats);
+    println!("📊 Current stats: {stats:?}");
 }
 
 /// Test anonymous transaction creation (simplified version without full UTXO setup)
@@ -191,7 +186,7 @@ async fn test_enhanced_privacy_integration() {
     drop(privacy_provider);
 
     println!("✅ Enhanced privacy integration works");
-    println!("📊 Enhanced privacy stats: {:?}", enhanced_stats);
+    println!("📊 Enhanced privacy stats: {enhanced_stats:?}");
 }
 
 /// Test nullifier uniqueness and double-spend prevention
@@ -327,7 +322,7 @@ async fn test_block_advancement() {
     assert_eq!(final_block, 11);
 
     println!("✅ Block advancement works correctly");
-    println!("📊 Final block height: {}", final_block);
+    println!("📊 Final block height: {final_block}");
 }
 
 /// Test error handling and edge cases
@@ -380,21 +375,15 @@ async fn test_performance_benchmarks() {
     let start = std::time::Instant::now();
     for i in 0..10 {
         let _ring_sig = processor
-            .create_ring_signature(&format!("utxo_{}", i), &[1, 2, 3], &mut rng)
+            .create_ring_signature(&format!("utxo_{i}"), &[1, 2, 3], &mut rng)
             .await
             .unwrap();
     }
     let ring_duration = start.elapsed();
 
     println!("🚀 Performance Benchmarks:");
-    println!(
-        "   Stealth address creation: {:?} for 100 addresses",
-        stealth_duration
-    );
-    println!(
-        "   Ring signature creation: {:?} for 10 signatures",
-        ring_duration
-    );
+    println!("   Stealth address creation: {stealth_duration:?} for 100 addresses");
+    println!("   Ring signature creation: {ring_duration:?} for 10 signatures");
     println!("   Average stealth address: {:?}", stealth_duration / 100);
     println!("   Average ring signature: {:?}", ring_duration / 10);
 

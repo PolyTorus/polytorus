@@ -57,10 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, description) in &recipients {
         let stealth_addr = processor.create_stealth_address(name, &mut rng)?;
-        println!(
-            "   🎯 Created quantum-resistant stealth address for {} ({})",
-            name, description
-        );
+        println!("   🎯 Created quantum-resistant stealth address for {name} ({description})");
         println!("      One-time address: {}", stealth_addr.one_time_address);
         println!(
             "      View key: {}...{}",
@@ -75,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Verify stealth address
         let is_valid = processor.verify_stealth_address(&stealth_addr)?;
-        println!("      ✅ Address valid: {}", is_valid);
+        println!("      ✅ Address valid: {is_valid}");
         println!();
     }
 
@@ -98,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (proof_type, description, base_value) in &proof_scenarios {
-        println!("   🔐 Generating {} proof - {}", proof_type, description);
+        println!("   🔐 Generating {proof_type} proof - {description}");
 
         let start_time = std::time::Instant::now();
         let proof = processor
@@ -106,9 +103,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
         let generation_time = start_time.elapsed();
 
-        println!("      Proof type: {}", proof_type);
+        println!("      Proof type: {proof_type}");
         println!("      Proof size: {} bytes", proof.metadata.proof_size);
-        println!("      Generation time: {:?}", generation_time);
+        println!("      Generation time: {generation_time:?}");
         println!(
             "      Security level: {} bits",
             proof.metadata.security_level
@@ -121,8 +118,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let is_valid = processor.verify_stark_proof(&proof).await?;
         let verification_time = start_time.elapsed();
 
-        println!("      ✅ Proof valid: {}", is_valid);
-        println!("      ⚡ Verification time: {:?}", verification_time);
+        println!("      ✅ Proof valid: {is_valid}");
+        println!("      ⚡ Verification time: {verification_time:?}");
         println!();
     }
 
@@ -137,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (amount, description) in &amounts {
-        println!("   💸 Processing {} - {}", amount, description);
+        println!("   💸 Processing {amount} - {description}");
 
         // Create commitment
         let privacy_provider = processor.privacy_provider.read().await;
@@ -153,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
         let proof_time = start_time.elapsed();
 
-        println!("      Amount: {}", amount);
+        println!("      Amount: {amount}");
         println!(
             "      Commitment: {}...",
             hex::encode(&commitment.commitment[..8])
@@ -166,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "      Range proof size: {} bytes",
             range_proof.metadata.proof_size
         );
-        println!("      Proof generation: {:?}", proof_time);
+        println!("      Proof generation: {proof_time:?}");
 
         // Verify commitment and range proof
         let privacy_provider = processor.privacy_provider.read().await;
@@ -177,8 +174,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let range_valid = processor.verify_stark_proof(&range_proof).await?;
 
-        println!("      ✅ Commitment valid: {}", commitment_valid);
-        println!("      ✅ Range proof valid: {}", range_valid);
+        println!("      ✅ Commitment valid: {commitment_valid}");
+        println!("      ✅ Range proof valid: {range_valid}");
         println!();
     }
 
@@ -220,7 +217,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (scenario, base_value) in &benchmark_scenarios {
-        println!("   ⚡ Benchmarking {}", scenario);
+        println!("   ⚡ Benchmarking {scenario}");
 
         let mut generation_times = Vec::new();
         let mut verification_times = Vec::new();
@@ -230,11 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         for i in 0..3 {
             let start = std::time::Instant::now();
             let proof = processor
-                .create_generic_stark_proof(
-                    &format!("bench_{}", i),
-                    base_value + i as u64,
-                    &mut rng,
-                )
+                .create_generic_stark_proof(&format!("bench_{i}"), base_value + i as u64, &mut rng)
                 .await?;
             let gen_time = start.elapsed();
 
@@ -255,9 +248,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             / verification_times.len() as u32;
         let avg_size = proof_sizes.iter().sum::<usize>() / proof_sizes.len();
 
-        println!("      Average generation time: {:?}", avg_gen);
-        println!("      Average verification time: {:?}", avg_ver);
-        println!("      Average proof size: {} bytes", avg_size);
+        println!("      Average generation time: {avg_gen:?}");
+        println!("      Average verification time: {avg_ver:?}");
+        println!("      Average proof size: {avg_size} bytes");
         println!();
     }
 
@@ -352,31 +345,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (use_case, description, importance) in &use_cases {
-        println!("   {}", use_case);
-        println!("      Description: {}", description);
-        println!("      Importance: {}", importance);
+        println!("   {use_case}");
+        println!("      Description: {description}");
+        println!("      Importance: {importance}");
         println!();
     }
 
     // Step 10: Block simulation
     println!("⏰ Step 10: Blockchain Integration Simulation");
     let initial_block = *processor.current_block.read().await;
-    println!("   📦 Initial block height: {}", initial_block);
+    println!("   📦 Initial block height: {initial_block}");
 
     // Simulate block progression
     for i in 1..=10 {
         processor.advance_block().await;
         let current_block = *processor.current_block.read().await;
         if i % 3 == 0 {
-            println!(
-                "   📦 Block {}: Processing STARK transactions...",
-                current_block
-            );
+            println!("   📦 Block {current_block}: Processing STARK transactions...");
         }
     }
 
     let final_block = *processor.current_block.read().await;
-    println!("   📦 Final block height: {}", final_block);
+    println!("   📦 Final block height: {final_block}");
     println!(
         "   ✅ Processed {} blocks with STARK proofs\n",
         final_block - initial_block

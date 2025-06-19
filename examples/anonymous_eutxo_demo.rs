@@ -8,10 +8,7 @@
 
 use std::collections::HashMap;
 
-use polytorus::crypto::{
-    anonymous_eutxo::{AnonymousEUtxoConfig, AnonymousEUtxoProcessor},
-    enhanced_privacy::EnhancedPrivacyConfig,
-};
+use polytorus::crypto::anonymous_eutxo::{AnonymousEUtxoConfig, AnonymousEUtxoProcessor};
 use rand_core::OsRng;
 
 #[tokio::main]
@@ -60,10 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, description) in &recipients {
         let stealth_addr = processor.create_stealth_address(name, &mut rng)?;
-        println!(
-            "   🎯 Created stealth address for {} ({})",
-            name, description
-        );
+        println!("   🎯 Created stealth address for {name} ({description})");
         println!("      One-time address: {}", stealth_addr.one_time_address);
         println!(
             "      View key: {}...{}",
@@ -109,8 +103,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .create_ring_signature(utxo_id, secret_key, &mut rng)
             .await?;
 
-        println!("   🔑 Ring signature for {} - {}", user, description);
-        println!("      UTXO ID: {}", utxo_id);
+        println!("   🔑 Ring signature for {user} - {description}");
+        println!("      UTXO ID: {utxo_id}");
         println!("      Ring size: {}", ring_signature.ring.len());
         println!(
             "      Key image: {}...",
@@ -123,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Verify the signature
         let is_valid = processor.verify_ring_signature(&ring_signature).await?;
-        println!("      ✅ Signature valid: {}", is_valid);
+        println!("      ✅ Signature valid: {is_valid}");
         println!();
     }
 
@@ -150,7 +144,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         drop(privacy_provider);
 
-        println!("   💰 Amount commitment for {} - {}", amount, description);
+        println!("   💰 Amount commitment for {amount} - {description}");
         println!(
             "      Commitment: {}...",
             hex::encode(&commitment.commitment[..8])
@@ -171,8 +165,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .verify_range_proof(&range_proof, &commitment)?;
         drop(privacy_provider);
 
-        println!("      ✅ Commitment valid: {}", is_valid);
-        println!("      ✅ Range proof valid: {}", range_valid);
+        println!("      ✅ Commitment valid: {is_valid}");
+        println!("      ✅ Range proof valid: {range_valid}");
         println!();
     }
 
@@ -184,8 +178,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let encrypted_amount =
             processor.encrypt_amount_for_stealth(secret_amount, stealth_addr, &mut rng)?;
 
-        println!("   📦 Encrypted amount for {}", recipient_name);
-        println!("      Original amount: {}", secret_amount);
+        println!("   📦 Encrypted amount for {recipient_name}");
+        println!("      Original amount: {secret_amount}");
         println!(
             "      Encrypted data: {}...",
             hex::encode(&encrypted_amount[..16])
@@ -255,19 +249,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 7: Block advancement simulation
     println!("⏰ Step 7: Simulating Block Advancement");
     let initial_block = *processor.current_block.read().await;
-    println!("   📦 Initial block height: {}", initial_block);
+    println!("   📦 Initial block height: {initial_block}");
 
     // Advance 10 blocks
     for i in 1..=10 {
         processor.advance_block().await;
         let current_block = *processor.current_block.read().await;
         if i % 3 == 0 {
-            println!("   📦 Block {}: Advancing blockchain...", current_block);
+            println!("   📦 Block {current_block}: Advancing blockchain...");
         }
     }
 
     let final_block = *processor.current_block.read().await;
-    println!("   📦 Final block height: {}", final_block);
+    println!("   📦 Final block height: {final_block}");
     println!(
         "   ✅ Advanced {} blocks successfully\n",
         final_block - initial_block
@@ -352,7 +346,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (use_case, description) in &use_cases {
-        println!("   {} {}", use_case, description);
+        println!("   {use_case} {description}");
     }
     println!();
 
