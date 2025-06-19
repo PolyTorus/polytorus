@@ -26,4 +26,3 @@ pub use real_diamond_io::*;
 pub use transaction::*;
 pub use verkle_tree::*;
 pub use wallets::WalletManager;
-
