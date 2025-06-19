@@ -23,14 +23,43 @@ use crate::{
 };
 
 /// Consensus layer implementation using Proof of Work
+///
+/// This is the core consensus mechanism for the PolyTorus modular blockchain.
+/// It implements a complete Proof-of-Work consensus algorithm with:
+///
+/// * **Block Validation**: Comprehensive validation of block structure, PoW, timestamps, and transactions
+/// * **Chain Management**: Maintains blockchain state with proper storage integration
+/// * **Mining**: Full mining capabilities with difficulty adjustment
+/// * **Validator Management**: Tracks validator information and status
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use polytorus::modular::{PolyTorusConsensusLayer, ConsensusConfig};
+/// use polytorus::config::DataContext;
+/// use std::path::PathBuf;
+///
+/// let config = ConsensusConfig {
+///     block_time: 10000,    // 10 seconds
+///     difficulty: 4,        // Initial difficulty
+///     max_block_size: 1024 * 1024, // 1MB
+/// };
+///
+/// let data_context = DataContext::new(PathBuf::from("test_data"));
+/// let consensus = PolyTorusConsensusLayer::new(data_context, config, true).unwrap();
+/// ```
+///
+/// # Implementation Status
+///
+/// ✅ **FULLY IMPLEMENTED** - Production-ready with comprehensive test coverage
 pub struct PolyTorusConsensusLayer {
-    /// Modular storage layer
+    /// Modular storage layer for persistent blockchain data
     storage: Arc<ModularStorage>,
-    /// Validator information
+    /// Validator information and registry
     validators: Arc<Mutex<Vec<ValidatorInfo>>>,
-    /// Current validator status
+    /// Whether this node is acting as a validator
     is_validator: bool,
-    /// Consensus configuration
+    /// Consensus configuration parameters
     config: ConsensusConfig,
 }
 

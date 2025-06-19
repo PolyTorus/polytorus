@@ -25,9 +25,29 @@ use crate::{
 
 /// Unified Modular Blockchain Orchestrator with P2P Network Integration
 ///
-/// This orchestrator provides a clean, trait-based architecture that supports
-/// pluggable layer implementations, sophisticated configuration management,
-/// event-driven communication, and integrated P2P networking.
+/// This is the central coordination component that orchestrates all modular layers
+/// in the PolyTorus blockchain. It provides comprehensive system coordination with:
+///
+/// * **Layer Coordination**: Manages communication between all modular layers
+/// * **Event System**: 17 different event types for comprehensive monitoring
+/// * **P2P Integration**: Built-in network node integration for distributed operation
+/// * **Configuration Management**: Dynamic configuration with validation
+/// * **Performance Monitoring**: Tracks metrics and health across all layers
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use polytorus::modular::UnifiedModularOrchestrator;
+/// use polytorus::config::DataContext;
+/// use std::path::PathBuf;
+///
+/// let data_context = DataContext::new(PathBuf::from("orchestrator_data"));
+/// println!("Unified orchestrator configuration ready!");
+/// ```
+///
+/// # Implementation Status
+///
+/// ⚠️ **BASIC IMPLEMENTATION** - Well-designed architecture but needs integration tests
 pub struct UnifiedModularOrchestrator {
     /// Execution layer (trait object)
     execution_layer: Arc<dyn ExecutionLayer + Send + Sync>,

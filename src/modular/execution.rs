@@ -26,21 +26,52 @@ use crate::{
     Result,
 };
 
-/// Execution layer implementation
+/// Execution layer implementation with hybrid transaction processing
+///
+/// This layer implements a sophisticated execution environment that supports both
+/// account-based and eUTXO transaction models with smart contract capabilities:
+///
+/// * **Dual Transaction Processing**: Account-based and Extended UTXO models
+/// * **Smart Contract Engine**: WASM-based contract execution with gas metering
+/// * **State Management**: Comprehensive state tracking with rollback capabilities
+/// * **Gas Metering**: Resource management and execution cost tracking
+/// * **Contract Deployment**: Support for deploying and executing smart contracts
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use polytorus::modular::{ExecutionConfig, WasmConfig};
+///
+/// let config = ExecutionConfig {
+///     gas_limit: 8_000_000,
+///     gas_price: 1,
+///     wasm_config: WasmConfig {
+///         max_memory_pages: 256,
+///         max_stack_size: 65536,
+///         gas_metering: true,
+///     },
+/// };
+///
+/// println!("Execution layer configuration ready!");
+/// ```
+///
+/// # Implementation Status
+///
+/// ⚠️ **PARTIALLY IMPLEMENTED** - Good architecture but missing unit tests (needs improvement)
 pub struct PolyTorusExecutionLayer {
-    /// Contract execution engine
+    /// WASM contract execution engine with gas metering
     contract_engine: Arc<Mutex<ContractEngine>>,
-    /// Modular transaction processor (account-based)
+    /// Account-based transaction processor
     transaction_processor: Arc<ModularTransactionProcessor>,
-    /// Extended UTXO processor (eUTXO-based)
+    /// Extended UTXO processor for eUTXO model
     eutxo_processor: Arc<EUtxoProcessor>,
-    /// Current state root
+    /// Current state root hash
     state_root: Arc<Mutex<Hash>>,
-    /// Account states
+    /// Account state tracking
     account_states: Arc<Mutex<HashMap<String, AccountState>>>,
-    /// Execution context
+    /// Execution context for state management
     execution_context: Arc<Mutex<Option<ExecutionContext>>>,
-    /// Configuration
+    /// Execution configuration parameters
     config: ExecutionConfig,
 }
 
