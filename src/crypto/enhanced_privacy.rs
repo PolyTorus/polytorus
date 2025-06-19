@@ -114,7 +114,7 @@ pub struct EnhancedPrivacyProvider {
     /// Configuration
     config: EnhancedPrivacyConfig,
     /// Traditional privacy provider
-    privacy_provider: PrivacyProvider,
+    pub privacy_provider: PrivacyProvider,
     /// Real Diamond IO provider
     diamond_io_provider: Option<RealDiamondIOProvider>,
     /// Circuit counter for unique IDs
