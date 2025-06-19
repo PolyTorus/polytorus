@@ -80,6 +80,7 @@ pub mod crypto;
 pub mod network;
 pub mod smart_contract;
 pub mod test_helpers;
+pub mod tui;
 pub mod webserver;
 
 // Kani verification utilities

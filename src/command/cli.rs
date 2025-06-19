@@ -223,6 +223,12 @@ impl ModernCli {
                     .help("Show message queue statistics")
                     .action(clap::ArgAction::SetTrue),
             )
+            .arg(
+                Arg::new("tui")
+                    .long("tui")
+                    .help("Launch Terminal User Interface")
+                    .action(clap::ArgAction::SetTrue),
+            )
             .get_matches(); // Extract common options
         let config_path = matches.get_one::<String>("config");
         let data_dir = matches.get_one::<String>("data-dir");
@@ -293,6 +299,8 @@ impl ModernCli {
             self.cmd_network_blacklist(peer_id).await?;
         } else if matches.get_flag("network-queue-stats") {
             self.cmd_network_queue_stats().await?;
+        } else if matches.get_flag("tui") {
+            self.cmd_launch_tui().await?;
         } else {
             println!("Use --help for usage information");
         }
@@ -1406,6 +1414,16 @@ impl ModernCli {
                 println!("❌ Error listing contracts: {}", e);
             }
         }
+
+        Ok(())
+    }
+
+    async fn cmd_launch_tui(&self) -> Result<()> {
+        println!("🚀 Launching Polytorus Terminal User Interface...");
+        println!("Loading blockchain state and initializing TUI...");
+
+        // Launch the TUI application
+        crate::tui::TuiApp::run().await?;
 
         Ok(())
     }
