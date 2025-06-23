@@ -8,15 +8,19 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 use actix_web::{web, App, HttpServer, Result as ActixResult};
 use clap::{Arg, Command};
 use polytorus::{
+    blockchain::block::BuildingBlock,
     config::{ConfigManager, DataContext},
-    crypto::{wallets::Wallets, types::EncryptionType},
+    crypto::{
+        transaction::{TXOutput, Transaction},
+        types::EncryptionType,
+        wallets::Wallets,
+    },
     modular::{
         consensus::PolyTorusConsensusLayer,
+        default_modular_config,
         traits::{ConsensusConfig, ConsensusLayer},
-        default_modular_config, UnifiedModularOrchestrator,
+        UnifiedModularOrchestrator,
     },
-    blockchain::block::BuildingBlock,
-    crypto::transaction::{Transaction, TransactionInput, TransactionOutput},
     Result,
 };
 use reqwest::Client;
@@ -44,9 +48,9 @@ pub struct ContainerLabConfig {
     pub num_miners: usize,
     pub base_port: u16,
     pub base_p2p_port: u16,
-    pub mining_interval: u64,    // milliseconds between mining attempts
+    pub mining_interval: u64,      // milliseconds between mining attempts
     pub transaction_interval: u64, // milliseconds between transactions
-    pub simulation_duration: u64, // seconds
+    pub simulation_duration: u64,  // seconds
 }
 
 impl Default for ContainerLabConfig {
@@ -56,9 +60,9 @@ impl Default for ContainerLabConfig {
             num_miners: 2,
             base_port: 9000,
             base_p2p_port: 8000,
-            mining_interval: 15000,    // 15 seconds
+            mining_interval: 15000,      // 15 seconds
             transaction_interval: 10000, // 10 seconds
-            simulation_duration: 600,  // 10 minutes
+            simulation_duration: 600,    // 10 minutes
         }
     }
 }
@@ -138,13 +142,13 @@ impl ContainerLabMiningSimulator {
                 let mining_address = wallets.create_wallet(EncryptionType::ECDSA);
                 wallets.save_all()?;
 
-                println!("   ✅ Mining wallet created: {}", mining_address);
+                println!("   ✅ Mining wallet created: {mining_address}");
 
                 // Store the mining address
                 let address_file = format!("{}/mining_address.txt", config.data_dir);
                 std::fs::write(&address_file, &mining_address)?;
-                
-                println!("   📝 Mining address saved to: {}", address_file);
+
+                println!("   📝 Mining address saved to: {address_file}");
             }
         }
 
@@ -194,8 +198,8 @@ impl ContainerLabMiningSimulator {
 
             // Create consensus layer for mining
             let consensus_config = ConsensusConfig {
-                block_time: 15000, // 15 seconds for testnet
-                difficulty: 4,     // Low difficulty for testing
+                block_time: 15000,           // 15 seconds for testnet
+                difficulty: 4,               // Low difficulty for testing
                 max_block_size: 1024 * 1024, // 1MB
             };
 
@@ -263,14 +267,15 @@ impl ContainerLabMiningSimulator {
                                     *blocks_mined += 1;
                                     println!(
                                         "   ⛏️  {} mined block #{} (total: {})",
-                                        node_clone.config.node_id,
-                                        block_number,
-                                        *blocks_mined
+                                        node_clone.config.node_id, block_number, *blocks_mined
                                     );
                                 }
                             }
                             Err(e) => {
-                                eprintln!("   ❌ Mining error on {}: {}", node_clone.config.node_id, e);
+                                eprintln!(
+                                    "   ❌ Mining error on {}: {}",
+                                    node_clone.config.node_id, e
+                                );
                             }
                         }
 
@@ -289,31 +294,36 @@ impl ContainerLabMiningSimulator {
         // Using already imported types
 
         // Create a simple coinbase transaction for the miner
-        let mining_address = node.mining_address.as_ref()
+        let mining_address = node
+            .mining_address
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Mining address not set"))?;
 
         let coinbase_tx = Transaction {
-            id: format!("coinbase_{}_{}_{}", node.config.node_id, block_number, uuid::Uuid::new_v4()),
+            id: format!(
+                "coinbase_{}_{}_{}",
+                node.config.node_id,
+                block_number,
+                uuid::Uuid::new_v4()
+            ),
             vin: vec![], // Coinbase has no inputs
-            vout: vec![TransactionOutput {
+            vout: vec![TXOutput {
                 value: 50 * 100_000_000, // 50 coins in satoshis
-                script_pub_key: mining_address.clone(),
+                pub_key_hash: mining_address.as_bytes().to_vec(),
+                script: None,
+                datum: None,
+                reference_script: None,
             }],
-            lock_time: 0,
+            contract_data: None,
         };
 
-        // Create building block
-        let building_block = BuildingBlock {
-            version: 1,
-            prev_block_hash: "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
-            merkle_root: "merkle_root".to_string(),
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_secs(),
-            difficulty_target: 4,
-            nonce: 0,
-            transactions: vec![coinbase_tx],
-        };
+        // Create building block using the proper constructor
+        let building_block = BuildingBlock::new_building(
+            vec![coinbase_tx],
+            "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            block_number as i32,
+            4, // difficulty
+        );
 
         // Attempt to mine the block
         match node.consensus.mine_block(&building_block) {
@@ -332,7 +342,7 @@ impl ContainerLabMiningSimulator {
             }
             Err(e) => {
                 // Mining can fail, which is normal
-                println!("     ⏭️  Mining attempt failed: {}", e);
+                println!("     ⏭️  Mining attempt failed: {e}");
                 Ok(false)
             }
         }
@@ -413,20 +423,17 @@ impl ContainerLabMiningSimulator {
                 let sender_idx = tx_counter as usize % nodes.len();
                 let receiver_idx = (tx_counter as usize + 1) % nodes.len();
 
-                if let Err(e) = Self::generate_transaction(
-                    &nodes[sender_idx],
-                    &nodes[receiver_idx],
-                    tx_counter,
-                )
-                .await
+                if let Err(e) =
+                    Self::generate_transaction(&nodes[sender_idx], &nodes[receiver_idx], tx_counter)
+                        .await
                 {
-                    eprintln!("Failed to generate transaction {}: {}", tx_counter, e);
+                    eprintln!("Failed to generate transaction {tx_counter}: {e}");
                 }
 
                 tx_counter += 1;
 
                 if tx_counter % 5 == 0 {
-                    println!("📊 Generated {} transactions", tx_counter);
+                    println!("📊 Generated {tx_counter} transactions");
                 }
             }
         });
@@ -452,16 +459,13 @@ impl ContainerLabMiningSimulator {
                 if response.status().is_success() {
                     println!(
                         "   💸 TX {}: {} -> {} ({})",
-                        tx_id,
-                        sender.config.node_id,
-                        receiver.config.node_id,
-                        tx_data["amount"]
+                        tx_id, sender.config.node_id, receiver.config.node_id, tx_data["amount"]
                     );
                     *sender.tx_count.lock().await += 1;
                 }
             }
             Err(e) => {
-                eprintln!("Transaction submit error: {}", e);
+                eprintln!("Transaction submit error: {e}");
             }
         }
 
@@ -479,7 +483,11 @@ impl ContainerLabMiningSimulator {
             let blocks_mined = *node.blocks_mined.lock().await;
             let tx_count = *node.tx_count.lock().await;
 
-            let node_type = if node.config.is_miner { "Miner" } else { "Validator" };
+            let node_type = if node.config.is_miner {
+                "Miner"
+            } else {
+                "Validator"
+            };
 
             println!(
                 "📡 {} ({}): Blocks: {}, Transactions: {}",
@@ -490,7 +498,7 @@ impl ContainerLabMiningSimulator {
             total_txs += tx_count;
         }
 
-        println!("📊 Total: {} blocks mined, {} transactions processed", total_blocks, total_txs);
+        println!("📊 Total: {total_blocks} blocks mined, {total_txs} transactions processed");
     }
 }
 
@@ -577,7 +585,11 @@ async fn main() -> Result<()> {
 
     let config = ContainerLabConfig {
         num_nodes: matches.get_one::<String>("nodes").unwrap().parse().unwrap(),
-        num_miners: matches.get_one::<String>("miners").unwrap().parse().unwrap(),
+        num_miners: matches
+            .get_one::<String>("miners")
+            .unwrap()
+            .parse()
+            .unwrap(),
         simulation_duration: matches
             .get_one::<String>("duration")
             .unwrap()
@@ -608,7 +620,11 @@ async fn main() -> Result<()> {
 
     println!("🌐 Node APIs available at:");
     for node in &simulator.nodes {
-        let node_type = if node.config.is_miner { "Miner" } else { "Validator" };
+        let node_type = if node.config.is_miner {
+            "Miner"
+        } else {
+            "Validator"
+        };
         println!(
             "   {} ({}): http://127.0.0.1:{}",
             node.config.node_id, node_type, node.config.port

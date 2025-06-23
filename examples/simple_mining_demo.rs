@@ -4,16 +4,14 @@
 //! without complex ContainerLab dependencies.
 
 use std::{sync::Arc, time::Duration};
-use tokio::time::{interval, sleep};
+
 use polytorus::{
     config::DataContext,
-    modular::{
-        default_modular_config, UnifiedModularOrchestrator,
-    },
-    crypto::wallets::Wallets,
-    crypto::types::EncryptionType,
+    crypto::{types::EncryptionType, wallets::Wallets},
+    modular::{default_modular_config, UnifiedModularOrchestrator},
     Result,
 };
+use tokio::time::{interval, sleep};
 
 #[derive(Clone)]
 pub struct SimpleMiner {
@@ -36,11 +34,11 @@ impl SimpleMiningDemo {
     }
 
     pub async fn setup_miners(&mut self, num_miners: usize) -> Result<()> {
-        println!("🔧 Setting up {} miners...", num_miners);
+        println!("🔧 Setting up {num_miners} miners...");
 
         for i in 0..num_miners {
-            let node_id = format!("miner-{}", i);
-            let data_context = DataContext::new(format!("./data/simple_mining/{}", node_id).into());
+            let node_id = format!("miner-{i}");
+            let data_context = DataContext::new(format!("./data/simple_mining/{node_id}").into());
             data_context.ensure_directories()?;
 
             // Create mining wallet
@@ -50,10 +48,9 @@ impl SimpleMiningDemo {
 
             // Create orchestrator
             let config = default_modular_config();
-            let orchestrator = UnifiedModularOrchestrator::create_and_start_with_defaults(
-                config,
-                data_context,
-            ).await?;
+            let orchestrator =
+                UnifiedModularOrchestrator::create_and_start_with_defaults(config, data_context)
+                    .await?;
 
             let miner = SimpleMiner {
                 node_id: node_id.clone(),
@@ -62,8 +59,8 @@ impl SimpleMiningDemo {
             };
 
             self.miners.push(miner);
-            
-            println!("   ✅ Miner {} created with address: {}", node_id, mining_address);
+
+            println!("   ✅ Miner {node_id} created with address: {mining_address}");
             sleep(Duration::from_millis(1000)).await;
         }
 
@@ -71,7 +68,10 @@ impl SimpleMiningDemo {
     }
 
     pub async fn start_mining_simulation(&self) -> Result<()> {
-        println!("⛏️  Starting mining simulation for {} seconds...", self.simulation_duration);
+        println!(
+            "⛏️  Starting mining simulation for {} seconds...",
+            self.simulation_duration
+        );
 
         let mut tasks = Vec::new();
 
@@ -84,7 +84,8 @@ impl SimpleMiningDemo {
                 let mut interval = interval(Duration::from_millis(mining_interval));
                 let mut blocks_mined = 0u64;
 
-                for block_number in 0..10 { // Mine up to 10 blocks
+                for block_number in 0..10 {
+                    // Mine up to 10 blocks
                     interval.tick().await;
 
                     match Self::attempt_mining(&miner_clone, block_number).await {
@@ -111,7 +112,10 @@ impl SimpleMiningDemo {
                     }
                 }
 
-                println!("   🏁 {} finished mining with {} blocks", miner_clone.node_id, blocks_mined);
+                println!(
+                    "   🏁 {} finished mining with {} blocks",
+                    miner_clone.node_id, blocks_mined
+                );
                 blocks_mined
             });
 
@@ -121,7 +125,9 @@ impl SimpleMiningDemo {
         // Start transaction generation in background
         let miners_clone = self.miners.clone();
         let tx_task = tokio::spawn(async move {
-            Self::generate_transactions_static(&miners_clone).await.unwrap_or(());
+            Self::generate_transactions_static(&miners_clone)
+                .await
+                .unwrap_or(());
             0u64 // Return 0 to match the expected type
         });
         tasks.push(tx_task);
@@ -142,7 +148,7 @@ impl SimpleMiningDemo {
                 let total_blocks: u64 = results.iter()
                     .filter_map(|r| r.as_ref().ok())
                     .sum();
-                println!("✅ All mining tasks completed. Total blocks mined: {}", total_blocks);
+                println!("✅ All mining tasks completed. Total blocks mined: {total_blocks}");
             }
         }
 
@@ -158,14 +164,14 @@ impl SimpleMiningDemo {
 
         // Get current state
         let state = miner.orchestrator.get_state().await;
-        
+
         // Simulate proof-of-work (in real implementation, this would be actual mining)
         let mining_success = (block_number + state.current_block_height) % 3 == 0; // 33% success rate
-        
+
         if mining_success {
             // Simulate adding the block to the chain
             sleep(Duration::from_millis(500)).await; // Simulate block processing time
-            
+
             println!(
                 "     ✨ {} found valid proof for block #{}!",
                 miner.node_id, block_number
@@ -178,39 +184,40 @@ impl SimpleMiningDemo {
 
     async fn generate_transactions_static(miners: &[SimpleMiner]) -> Result<()> {
         println!("💸 Starting transaction generation...");
-        
+
         let mut tx_count = 0u64;
         let mut interval = interval(Duration::from_secs(5));
 
-        for _ in 0..20 { // Generate 20 transactions
+        for _ in 0..20 {
+            // Generate 20 transactions
             interval.tick().await;
 
             if miners.len() >= 2 {
                 let from_idx = tx_count as usize % miners.len();
                 let to_idx = (tx_count as usize + 1) % miners.len();
-                
+
                 let from_miner = &miners[from_idx];
                 let to_miner = &miners[to_idx];
-                
+
                 let amount = 100 + (tx_count % 900);
-                
+
                 println!(
                     "   💸 TX {}: {} -> {} ({} units)",
                     tx_count, from_miner.node_id, to_miner.node_id, amount
                 );
-                
+
                 tx_count += 1;
             }
         }
 
-        println!("📊 Transaction generation completed: {} transactions", tx_count);
+        println!("📊 Transaction generation completed: {tx_count} transactions");
         Ok(())
     }
 
     pub async fn show_final_stats(&self) {
         println!("\n📈 Mining Simulation Results:");
         println!("============================");
-        
+
         for miner in &self.miners {
             let state = miner.orchestrator.get_state().await;
             println!(
@@ -218,7 +225,7 @@ impl SimpleMiningDemo {
                 miner.node_id, state.current_block_height, state.is_running
             );
         }
-        
+
         println!("\n🎯 Simulation completed successfully!");
     }
 }
@@ -234,20 +241,20 @@ async fn main() -> Result<()> {
     let duration = 120; // 2 minutes
 
     println!("📊 Configuration:");
-    println!("   Miners: {}", num_miners);
-    println!("   Duration: {}s", duration);
+    println!("   Miners: {num_miners}");
+    println!("   Duration: {duration}s");
     println!();
 
     let mut demo = SimpleMiningDemo::new(num_miners, duration);
 
     // Setup miners
     demo.setup_miners(num_miners).await?;
-    
+
     println!("\n🚀 Starting mining simulation...");
-    
+
     // Run simulation
     demo.start_mining_simulation().await?;
-    
+
     // Show results
     demo.show_final_stats().await;
 
