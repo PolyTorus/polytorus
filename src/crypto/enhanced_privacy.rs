@@ -16,7 +16,7 @@ use crate::{
         },
         transaction::Transaction,
     },
-    diamond_io_integration_new::DiamondIOResult,
+    diamond_io_integration_new::PrivacyEngineResult,
     Result,
 };
 
@@ -237,8 +237,8 @@ impl EnhancedPrivacyProvider {
             for diamond_proof in enhanced_tx.diamond_io_proofs.iter() {
                 if let Some(circuit) = self.get_circuit_by_id(&diamond_proof.circuit_id).await? {
                     let circuit_inputs = self.derive_circuit_inputs(&diamond_proof.base_proof)?;
-                    let expected_result: DiamondIOResult =
-                        diamond_proof.evaluation_result.clone().into(); // Convert SerializableDiamondIOResult to DiamondIOResult
+                    let expected_result: PrivacyEngineResult =
+                        diamond_proof.evaluation_result.clone().into(); // Convert SerializableDiamondIOResult to PrivacyEngineResult
                     verification_data.push((circuit, circuit_inputs, expected_result));
                 } else {
                     // Circuit not found - this could be normal if it was cleaned up

@@ -20,3 +20,6 @@ why3find.json
 # Database and Redis data
 postgres_data/
 redis_data/
+
+test_circuit_execution_obfuscation/
+test_simple_circuit_operations_obfuscation/

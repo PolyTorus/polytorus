@@ -5,14 +5,14 @@ use diamond_io::bgg::circuit::PolyCircuit;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use crate::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
+use crate::diamond_io_integration_new::{PrivacyEngineConfig, PrivacyEngineIntegration};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondContract {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub config: DiamondIOConfig,
+    pub config: PrivacyEngineConfig,
     pub circuit: Option<String>, // Serialized circuit
     pub is_obfuscated: bool,
     pub creation_time: u64,
@@ -34,12 +34,12 @@ pub struct ContractExecution {
 pub struct DiamondContractEngine {
     contracts: HashMap<String, DiamondContract>,
     executions: Vec<ContractExecution>,
-    diamond_io: DiamondIOIntegration,
+    diamond_io: PrivacyEngineIntegration,
 }
 
 impl DiamondContractEngine {
-    pub fn new(config: DiamondIOConfig) -> Result<Self> {
-        let diamond_io = DiamondIOIntegration::new(config)?;
+    pub fn new(config: PrivacyEngineConfig) -> Result<Self> {
+        let diamond_io = PrivacyEngineIntegration::new(config)?;
 
         Ok(Self {
             contracts: HashMap::new(),
@@ -103,7 +103,7 @@ impl DiamondContractEngine {
         let circuit = self.create_circuit_from_description(&description)?;
 
         // Set obfuscation directory specific to this contract
-        let mut diamond_io = DiamondIOIntegration::new(config)?;
+        let mut diamond_io = PrivacyEngineIntegration::new(config)?;
         diamond_io.set_obfuscation_dir(format!("obfuscation_data_{}", contract_id));
 
         // Obfuscate the circuit
@@ -147,7 +147,7 @@ impl DiamondContractEngine {
         }
 
         // Create Diamond IO instance for this contract
-        let mut diamond_io = DiamondIOIntegration::new(contract.config.clone())?;
+        let mut diamond_io = PrivacyEngineIntegration::new(contract.config.clone())?;
         diamond_io.set_obfuscation_dir(format!("obfuscation_data_{}", contract_id));
 
         let outputs = if contract.is_obfuscated {
@@ -353,8 +353,8 @@ impl DiamondContractEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn get_test_config() -> DiamondIOConfig {
-        DiamondIOConfig::dummy()
+    fn get_test_config() -> PrivacyEngineConfig {
+        PrivacyEngineConfig::dummy()
     }
 
     #[tokio::test]
