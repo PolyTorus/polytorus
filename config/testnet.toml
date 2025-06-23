@@ -1,0 +1,159 @@
+# PolyTorus Local Testnet Configuration
+# Optimized for local development and testing
+
+[network]
+listen_addr = "0.0.0.0:8000"
+bootstrap_peers = []
+max_peers = 20
+connection_timeout = 10
+ping_interval = 30
+peer_timeout = 120
+enable_discovery = true
+discovery_interval = 60
+max_message_size = 1048576  # 1MB
+bandwidth_limit = null
+
+[execution]
+gas_limit = 8000000
+gas_price = 1
+max_transaction_size = 65536
+transaction_timeout = 30
+
+[execution.wasm_config]
+max_memory_pages = 256
+max_stack_size = 65536
+gas_metering = true
+
+[settlement]
+challenge_period = 50       # Shorter for testnet
+batch_size = 10             # Smaller batches for testing
+min_validator_stake = 100   # Lower stake for testing
+settlement_timeout = 120
+
+[consensus]
+block_time = 10000          # 10 seconds
+difficulty = 2              # Low difficulty for quick mining
+max_block_size = 1048576    # 1MB
+confirmation_depth = 3      # Fewer confirmations for testing
+
+[data_availability]
+retention_period = 86400    # 24 hours for testing
+max_data_size = 1048576     # 1MB
+replication_factor = 2      # Lower replication for local testing
+
+[data_availability.network_config]
+listen_addr = "0.0.0.0:7000"
+bootstrap_peers = []
+max_peers = 10
+connection_timeout = 10
+chunk_size = 32768          # 32KB chunks
+
+[logging]
+level = "INFO"
+output = "both"
+file_path = "/data/logs/polytorus.log"
+max_file_size = 10485760    # 10MB
+rotation_count = 3
+
+[storage]
+data_dir = "/data"
+max_cache_size = 134217728  # 128MB
+sync_interval = 30
+compression = true
+backup_interval = 3600      # 1 hour
+
+# Testnet specific settings
+[testnet]
+network_id = "polytorus-local-testnet"
+chain_id = 31337
+genesis_time = 1735200000   # Fixed genesis time for consistency
+initial_supply = 1000000000 # 1 billion tokens
+initial_difficulty = 2
+
+# Pre-funded accounts for testing
+[testnet.prefunded_accounts]
+# These accounts will have initial balances
+"test_account_1" = 1000000  # 1M tokens
+"test_account_2" = 500000   # 500K tokens
+"test_account_3" = 100000   # 100K tokens
+
+# Node type specific configurations
+[node_types]
+
+[node_types.bootstrap]
+role = "bootstrap"
+enable_mining = false
+enable_api = true
+api_cors_enabled = true
+api_rate_limit = 100
+
+[node_types.miner]
+role = "miner"
+enable_mining = true
+enable_api = true
+mining_reward = 50
+target_block_time = 10000
+
+[node_types.validator]
+role = "validator"
+enable_mining = false
+enable_api = true
+validation_only = true
+
+[node_types.interface]
+role = "interface"
+enable_mining = false
+enable_api = true
+enable_web_ui = true
+api_gateway = true
+
+[node_types.explorer]
+role = "explorer"
+enable_mining = false
+enable_api = true
+enable_block_explorer = true
+historical_data = true
+
+# Development and testing features
+[development]
+enable_debug_endpoints = true
+enable_test_accounts = true
+auto_generate_wallets = true
+fast_sync = true
+disable_peer_verification = false
+
+# API Gateway configuration
+[api_gateway]
+enable = true
+port = 9020
+cors_enabled = true
+rate_limit = 1000
+timeout = 30
+endpoints = [
+    "/balance/{address}",
+    "/transaction/send",
+    "/transaction/status/{hash}",
+    "/block/latest",
+    "/block/{hash}",
+    "/network/status",
+    "/wallet/create",
+    "/wallet/list"
+]
+
+# Web UI configuration
+[web_ui]
+enable = true
+port = 3000
+api_endpoint = "http://localhost:9020"
+refresh_interval = 5000
+default_gas_price = 1
+default_gas_limit = 21000
+
+# Block Explorer configuration
+[block_explorer]
+enable = true
+port = 8080
+blocks_per_page = 20
+transactions_per_page = 50
+cache_blocks = 1000
+update_interval = 5000

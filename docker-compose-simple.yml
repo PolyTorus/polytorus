@@ -1,0 +1,92 @@
+# Simple Docker Compose for PolyTorus Mining Test
+version: '3.8'
+
+services:
+  # Bootstrap node
+  node-bootstrap:
+    build: .
+    container_name: polytorus-bootstrap
+    ports:
+      - "9000:9000"
+      - "8000:8000"
+    environment:
+      - POLYTORUS_NODE_ID=bootstrap
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=
+      - POLYTORUS_IS_MINER=false
+    volumes:
+      - ./data/docker/bootstrap:/data
+      - ./config:/config
+    networks:
+      - polytorus-net
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        cargo run --release --bin polytorus -- --config /config/docker-node.toml --modular-start
+      "
+
+  # Miner node 1
+  node-miner-1:
+    build: .
+    container_name: polytorus-miner-1
+    ports:
+      - "9001:9000"
+      - "8001:8000"
+    environment:
+      - POLYTORUS_NODE_ID=miner-1
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=node-bootstrap:8000
+      - POLYTORUS_IS_MINER=true
+    volumes:
+      - ./data/docker/miner-1:/data
+      - ./config:/config
+    networks:
+      - polytorus-net
+    depends_on:
+      - node-bootstrap
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        sleep 10 &&
+        cargo run --release --bin polytorus -- --config /config/docker-node.toml --modular-start
+      "
+
+  # Miner node 2
+  node-miner-2:
+    build: .
+    container_name: polytorus-miner-2
+    ports:
+      - "9002:9000"
+      - "8002:8000"
+    environment:
+      - POLYTORUS_NODE_ID=miner-2
+      - POLYTORUS_HTTP_PORT=9000
+      - POLYTORUS_P2P_PORT=8000
+      - POLYTORUS_DATA_DIR=/data
+      - POLYTORUS_LOG_LEVEL=INFO
+      - POLYTORUS_BOOTSTRAP_PEERS=node-bootstrap:8000,node-miner-1:8000
+      - POLYTORUS_IS_MINER=true
+    volumes:
+      - ./data/docker/miner-2:/data
+      - ./config:/config
+    networks:
+      - polytorus-net
+    depends_on:
+      - node-bootstrap
+      - node-miner-1
+    command: >
+      sh -c "
+        mkdir -p /data &&
+        sleep 15 &&
+        cargo run --release --bin polytorus -- --config /config/docker-node.toml --modular-start
+      "
+
+networks:
+  polytorus-net:
+    driver: bridge

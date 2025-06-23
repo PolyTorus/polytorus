@@ -1,0 +1,368 @@
+# Realistic ContainerLab Topology with AS Separation
+# This topology simulates a real-world distributed blockchain network
+
+name: polytorus-realistic-testnet
+
+topology:
+  # BGP Routers for AS separation
+  routers:
+    # AS 65001 - North America (East Coast)
+    router-na-east:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.100.1.10
+      ports:
+        - "2601:2601"  # BGP port
+      volumes:
+        - ./config/frr/router-na-east.conf:/etc/frr/frr.conf
+      env:
+        - ROUTER_ID=65001
+        - AS_NUMBER=65001
+    
+    # AS 65002 - Europe (Frankfurt)
+    router-eu:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.100.2.10
+      ports:
+        - "2602:2601"
+      volumes:
+        - ./config/frr/router-eu.conf:/etc/frr/frr.conf
+      env:
+        - ROUTER_ID=65002
+        - AS_NUMBER=65002
+    
+    # AS 65003 - Asia Pacific (Singapore)
+    router-ap:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.100.3.10
+      ports:
+        - "2603:2601"
+      volumes:
+        - ./config/frr/router-ap.conf:/etc/frr/frr.conf
+      env:
+        - ROUTER_ID=65003
+        - AS_NUMBER=65003
+    
+    # AS 65004 - Edge/Mobile Network
+    router-edge:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.100.4.10
+      ports:
+        - "2604:2601"
+      volumes:
+        - ./config/frr/router-edge.conf:/etc/frr/frr.conf
+      env:
+        - ROUTER_ID=65004
+        - AS_NUMBER=65004
+
+  nodes:
+    # === AS 65001 - North America ===
+    # Bootstrap node (Major exchange/infrastructure)
+    node-na-bootstrap:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.1.20
+      ports:
+        - "9000:9000"
+        - "8000:8000"
+      env:
+        POLYTORUS_NODE_ID: na-bootstrap
+        POLYTORUS_REGION: north-america
+        POLYTORUS_AS: "65001"
+        POLYTORUS_NODE_TYPE: exchange
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: ""
+        POLYTORUS_IS_MINER: "false"
+        # Simulate high-bandwidth connection
+        POLYTORUS_BANDWIDTH_LIMIT: "1000mbps"
+        POLYTORUS_LATENCY_BASE: "10ms"
+      volumes:
+        - ./data/realistic/na-bootstrap:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 10ms 2ms &&
+        mkdir -p /data &&
+        polytorus --config /config/realistic-testnet.toml modular start
+
+    # Mining pool in NA
+    node-na-mining:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.1.21
+      ports:
+        - "9001:9000"
+        - "8001:8000"
+      env:
+        POLYTORUS_NODE_ID: na-mining-pool
+        POLYTORUS_REGION: north-america
+        POLYTORUS_AS: "65001"
+        POLYTORUS_NODE_TYPE: mining_pool
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_MINING_ADDRESS: "na_mining_pool_address"
+        POLYTORUS_BANDWIDTH_LIMIT: "500mbps"
+        POLYTORUS_LATENCY_BASE: "15ms"
+      volumes:
+        - ./data/realistic/na-mining:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 15ms 3ms &&
+        mkdir -p /data &&
+        sleep 10 &&
+        polytorus --config /config/realistic-testnet.toml modular start &
+        sleep 5 &&
+        polytorus --config /config/realistic-testnet.toml modular mine na_mining_pool_address
+
+    # === AS 65002 - Europe ===
+    # Institutional validator (Bank/Financial)
+    node-eu-institutional:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.2.20
+      ports:
+        - "9002:9000"
+        - "8002:8000"
+      env:
+        POLYTORUS_NODE_ID: eu-institutional
+        POLYTORUS_REGION: europe
+        POLYTORUS_AS: "65002"
+        POLYTORUS_NODE_TYPE: institutional_validator
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        # Connect to NA bootstrap with realistic latency
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000"
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_BANDWIDTH_LIMIT: "200mbps"
+        POLYTORUS_LATENCY_BASE: "100ms"  # Trans-Atlantic latency
+      volumes:
+        - ./data/realistic/eu-institutional:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 100ms 10ms loss 0.1% &&
+        mkdir -p /data &&
+        sleep 15 &&
+        polytorus --config /config/realistic-testnet.toml modular start
+
+    # Research/University node
+    node-eu-research:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.2.21
+      ports:
+        - "9003:9000"
+        - "8003:8000"
+      env:
+        POLYTORUS_NODE_ID: eu-research
+        POLYTORUS_REGION: europe
+        POLYTORUS_AS: "65002"
+        POLYTORUS_NODE_TYPE: research
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: DEBUG
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000,node-eu-institutional:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_MINING_ADDRESS: "eu_research_address"
+        POLYTORUS_BANDWIDTH_LIMIT: "100mbps"
+        POLYTORUS_LATENCY_BASE: "25ms"
+      volumes:
+        - ./data/realistic/eu-research:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 25ms 5ms loss 0.05% &&
+        mkdir -p /data &&
+        sleep 20 &&
+        polytorus --config /config/realistic-testnet.toml modular start &
+        sleep 5 &&
+        polytorus --config /config/realistic-testnet.toml modular mine eu_research_address
+
+    # === AS 65003 - Asia Pacific ===
+    # Mobile backend infrastructure
+    node-ap-mobile:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.3.20
+      ports:
+        - "9004:9000"
+        - "8004:8000"
+      env:
+        POLYTORUS_NODE_ID: ap-mobile-backend
+        POLYTORUS_REGION: asia-pacific
+        POLYTORUS_AS: "65003"
+        POLYTORUS_NODE_TYPE: mobile_backend
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000"
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_BANDWIDTH_LIMIT: "50mbps"
+        POLYTORUS_LATENCY_BASE: "200ms"  # Trans-Pacific latency
+      volumes:
+        - ./data/realistic/ap-mobile:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 200ms 20ms loss 0.5% &&
+        mkdir -p /data &&
+        sleep 25 &&
+        polytorus --config /config/realistic-testnet.toml modular start
+
+    # IoT infrastructure node
+    node-ap-iot:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.3.21
+      ports:
+        - "9005:9000"
+        - "8005:8000"
+      env:
+        POLYTORUS_NODE_ID: ap-iot-infrastructure
+        POLYTORUS_REGION: asia-pacific
+        POLYTORUS_AS: "65003"
+        POLYTORUS_NODE_TYPE: iot_infrastructure
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: WARN
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000,node-ap-mobile:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_MINING_ADDRESS: "ap_iot_address"
+        POLYTORUS_BANDWIDTH_LIMIT: "25mbps"
+        POLYTORUS_LATENCY_BASE: "150ms"
+      volumes:
+        - ./data/realistic/ap-iot:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 150ms 15ms loss 1% &&
+        mkdir -p /data &&
+        sleep 30 &&
+        polytorus --config /config/realistic-testnet.toml modular start &
+        sleep 5 &&
+        polytorus --config /config/realistic-testnet.toml modular mine ap_iot_address
+
+    # === AS 65004 - Edge/Mobile Network ===
+    # Light client (rural/satellite connection)
+    node-edge-rural:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.4.20
+      ports:
+        - "9006:9000"
+        - "8006:8000"
+      env:
+        POLYTORUS_NODE_ID: edge-rural-satellite
+        POLYTORUS_REGION: edge
+        POLYTORUS_AS: "65004"
+        POLYTORUS_NODE_TYPE: light_client
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: ERROR
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000"
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_BANDWIDTH_LIMIT: "5mbps"
+        POLYTORUS_LATENCY_BASE: "600ms"  # Satellite latency
+      volumes:
+        - ./data/realistic/edge-rural:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 600ms 100ms loss 2% &&
+        mkdir -p /data &&
+        sleep 35 &&
+        polytorus --config /config/realistic-testnet.toml modular start
+
+    # Mobile edge node
+    node-edge-mobile:
+      kind: linux
+      image: polytorus:latest
+      mgmt-ipv4: 172.100.4.21
+      ports:
+        - "9007:9000"
+        - "8007:8000"
+      env:
+        POLYTORUS_NODE_ID: edge-mobile-4g
+        POLYTORUS_REGION: edge
+        POLYTORUS_AS: "65004"
+        POLYTORUS_NODE_TYPE: mobile_edge
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: WARN
+        POLYTORUS_BOOTSTRAP_PEERS: "node-na-bootstrap:8000,node-edge-rural:8000"
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_BANDWIDTH_LIMIT: "25mbps"
+        POLYTORUS_LATENCY_BASE: "80ms"
+      volumes:
+        - ./data/realistic/edge-mobile:/data
+        - ./config:/config
+      cmd: |
+        tc qdisc add dev eth0 root netem delay 80ms 20ms loss 0.8% corrupt 0.01% &&
+        mkdir -p /data &&
+        sleep 40 &&
+        polytorus --config /config/realistic-testnet.toml modular start
+
+  links:
+    # Inter-AS BGP peering (realistic ISP connections)
+    - endpoints: ["router-na-east:eth1", "router-eu:eth1"]
+      vars:
+        latency: 100ms
+        bandwidth: 10gbps
+        loss: 0.01%
+    
+    - endpoints: ["router-na-east:eth2", "router-ap:eth1"]
+      vars:
+        latency: 180ms
+        bandwidth: 10gbps
+        loss: 0.02%
+    
+    - endpoints: ["router-eu:eth2", "router-ap:eth2"]
+      vars:
+        latency: 160ms
+        bandwidth: 1gbps
+        loss: 0.05%
+    
+    - endpoints: ["router-na-east:eth3", "router-edge:eth1"]
+      vars:
+        latency: 50ms
+        bandwidth: 100mbps
+        loss: 0.1%
+    
+    - endpoints: ["router-eu:eth3", "router-edge:eth2"]
+      vars:
+        latency: 80ms
+        bandwidth: 100mbps
+        loss: 0.1%
+
+    # Intra-AS connections (within regions)
+    # North America
+    - endpoints: ["router-na-east:eth4", "node-na-bootstrap:eth1"]
+    - endpoints: ["router-na-east:eth5", "node-na-mining:eth1"]
+    
+    # Europe
+    - endpoints: ["router-eu:eth4", "node-eu-institutional:eth1"]
+    - endpoints: ["router-eu:eth5", "node-eu-research:eth1"]
+    
+    # Asia Pacific
+    - endpoints: ["router-ap:eth3", "node-ap-mobile:eth1"]
+    - endpoints: ["router-ap:eth4", "node-ap-iot:eth1"]
+    
+    # Edge network
+    - endpoints: ["router-edge:eth3", "node-edge-rural:eth1"]
+    - endpoints: ["router-edge:eth4", "node-edge-mobile:eth1"]
+
+# Management network with geographic IP allocation
+mgmt:
+  network: realistic-testnet-mgmt
+  ipv4-subnet: 172.100.0.0/16

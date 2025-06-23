@@ -1,0 +1,161 @@
+# PolyTorus Local Testnet - ContainerLab Configuration
+# This creates a complete local testnet that users can run on their PC
+
+name: polytorus-local-testnet
+
+topology:
+  nodes:
+    # Bootstrap Node (Genesis/Seed)
+    bootstrap:
+      kind: linux
+      image: polytorus:testnet
+      mgmt-ipv4: 172.20.1.10
+      ports:
+        - "9000:9000"  # HTTP API
+        - "8000:8000"  # P2P Network
+      env:
+        POLYTORUS_NODE_ID: bootstrap
+        POLYTORUS_NODE_TYPE: bootstrap
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: ""
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_AUTO_MINE: "false"
+      volumes:
+        - ./testnet-data/bootstrap:/data
+        - ./config/testnet.toml:/config/testnet.toml:ro
+      cmd: |
+        mkdir -p /data/logs &&
+        echo "🚀 Starting Bootstrap Node..." &&
+        polytorus --config /config/testnet.toml --data-dir /data --modular-start
+
+    # Miner Node 1
+    miner-1:
+      kind: linux
+      image: polytorus:testnet
+      mgmt-ipv4: 172.20.1.11
+      ports:
+        - "9001:9000"
+        - "8001:8000"
+      env:
+        POLYTORUS_NODE_ID: miner-1
+        POLYTORUS_NODE_TYPE: miner
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "bootstrap:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_AUTO_MINE: "true"
+        POLYTORUS_MINING_INTERVAL: "15000"  # 15 seconds
+      volumes:
+        - ./testnet-data/miner-1:/data
+        - ./config/testnet.toml:/config/testnet.toml:ro
+      cmd: |
+        mkdir -p /data/logs &&
+        echo "⛏️  Starting Miner Node 1..." &&
+        sleep 10 &&
+        polytorus --config /config/testnet.toml --data-dir /data --modular-start &&
+        sleep 5 &&
+        echo "🔥 Starting mining process..." &&
+        polytorus --config /config/testnet.toml --data-dir /data --start-mining
+
+    # Miner Node 2
+    miner-2:
+      kind: linux
+      image: polytorus:testnet
+      mgmt-ipv4: 172.20.1.12
+      ports:
+        - "9002:9000"
+        - "8002:8000"
+      env:
+        POLYTORUS_NODE_ID: miner-2
+        POLYTORUS_NODE_TYPE: miner
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "bootstrap:8000,miner-1:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_AUTO_MINE: "true"
+        POLYTORUS_MINING_INTERVAL: "18000"  # 18 seconds
+      volumes:
+        - ./testnet-data/miner-2:/data
+        - ./config/testnet.toml:/config/testnet.toml:ro
+      cmd: |
+        mkdir -p /data/logs &&
+        echo "⛏️  Starting Miner Node 2..." &&
+        sleep 15 &&
+        polytorus --config /config/testnet.toml --data-dir /data --modular-start &&
+        sleep 5 &&
+        polytorus --config /config/testnet.toml --data-dir /data --start-mining
+
+    # Validator Node
+    validator:
+      kind: linux
+      image: polytorus:testnet
+      mgmt-ipv4: 172.20.1.13
+      ports:
+        - "9003:9000"
+        - "8003:8000"
+      env:
+        POLYTORUS_NODE_ID: validator
+        POLYTORUS_NODE_TYPE: validator
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "bootstrap:8000,miner-1:8000,miner-2:8000"
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_AUTO_MINE: "false"
+      volumes:
+        - ./testnet-data/validator:/data
+        - ./config/testnet.toml:/config/testnet.toml:ro
+      cmd: |
+        mkdir -p /data/logs &&
+        echo "🔍 Starting Validator Node..." &&
+        sleep 20 &&
+        polytorus --config /config/testnet.toml --data-dir /data --modular-start
+
+    # API Gateway (minimal for CLI access)
+    api-gateway:
+      kind: linux
+      image: polytorus:testnet
+      mgmt-ipv4: 172.20.1.20
+      ports:
+        - "9020:9020"  # API Gateway
+      env:
+        POLYTORUS_NODE_ID: api-gateway
+        POLYTORUS_NODE_TYPE: gateway
+        POLYTORUS_HTTP_PORT: 9020
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_TESTNET_NODES: "bootstrap:9000,miner-1:9000,miner-2:9000,validator:9000"
+        POLYTORUS_DEFAULT_NODE: "bootstrap:9000"
+      volumes:
+        - ./testnet-data/api-gateway:/data
+        - ./config/testnet.toml:/config/testnet.toml:ro
+      cmd: |
+        mkdir -p /data/logs &&
+        echo "🌐 Starting API Gateway..." &&
+        sleep 25 &&
+        polytorus --config /config/testnet.toml --data-dir /data --api-gateway
+
+  links:
+    # Network topology - star configuration with bootstrap as center
+    - endpoints: ["bootstrap:eth1", "miner-1:eth1"]
+    - endpoints: ["bootstrap:eth2", "miner-2:eth1"]
+    - endpoints: ["bootstrap:eth3", "validator:eth1"]
+    - endpoints: ["bootstrap:eth4", "api-gateway:eth1"]
+    
+    # Direct miner connections for better network redundancy
+    - endpoints: ["miner-1:eth2", "miner-2:eth2"]
+    - endpoints: ["miner-1:eth3", "validator:eth2"]
+    - endpoints: ["miner-2:eth3", "validator:eth3"]
+
+# Management network configuration
+mgmt:
+  network: polytorus-testnet-mgmt
+  ipv4-subnet: 172.20.0.0/16
