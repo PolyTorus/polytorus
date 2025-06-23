@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiamondIOConfig {
+pub struct PrivacyEngineConfig {
     /// Ring dimension (must be power of 2)
     pub ring_dimension: u32,
     /// CRT depth
@@ -57,7 +57,7 @@ where
     BigUint::from_str_radix(&s, 10).map_err(serde::de::Error::custom)
 }
 
-impl Default for DiamondIOConfig {
+impl Default for PrivacyEngineConfig {
     fn default() -> Self {
         Self {
             ring_dimension: 16,
@@ -76,7 +76,7 @@ impl Default for DiamondIOConfig {
     }
 }
 
-impl DiamondIOConfig {
+impl PrivacyEngineConfig {
     /// Create config for production with full security
     pub fn production() -> Self {
         Self {
@@ -132,25 +132,28 @@ impl DiamondIOConfig {
     }
 }
 
-/// Diamond IO operation result
+/// Privacy Engine operation result
 #[derive(Debug, Clone)]
-pub struct DiamondIOResult {
+pub struct PrivacyEngineResult {
     pub success: bool,
     pub outputs: Vec<bool>,
     pub execution_time_ms: u64,
 }
 
-pub struct DiamondIOIntegration {
-    config: DiamondIOConfig,
+pub struct PrivacyEngineIntegration {
+    config: PrivacyEngineConfig,
     params: DCRTPolyParams,
     obfuscation_dir: String,
 }
 
-impl DiamondIOIntegration {
-    /// Create a new Diamond IO integration instance
-    pub fn new(config: DiamondIOConfig) -> anyhow::Result<Self> {
+impl PrivacyEngineIntegration {
+    /// Create a new Privacy Engine integration instance
+    pub fn new(config: PrivacyEngineConfig) -> anyhow::Result<Self> {
         // Note: Tracing initialization is handled externally to avoid conflicts
-        info!("Creating DiamondIOIntegration with config: {:?}", config);
+        info!(
+            "Creating PrivacyEngineIntegration with config: {:?}",
+            config
+        );
 
         // Create polynomial parameters
         let params = DCRTPolyParams::new(
@@ -441,13 +444,13 @@ impl DiamondIOIntegration {
     pub async fn execute_circuit_detailed(
         &self,
         inputs: &[bool],
-    ) -> anyhow::Result<DiamondIOResult> {
+    ) -> anyhow::Result<PrivacyEngineResult> {
         let start_time = std::time::Instant::now();
 
         let outputs = self.evaluate_circuit(inputs).await?;
         let execution_time = start_time.elapsed().as_millis() as u64;
 
-        Ok(DiamondIOResult {
+        Ok(PrivacyEngineResult {
             success: true,
             outputs,
             execution_time_ms: execution_time,
@@ -686,7 +689,7 @@ impl DiamondIOIntegration {
     }
 
     /// Get configuration
-    pub fn config(&self) -> &DiamondIOConfig {
+    pub fn config(&self) -> &PrivacyEngineConfig {
         &self.config
     }
 
@@ -696,9 +699,9 @@ impl DiamondIOIntegration {
     }
 }
 
-impl std::fmt::Debug for DiamondIOIntegration {
+impl std::fmt::Debug for PrivacyEngineIntegration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DiamondIOIntegration")
+        f.debug_struct("PrivacyEngineIntegration")
             .field("config", &self.config)
             .field("obfuscation_dir", &self.obfuscation_dir)
             .finish()
@@ -711,7 +714,7 @@ mod tests {
 
     #[test]
     fn test_diamond_io_config_default() {
-        let config = DiamondIOConfig::default();
+        let config = PrivacyEngineConfig::default();
         assert_eq!(config.ring_dimension, 16);
         assert_eq!(config.crt_depth, 4);
         assert_eq!(config.input_size, 8);
@@ -719,15 +722,15 @@ mod tests {
 
     #[test]
     fn test_diamond_io_integration_creation() {
-        let config = DiamondIOConfig::default();
-        let integration = DiamondIOIntegration::new(config);
+        let config = PrivacyEngineConfig::default();
+        let integration = PrivacyEngineIntegration::new(config);
         assert!(integration.is_ok());
     }
 
     #[test]
     fn test_create_demo_circuit() {
-        let config = DiamondIOConfig::default();
-        let integration = DiamondIOIntegration::new(config).unwrap();
+        let config = PrivacyEngineConfig::default();
+        let integration = PrivacyEngineIntegration::new(config).unwrap();
         let circuit = integration.create_demo_circuit();
 
         assert!(circuit.num_input() > 0);
@@ -736,8 +739,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_dummy_mode_obfuscation() {
-        let config = DiamondIOConfig::dummy();
-        let integration = DiamondIOIntegration::new(config).unwrap();
+        let config = PrivacyEngineConfig::dummy();
+        let integration = PrivacyEngineIntegration::new(config).unwrap();
 
         let circuit = integration.create_demo_circuit();
         let result = integration.obfuscate_circuit(circuit).await;
@@ -746,8 +749,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_dummy_mode_evaluation() {
-        let config = DiamondIOConfig::dummy();
-        let integration = DiamondIOIntegration::new(config).unwrap();
+        let config = PrivacyEngineConfig::dummy();
+        let integration = PrivacyEngineIntegration::new(config).unwrap();
 
         let inputs = vec![true, false, true, false];
         let result = integration.evaluate_circuit(&inputs).await;
@@ -757,8 +760,8 @@ mod tests {
 
     #[test]
     fn test_data_encryption_decryption() {
-        let config = DiamondIOConfig::dummy();
-        let integration = DiamondIOIntegration::new(config).unwrap();
+        let config = PrivacyEngineConfig::dummy();
+        let integration = PrivacyEngineIntegration::new(config).unwrap();
 
         let original_data = vec![true, false, true, true, false, false, true, false];
 
@@ -774,10 +777,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_real_mode_circuit_obfuscation() {
-        let config = DiamondIOConfig::testing();
+        let config = PrivacyEngineConfig::testing();
 
         // This test may fail if OpenFHE is not properly installed
-        match DiamondIOIntegration::new(config) {
+        match PrivacyEngineIntegration::new(config) {
             Ok(integration) => {
                 let circuit = integration.create_demo_circuit();
                 let result = integration.obfuscate_circuit(circuit).await;
@@ -802,7 +805,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_production_config_parameters() {
-        let config = DiamondIOConfig::production();
+        let config = PrivacyEngineConfig::production();
 
         // Verify production parameters are appropriate for security
         assert!(config.ring_dimension >= 1024);
@@ -811,7 +814,7 @@ mod tests {
         assert!(!config.dummy_mode);
 
         // Creation should work even if actual obfuscation might fail without OpenFHE
-        match DiamondIOIntegration::new(config) {
+        match PrivacyEngineIntegration::new(config) {
             Ok(_) => println!("Production config integration created successfully"),
             Err(e) => println!(
                 "Production config failed (expected if OpenFHE not available): {}",
@@ -822,11 +825,11 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = DiamondIOConfig::testing();
+        let config = PrivacyEngineConfig::testing();
 
         // Test that configuration can be serialized and deserialized
         let serialized = serde_json::to_string(&config).unwrap();
-        let deserialized: DiamondIOConfig = serde_json::from_str(&serialized).unwrap();
+        let deserialized: PrivacyEngineConfig = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(config.ring_dimension, deserialized.ring_dimension);
         assert_eq!(config.crt_depth, deserialized.crt_depth);
@@ -835,8 +838,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_detailed_circuit_execution() {
-        let config = DiamondIOConfig::dummy();
-        let integration = DiamondIOIntegration::new(config).unwrap();
+        let config = PrivacyEngineConfig::dummy();
+        let integration = PrivacyEngineIntegration::new(config).unwrap();
 
         let inputs = vec![true, false, true];
         let result = integration.execute_circuit_detailed(&inputs).await;

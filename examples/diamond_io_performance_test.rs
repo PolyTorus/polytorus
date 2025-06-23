@@ -1,4 +1,4 @@
-use polytorus::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
+use polytorus::diamond_io_integration_new::{PrivacyEngineConfig, PrivacyEngineIntegration};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -6,9 +6,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Test different configurations for performance
     let configs = [
-        ("Dummy Configuration", DiamondIOConfig::dummy()),
-        ("Testing Configuration", DiamondIOConfig::testing()),
-        ("Production Configuration", DiamondIOConfig::production()),
+        ("Dummy Configuration", PrivacyEngineConfig::dummy()),
+        ("Testing Configuration", PrivacyEngineConfig::testing()),
+        (
+            "Production Configuration",
+            PrivacyEngineConfig::production(),
+        ),
     ];
 
     for (name, config) in configs {
@@ -20,8 +23,8 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn test_performance(config: DiamondIOConfig) -> anyhow::Result<()> {
-    let integration = DiamondIOIntegration::new(config)?;
+async fn test_performance(config: PrivacyEngineConfig) -> anyhow::Result<()> {
+    let integration = PrivacyEngineIntegration::new(config)?;
     let circuit = integration.create_demo_circuit();
 
     // Test obfuscation performance

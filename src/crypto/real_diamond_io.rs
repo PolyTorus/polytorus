@@ -12,7 +12,9 @@ use tracing::info;
 
 use crate::{
     crypto::privacy::{PedersenCommitment, UtxoValidityProof},
-    diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration, DiamondIOResult},
+    diamond_io_integration_new::{
+        PrivacyEngineConfig, PrivacyEngineIntegration, PrivacyEngineResult,
+    },
     Result,
 };
 
@@ -75,15 +77,15 @@ impl RealDiamondIOConfig {
             enable_disk_storage: true,
         }
     }
-    /// Convert to Diamond IO integration config
-    pub fn to_diamond_io_config(&self) -> DiamondIOConfig {
+    /// Convert to Privacy Engine integration config
+    pub fn to_privacy_engine_config(&self) -> PrivacyEngineConfig {
         // Map old config structure to new Diamond IO parameters
         if self.proof_system == "dummy" {
-            DiamondIOConfig::dummy()
+            PrivacyEngineConfig::dummy()
         } else if self.security_level >= 128 {
-            DiamondIOConfig::production()
+            PrivacyEngineConfig::production()
         } else {
-            DiamondIOConfig::testing()
+            PrivacyEngineConfig::testing()
         }
     }
 }
@@ -120,8 +122,8 @@ pub struct CircuitMetadata {
 pub struct RealDiamondIOProvider {
     /// Configuration
     config: RealDiamondIOConfig,
-    /// Diamond IO integration instance
-    diamond_io: DiamondIOIntegration,
+    /// Privacy Engine integration instance
+    diamond_io: PrivacyEngineIntegration,
     /// Active circuits cache
     circuits: HashMap<String, DiamondIOCircuit>,
     /// Working directory
@@ -140,9 +142,9 @@ impl RealDiamondIOProvider {
                 .map_err(|e| anyhow::anyhow!("Failed to create work directory: {}", e))?;
         }
 
-        // Initialize Diamond IO integration
-        let diamond_io_config = config.to_diamond_io_config();
-        let diamond_io = DiamondIOIntegration::new(diamond_io_config)
+        // Initialize Privacy Engine integration
+        let diamond_io_config = config.to_privacy_engine_config();
+        let diamond_io = PrivacyEngineIntegration::new(diamond_io_config)
             .map_err(|e| anyhow::anyhow!("Diamond IO initialization failed: {}", e))?;
 
         Ok(Self {
@@ -167,7 +169,7 @@ impl RealDiamondIOProvider {
             .map_err(|e| anyhow::anyhow!("Failed to create circuit directory: {}", e))?;
 
         // Create Diamond IO circuit and register it
-        let _diamond_circuit = crate::diamond_io_integration::DiamondCircuit {
+        let _diamond_circuit = crate::diamond_io_integration::PrivacyCircuit {
             id: circuit_id.clone(),
             description: "Privacy validation circuit".to_string(),
             input_size: self.config.input_size,
@@ -203,7 +205,7 @@ impl RealDiamondIOProvider {
         &mut self,
         circuit: &DiamondIOCircuit,
         inputs: Vec<bool>,
-    ) -> Result<DiamondIOResult> {
+    ) -> Result<PrivacyEngineResult> {
         info!("Evaluating circuit: {}", circuit.circuit_id);
 
         // Validate input size
@@ -224,7 +226,7 @@ impl RealDiamondIOProvider {
         &mut self,
         circuit: &DiamondIOCircuit,
         inputs: &[bool],
-    ) -> Result<DiamondIOResult> {
+    ) -> Result<PrivacyEngineResult> {
         // Ensure inputs match expected size
         let circuit_inputs = if inputs.len() > circuit.metadata.input_size {
             inputs[..circuit.metadata.input_size].to_vec()
@@ -246,7 +248,7 @@ impl RealDiamondIOProvider {
         &mut self,
         circuit: &DiamondIOCircuit,
         inputs: &[bool],
-        expected_result: &DiamondIOResult,
+        expected_result: &PrivacyEngineResult,
     ) -> Result<bool> {
         // Re-evaluate and compare
         let actual_result = self.evaluate_circuit(circuit, inputs.to_vec()).await?;
@@ -404,8 +406,8 @@ pub struct SerializableDiamondIOResult {
     pub metadata: HashMap<String, String>,
 }
 
-impl From<DiamondIOResult> for SerializableDiamondIOResult {
-    fn from(result: DiamondIOResult) -> Self {
+impl From<PrivacyEngineResult> for SerializableDiamondIOResult {
+    fn from(result: PrivacyEngineResult) -> Self {
         SerializableDiamondIOResult {
             outputs: result.outputs,
             execution_time: result.execution_time_ms as f64 / 1000.0,
@@ -415,9 +417,9 @@ impl From<DiamondIOResult> for SerializableDiamondIOResult {
     }
 }
 
-impl From<SerializableDiamondIOResult> for DiamondIOResult {
+impl From<SerializableDiamondIOResult> for PrivacyEngineResult {
     fn from(result: SerializableDiamondIOResult) -> Self {
-        DiamondIOResult {
+        PrivacyEngineResult {
             success: !result.outputs.is_empty(),
             outputs: result.outputs,
             execution_time_ms: (result.execution_time * 1000.0) as u64,

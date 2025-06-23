@@ -1,10 +1,10 @@
-use polytorus::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
+use polytorus::diamond_io_integration_new::{PrivacyEngineConfig, PrivacyEngineIntegration};
 
 #[tokio::test]
 async fn test_basic_integration() {
-    let config = DiamondIOConfig::testing();
+    let config = PrivacyEngineConfig::testing();
 
-    let integration = DiamondIOIntegration::new(config);
+    let integration = PrivacyEngineIntegration::new(config);
     assert!(integration.is_ok());
 
     let integration = integration.unwrap();
@@ -17,8 +17,8 @@ async fn test_basic_integration() {
 
 #[tokio::test]
 async fn test_circuit_execution() {
-    let config = DiamondIOConfig::testing();
-    let mut integration = DiamondIOIntegration::new(config).unwrap();
+    let config = PrivacyEngineConfig::testing();
+    let mut integration = PrivacyEngineIntegration::new(config).unwrap();
 
     // Set a unique obfuscation directory for this test
     integration.set_obfuscation_dir("test_circuit_execution_obfuscation".to_string());
@@ -70,23 +70,23 @@ async fn test_circuit_evaluation() {
 
     let config = if is_ci && std::env::var("FORCE_OPENFHE_CI").is_err() {
         println!("Using dummy mode for CI environment (set FORCE_OPENFHE_CI=1 to override)");
-        DiamondIOConfig::dummy()
+        PrivacyEngineConfig::dummy()
     } else {
         println!("Using real OpenFHE mode");
-        DiamondIOConfig::testing()
+        PrivacyEngineConfig::testing()
     };
     println!("Created config: {config:?}");
 
     // Try to create the integration with detailed error handling
-    println!("Attempting to create DiamondIOIntegration...");
-    let integration = match DiamondIOIntegration::new(config) {
+    println!("Attempting to create PrivacyEngineIntegration...");
+    let integration = match PrivacyEngineIntegration::new(config) {
         Ok(integration) => {
-            println!("✓ Successfully created DiamondIOIntegration");
+            println!("✓ Successfully created PrivacyEngineIntegration");
             integration
         }
         Err(e) => {
-            eprintln!("\n=== DiamondIOIntegration::new FAILED ===");
-            eprintln!("Failed to create DiamondIOIntegration: {e:?}");
+            eprintln!("\n=== PrivacyEngineIntegration::new FAILED ===");
+            eprintln!("Failed to create PrivacyEngineIntegration: {e:?}");
             eprintln!("Error message: {e}");
             let mut source = e.source();
             let mut level = 0;
@@ -95,8 +95,8 @@ async fn test_circuit_evaluation() {
                 source = err.source();
                 level += 1;
             }
-            eprintln!("=== END DiamondIOIntegration::new ERROR ===\n");
-            panic!("Failed to create DiamondIOIntegration: {e}");
+            eprintln!("=== END PrivacyEngineIntegration::new ERROR ===\n");
+            panic!("Failed to create PrivacyEngineIntegration: {e}");
         }
     };
 
@@ -176,8 +176,8 @@ async fn test_circuit_evaluation() {
 
 #[tokio::test]
 async fn test_simple_circuit_operations() {
-    let config = DiamondIOConfig::testing();
-    let mut integration = DiamondIOIntegration::new(config).unwrap();
+    let config = PrivacyEngineConfig::testing();
+    let mut integration = PrivacyEngineIntegration::new(config).unwrap();
 
     // Set a unique obfuscation directory for this test
     integration.set_obfuscation_dir("test_simple_circuit_operations_obfuscation".to_string());
@@ -199,8 +199,8 @@ async fn test_simple_circuit_operations() {
 
 #[tokio::test]
 async fn test_dummy_mode_performance() {
-    let config = DiamondIOConfig::dummy();
-    let integration = DiamondIOIntegration::new(config).unwrap();
+    let config = PrivacyEngineConfig::dummy();
+    let integration = PrivacyEngineIntegration::new(config).unwrap();
     let circuit = integration.create_demo_circuit();
 
     let obfuscation_result = integration.obfuscate_circuit(circuit).await;

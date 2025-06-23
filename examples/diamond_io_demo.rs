@@ -1,4 +1,4 @@
-use polytorus::diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration};
+use polytorus::diamond_io_integration_new::{PrivacyEngineConfig, PrivacyEngineIntegration};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -6,13 +6,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Test different configurations
     println!("\n1. Testing Dummy Mode (Fast)");
-    test_diamond_io_mode("Dummy", DiamondIOConfig::dummy()).await?;
+    test_diamond_io_mode("Dummy", PrivacyEngineConfig::dummy()).await?;
 
     println!("\n2. Testing Testing Mode (Moderate)");
-    test_diamond_io_mode("Testing", DiamondIOConfig::testing()).await?;
+    test_diamond_io_mode("Testing", PrivacyEngineConfig::testing()).await?;
 
     println!("\n3. Testing Production Mode (Secure)");
-    test_diamond_io_mode("Production", DiamondIOConfig::production()).await?;
+    test_diamond_io_mode("Production", PrivacyEngineConfig::production()).await?;
 
     println!("\n4. E2E Obfuscation and Evaluation Test");
     test_e2e_obfuscation_evaluation().await?;
@@ -24,14 +24,14 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyhow::Result<()> {
+async fn test_diamond_io_mode(mode_name: &str, config: PrivacyEngineConfig) -> anyhow::Result<()> {
     println!("Testing {mode_name} Mode:");
     println!("  Ring dimension: {}", config.ring_dimension);
     println!("  CRT depth: {}", config.crt_depth);
     println!("  Base bits: {}", config.base_bits);
     println!("  Dummy mode: {}", config.dummy_mode);
 
-    let integration = DiamondIOIntegration::new(config)?;
+    let integration = PrivacyEngineIntegration::new(config)?;
     let circuit = integration.create_demo_circuit();
 
     println!(
@@ -63,8 +63,8 @@ async fn test_diamond_io_mode(mode_name: &str, config: DiamondIOConfig) -> anyho
 async fn test_e2e_obfuscation_evaluation() -> anyhow::Result<()> {
     println!("Testing End-to-End Obfuscation and Evaluation:");
 
-    let config = DiamondIOConfig::testing();
-    let integration = DiamondIOIntegration::new(config)?;
+    let config = PrivacyEngineConfig::testing();
+    let integration = PrivacyEngineIntegration::new(config)?;
     let circuit = integration.create_demo_circuit();
 
     println!(
@@ -111,13 +111,13 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
     println!("Performance Comparison:");
 
     let configs = [
-        ("Dummy Mode", DiamondIOConfig::dummy()),
-        ("Testing Mode", DiamondIOConfig::testing()),
-        ("Production Mode", DiamondIOConfig::production()),
+        ("Dummy Mode", PrivacyEngineConfig::dummy()),
+        ("Testing Mode", PrivacyEngineConfig::testing()),
+        ("Production Mode", PrivacyEngineConfig::production()),
     ];
 
     for (name, config) in configs {
-        let integration = DiamondIOIntegration::new(config)?;
+        let integration = PrivacyEngineIntegration::new(config)?;
         let circuit = integration.create_demo_circuit();
 
         let start = std::time::Instant::now();
@@ -134,8 +134,8 @@ async fn test_performance_comparison() -> anyhow::Result<()> {
     // Test with different input sizes
     println!("\nDifferent Input Size Performance:");
     for input_size in [2, 4, 8] {
-        let config = DiamondIOConfig::testing();
-        let integration = DiamondIOIntegration::new(config)?;
+        let config = PrivacyEngineConfig::testing();
+        let integration = PrivacyEngineIntegration::new(config)?;
 
         let inputs = vec![true; input_size];
         let start = std::time::Instant::now();

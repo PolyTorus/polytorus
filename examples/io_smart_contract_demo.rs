@@ -1,6 +1,6 @@
 use anyhow::Result;
 use polytorus::{
-    diamond_io_integration_new::DiamondIOConfig, diamond_smart_contracts::DiamondContractEngine,
+    diamond_io_integration_new::PrivacyEngineConfig, diamond_smart_contracts::DiamondContractEngine,
 };
 
 #[tokio::main]
@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     println!("=== Diamond IO Smart Contract iO Test ===\n");
 
     // 1. Create contract engine in dummy mode
-    let dummy_config = DiamondIOConfig::dummy();
+    let dummy_config = PrivacyEngineConfig::dummy();
     println!("1. Contract Engine Test in Dummy Mode");
     let mut engine = DiamondContractEngine::new(dummy_config)?;
 
@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
 
     // 5. Actual iO usage in test mode
     println!("\n2. Actual iO Usage in Test Mode");
-    let testing_config = DiamondIOConfig::testing();
+    let testing_config = PrivacyEngineConfig::testing();
     let mut testing_engine = DiamondContractEngine::new(testing_config)?;
 
     let test_contract_id = testing_engine

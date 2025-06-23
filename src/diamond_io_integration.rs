@@ -1,15 +1,15 @@
-//! Diamond IO Integration
+//! Privacy Engine Integration
 //!
-//! This module provides integration with Diamond IO cryptographic operations
+//! This module provides integration with privacy engine cryptographic operations
 //! for advanced privacy-preserving smart contracts.
 
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-/// Diamond IO configuration
+/// Privacy Engine configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiamondIOConfig {
+pub struct PrivacyEngineConfig {
     pub enabled: bool,
     pub max_circuits: usize,
     pub proof_system: String,
@@ -19,7 +19,7 @@ pub struct DiamondIOConfig {
     pub dummy_mode: bool,
 }
 
-impl DiamondIOConfig {
+impl PrivacyEngineConfig {
     pub fn production() -> Self {
         Self {
             enabled: true,
@@ -54,22 +54,22 @@ impl DiamondIOConfig {
     }
 }
 
-impl Default for DiamondIOConfig {
+impl Default for PrivacyEngineConfig {
     fn default() -> Self {
         Self::testing()
     }
 }
 
-/// Diamond IO circuit representation
+/// Privacy Engine circuit representation
 #[derive(Debug, Clone)]
-pub struct DiamondCircuit {
+pub struct PrivacyCircuit {
     pub id: String,
     pub description: String,
     pub input_size: usize,
     pub output_size: usize,
 }
 
-impl DiamondCircuit {
+impl PrivacyCircuit {
     /// Get number of inputs
     pub fn num_input(&self) -> usize {
         self.input_size
@@ -81,7 +81,7 @@ impl DiamondCircuit {
     }
 }
 
-impl Default for DiamondCircuit {
+impl Default for PrivacyCircuit {
     fn default() -> Self {
         Self {
             id: "default_circuit".to_string(),
@@ -92,22 +92,22 @@ impl Default for DiamondCircuit {
     }
 }
 
-/// Diamond IO operation result
+/// Privacy Engine operation result
 #[derive(Debug, Clone)]
-pub struct DiamondIOResult {
+pub struct PrivacyEngineResult {
     pub success: bool,
     pub outputs: Vec<bool>,
     pub execution_time_ms: u64,
 }
 
-/// Main Diamond IO integration interface
-pub struct DiamondIOIntegration {
-    config: DiamondIOConfig,
-    circuits: HashMap<String, DiamondCircuit>,
+/// Main Privacy Engine integration interface
+pub struct PrivacyEngineIntegration {
+    config: PrivacyEngineConfig,
+    circuits: HashMap<String, PrivacyCircuit>,
 }
 
-impl DiamondIOIntegration {
-    pub fn new(config: DiamondIOConfig) -> anyhow::Result<Self> {
+impl PrivacyEngineIntegration {
+    pub fn new(config: PrivacyEngineConfig) -> anyhow::Result<Self> {
         Ok(Self {
             config,
             circuits: HashMap::new(),
@@ -115,8 +115,8 @@ impl DiamondIOIntegration {
     }
 
     /// Create a demo circuit
-    pub fn create_demo_circuit(&self) -> DiamondCircuit {
-        DiamondCircuit {
+    pub fn create_demo_circuit(&self) -> PrivacyCircuit {
+        PrivacyCircuit {
             id: "demo_circuit".to_string(),
             description: "Demo circuit for testing".to_string(),
             input_size: 4,
@@ -124,7 +124,7 @@ impl DiamondIOIntegration {
         }
     }
     /// Register a new circuit
-    pub fn register_circuit(&mut self, circuit: DiamondCircuit) -> anyhow::Result<()> {
+    pub fn register_circuit(&mut self, circuit: PrivacyCircuit) -> anyhow::Result<()> {
         if self.circuits.len() >= self.config.max_circuits {
             return Err(anyhow::anyhow!("Maximum circuits limit reached"));
         }
@@ -138,7 +138,7 @@ impl DiamondIOIntegration {
         &mut self,
         circuit_id: &str,
         inputs: Vec<bool>,
-    ) -> anyhow::Result<DiamondIOResult> {
+    ) -> anyhow::Result<PrivacyEngineResult> {
         let circuit = self
             .circuits
             .get(circuit_id)
@@ -157,7 +157,7 @@ impl DiamondIOIntegration {
         let outputs = self.simulate_execution(circuit, &inputs);
         let execution_time = start_time.elapsed().as_millis() as u64;
 
-        Ok(DiamondIOResult {
+        Ok(PrivacyEngineResult {
             success: true,
             outputs,
             execution_time_ms: execution_time,
@@ -167,7 +167,7 @@ impl DiamondIOIntegration {
     /// Encrypt data (simplified simulation)
     pub fn encrypt_data(&self, data: &[bool]) -> anyhow::Result<Vec<u8>> {
         if !self.config.enabled {
-            return Err(anyhow::anyhow!("Diamond IO is disabled"));
+            return Err(anyhow::anyhow!("Privacy Engine is disabled"));
         }
 
         // Simple simulation: convert bool to bytes
@@ -186,7 +186,7 @@ impl DiamondIOIntegration {
     }
 
     /// Get circuit information
-    pub fn get_circuit(&self, circuit_id: &str) -> Option<&DiamondCircuit> {
+    pub fn get_circuit(&self, circuit_id: &str) -> Option<&PrivacyCircuit> {
         self.circuits.get(circuit_id)
     }
 
@@ -196,17 +196,17 @@ impl DiamondIOIntegration {
     }
 
     /// Get configuration
-    pub fn config(&self) -> &DiamondIOConfig {
+    pub fn config(&self) -> &PrivacyEngineConfig {
         &self.config
     }
 
     /// Update configuration
-    pub fn update_config(&mut self, config: DiamondIOConfig) {
+    pub fn update_config(&mut self, config: PrivacyEngineConfig) {
         self.config = config;
     }
 
     /// Simulate circuit execution (simplified)
-    fn simulate_execution(&self, circuit: &DiamondCircuit, inputs: &[bool]) -> Vec<bool> {
+    fn simulate_execution(&self, circuit: &PrivacyCircuit, inputs: &[bool]) -> Vec<bool> {
         // Simplified simulation - in practice would execute actual circuit
         let mut outputs = Vec::with_capacity(circuit.output_size);
 
@@ -225,7 +225,10 @@ impl DiamondIOIntegration {
 
     /// Legacy compatibility methods
     /// Evaluate circuit (alias for execute_circuit)
-    pub async fn evaluate_circuit(&mut self, inputs: &[bool]) -> anyhow::Result<DiamondIOResult> {
+    pub async fn evaluate_circuit(
+        &mut self,
+        inputs: &[bool],
+    ) -> anyhow::Result<PrivacyEngineResult> {
         // Use demo circuit for legacy compatibility
         let circuit = self.create_demo_circuit();
         self.register_circuit(circuit.clone())?;
@@ -235,8 +238,8 @@ impl DiamondIOIntegration {
     /// Obfuscate circuit (simplified for compatibility)
     pub async fn obfuscate_circuit(
         &mut self,
-        circuit: DiamondCircuit,
-    ) -> anyhow::Result<DiamondIOResult> {
+        circuit: PrivacyCircuit,
+    ) -> anyhow::Result<PrivacyEngineResult> {
         // Register and execute the circuit with dummy inputs
         let circuit_id = circuit.id.clone();
         let input_size = circuit.input_size;
@@ -253,8 +256,8 @@ impl DiamondIOIntegration {
     }
 }
 
-impl Default for DiamondIOIntegration {
+impl Default for PrivacyEngineIntegration {
     fn default() -> Self {
-        Self::new(DiamondIOConfig::default()).unwrap()
+        Self::new(PrivacyEngineConfig::default()).unwrap()
     }
 }

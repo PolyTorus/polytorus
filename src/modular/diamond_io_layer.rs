@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
 use crate::{
-    diamond_io_integration_new::{DiamondIOConfig, DiamondIOIntegration},
+    diamond_io_integration_new::{PrivacyEngineConfig, PrivacyEngineIntegration},
     modular::{
         message_bus::MessageBus,
         traits::{Layer, LayerMessage},
@@ -33,7 +33,7 @@ pub enum DiamondIOMessage {
         requester: String,
     },
     ConfigUpdate {
-        config: DiamondIOConfig,
+        config: PrivacyEngineConfig,
     },
 }
 
@@ -51,7 +51,7 @@ impl LayerMessage for DiamondIOMessage {
 /// Diamond IO Layer configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiamondIOLayerConfig {
-    pub diamond_config: DiamondIOConfig,
+    pub diamond_config: PrivacyEngineConfig,
     pub max_concurrent_operations: usize,
     pub enable_encryption: bool,
     pub enable_decryption: bool,
@@ -60,7 +60,7 @@ pub struct DiamondIOLayerConfig {
 impl Default for DiamondIOLayerConfig {
     fn default() -> Self {
         Self {
-            diamond_config: DiamondIOConfig::testing(),
+            diamond_config: PrivacyEngineConfig::testing(),
             max_concurrent_operations: 10,
             enable_encryption: true,
             enable_decryption: true,
@@ -81,7 +81,7 @@ pub struct DiamondIOStats {
 /// Diamond IO Layer implementation
 pub struct DiamondIOLayer {
     config: DiamondIOLayerConfig,
-    integration: Arc<RwLock<Option<DiamondIOIntegration>>>,
+    integration: Arc<RwLock<Option<PrivacyEngineIntegration>>>,
     message_bus: Arc<MessageBus>,
     stats: Arc<RwLock<DiamondIOStats>>,
     active_operations: Arc<RwLock<HashMap<String, tokio::task::JoinHandle<()>>>>,
@@ -101,7 +101,7 @@ impl DiamondIOLayer {
 
     /// Initialize the Diamond IO integration
     pub async fn initialize(&self) -> Result<()> {
-        let integration = DiamondIOIntegration::new(self.config.diamond_config.clone())?;
+        let integration = PrivacyEngineIntegration::new(self.config.diamond_config.clone())?;
         let mut integration_guard = self.integration.write().await;
         *integration_guard = Some(integration);
         info!("Diamond IO Layer initialized");
@@ -159,11 +159,11 @@ impl DiamondIOLayer {
     }
 
     /// Update configuration
-    pub async fn update_config(&mut self, config: DiamondIOConfig) -> Result<()> {
+    pub async fn update_config(&mut self, config: PrivacyEngineConfig) -> Result<()> {
         self.config.diamond_config = config.clone();
 
         // Reinitialize the integration with new config
-        let integration = DiamondIOIntegration::new(config)?;
+        let integration = PrivacyEngineIntegration::new(config)?;
         let mut integration_guard = self.integration.write().await;
         *integration_guard = Some(integration);
 
