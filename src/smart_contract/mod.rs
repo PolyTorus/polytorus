@@ -11,6 +11,16 @@ pub mod state;
 pub mod types;
 pub mod voting_system;
 
+// Unified smart contract architecture
+pub mod privacy_engine;
+pub mod unified_engine;
+pub mod unified_manager;
+pub mod unified_storage;
+pub mod wasm_engine;
+
+#[cfg(test)]
+pub mod test_utils;
+
 #[cfg(test)]
 mod tests;
 
