@@ -1,0 +1,229 @@
+# Realistic Testnet Configuration for PolyTorus
+# This configuration simulates real-world network conditions
+
+# Geographic and network settings based on node location
+[network]
+# These will be overridden by environment variables per node
+listen_addr = "0.0.0.0:8000"
+bootstrap_peers = []
+max_peers = 50
+connection_timeout = 30     # Longer timeout for international connections
+ping_interval = 60          # Less frequent pings for bandwidth conservation
+peer_timeout = 300          # Longer timeout for satellite connections
+enable_discovery = true
+discovery_interval = 600    # Less frequent discovery for edge nodes
+max_message_size = 1048576  # 1MB max for satellite connections
+bandwidth_limit = null      # Will be set per node type
+
+# Network quality parameters (will be adjusted per region)
+[network.quality]
+base_latency = "10ms"       # Overridden per node
+jitter = "2ms"
+packet_loss = "0.01%"
+bandwidth = "1000mbps"
+connection_type = "fiber"   # fiber, cable, dsl, mobile, satellite
+
+# Execution layer with geographic considerations
+[execution]
+gas_limit = 8000000
+gas_price = 1
+max_transaction_size = 65536
+transaction_timeout = 300   # Longer for international propagation
+
+[execution.wasm_config]
+max_memory_pages = 256
+max_stack_size = 65536
+gas_metering = true
+
+# Settlement layer with regional compliance
+[settlement]
+challenge_period = 200      # Longer for international dispute resolution
+batch_size = 50             # Smaller batches for limited bandwidth
+min_validator_stake = 1000
+settlement_timeout = 600    # International settlement takes longer
+
+# Consensus adapted for global network
+[consensus]
+block_time = 30000          # 30 seconds to accommodate satellite delays
+difficulty = 3              # Lower difficulty for testnet
+max_block_size = 512000     # 512KB for bandwidth-limited connections
+confirmation_depth = 6     # More confirmations for international tx
+
+# Data availability with geographic distribution
+[data_availability]
+retention_period = 604800   # 7 days
+max_data_size = 512000      # Smaller for satellite nodes
+replication_factor = 3      # Ensure geographic distribution
+
+[data_availability.network_config]
+listen_addr = "0.0.0.0:7000"
+bootstrap_peers = []
+max_peers = 20              # Fewer peers for DA layer
+connection_timeout = 60     # Longer for satellite
+chunk_size = 32768          # 32KB chunks for limited bandwidth
+
+# Regional logging configuration
+[logging]
+level = "INFO"              # Will be overridden per node type
+output = "both"             # console and file
+file_path = "/data/logs/polytorus.log"
+max_file_size = 52428800    # 50MB for space-limited edge nodes
+rotation_count = 3
+
+# Storage optimized for different node types
+[storage]
+data_dir = "/data"
+max_cache_size = 268435456  # 256MB for edge nodes
+sync_interval = 120         # Less frequent sync for bandwidth
+compression = true
+backup_interval = 7200      # 2 hours
+
+# Node type specific configurations
+[node_types]
+
+[node_types.exchange]
+# Major exchange/bootstrap node
+max_connections = 200
+cache_size = 2147483648     # 2GB
+log_level = "INFO"
+bandwidth_limit = "1000mbps"
+enable_metrics = true
+api_rate_limit = 1000       # requests per minute
+
+[node_types.mining_pool]
+# Professional mining operation
+max_connections = 100
+cache_size = 1073741824     # 1GB
+log_level = "INFO"
+bandwidth_limit = "500mbps"
+mining_enabled = true
+pool_fee = 0.01             # 1% pool fee
+target_block_time = 30000   # 30 seconds
+
+[node_types.institutional_validator]
+# Bank/financial institution
+max_connections = 50
+cache_size = 536870912      # 512MB
+log_level = "WARN"
+bandwidth_limit = "200mbps"
+compliance_mode = true
+audit_logging = true
+kyc_required = true
+
+[node_types.research]
+# University/research institution
+max_connections = 75
+cache_size = 1073741824     # 1GB
+log_level = "DEBUG"
+bandwidth_limit = "100mbps"
+enable_metrics = true
+research_data_collection = true
+anonymized_stats = true
+
+[node_types.mobile_backend]
+# Mobile app backend
+max_connections = 30
+cache_size = 268435456      # 256MB
+log_level = "WARN"
+bandwidth_limit = "50mbps"
+mobile_optimized = true
+push_notifications = true
+offline_support = true
+
+[node_types.iot_infrastructure]
+# IoT device management
+max_connections = 100
+cache_size = 134217728      # 128MB
+log_level = "ERROR"
+bandwidth_limit = "25mbps"
+iot_optimized = true
+device_management = true
+edge_computing = true
+
+[node_types.light_client]
+# Rural/satellite connection
+max_connections = 5
+cache_size = 67108864       # 64MB
+log_level = "ERROR"
+bandwidth_limit = "5mbps"
+light_mode = true
+minimal_storage = true
+sync_on_demand = true
+
+[node_types.mobile_edge]
+# Mobile edge device
+max_connections = 10
+cache_size = 134217728      # 128MB
+log_level = "WARN"
+bandwidth_limit = "25mbps"
+mobile_optimized = true
+battery_optimization = true
+offline_capability = true
+
+# Regional compliance settings
+[compliance]
+
+[compliance.gdpr]
+enabled = false             # Enabled for EU nodes
+data_minimization = true
+consent_required = true
+right_to_deletion = true
+data_portability = true
+
+[compliance.finra]
+enabled = false             # Enabled for US financial nodes
+transaction_reporting = true
+audit_trail = true
+risk_monitoring = true
+
+[compliance.mifid2]
+enabled = false             # Enabled for EU financial nodes
+best_execution = true
+transaction_reporting = true
+investor_protection = true
+
+# Simulation parameters
+[simulation]
+enable_chaos_engineering = true
+network_partition_probability = 0.05    # 5% chance per hour
+node_failure_probability = 0.02         # 2% chance per hour
+performance_degradation_probability = 0.1  # 10% chance per hour
+
+[simulation.business_hours]
+# Different regions have different active hours
+north_america_active = ["09:00-17:00", "EST"]
+europe_active = ["08:00-18:00", "CET"]
+asia_pacific_active = ["09:00-17:00", "SGT"]
+
+[simulation.traffic_patterns]
+cross_border_multiplier = 0.3          # 30% of traffic is cross-border
+business_hours_multiplier = 3.0        # 3x traffic during business hours
+weekend_multiplier = 0.4               # 40% traffic on weekends
+
+# Testing scenarios
+[testing]
+
+[testing.partition_scenarios]
+# Network partition testing
+transatlantic_partition_duration = 300  # 5 minutes
+transpacific_partition_duration = 180   # 3 minutes
+regional_isolation_duration = 120       # 2 minutes
+
+[testing.performance_scenarios]
+# Performance degradation testing
+satellite_storm_duration = 600         # 10 minutes of high latency
+mobile_congestion_duration = 300       # 5 minutes of bandwidth limits
+ddos_simulation_duration = 180          # 3 minutes of connection limits
+
+# Monitoring and metrics
+[monitoring]
+enable_detailed_metrics = true
+export_prometheus = true
+export_grafana = true
+alert_thresholds = true
+
+[monitoring.thresholds]
+max_block_propagation_time = 60000      # 60 seconds
+max_transaction_confirmation_time = 180000  # 3 minutes
+min_network_connectivity = 0.7         # 70% of peers reachable
+max_memory_usage = 0.8                 # 80% of available memory

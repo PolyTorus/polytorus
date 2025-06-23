@@ -1,0 +1,118 @@
+# ContainerLab Topology for PolyTorus Testnet
+# This topology creates a 4-node testnet with mining capabilities
+
+name: polytorus-testnet
+
+topology:
+  nodes:
+    # Bootstrap node (seed node)
+    node-0:
+      kind: linux
+      image: polytorus:latest
+      ports:
+        - "9000:9000"  # HTTP API
+        - "8000:8000"  # P2P
+      env:
+        POLYTORUS_NODE_ID: node-0
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: ""
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_MINING_ADDRESS: ""
+      volumes:
+        - ./data/containerlab/node-0:/data
+        - ./config:/config
+      cmd: |
+        mkdir -p /data &&
+        polytorus --config /config/docker-node.toml modular start
+
+    # Miner node 1
+    node-1:
+      kind: linux
+      image: polytorus:latest
+      ports:
+        - "9001:9000"  # HTTP API
+        - "8001:8000"  # P2P
+      env:
+        POLYTORUS_NODE_ID: node-1
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_MINING_ADDRESS: "miner1_address_here"
+      volumes:
+        - ./data/containerlab/node-1:/data
+        - ./config:/config
+      cmd: |
+        mkdir -p /data &&
+        sleep 10 &&
+        polytorus --config /config/docker-node.toml modular start &
+        sleep 5 &&
+        polytorus --config /config/docker-node.toml modular mine miner1_address_here
+
+    # Miner node 2
+    node-2:
+      kind: linux
+      image: polytorus:latest
+      ports:
+        - "9002:9000"  # HTTP API
+        - "8002:8000"  # P2P
+      env:
+        POLYTORUS_NODE_ID: node-2
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000,node-1:8000"
+        POLYTORUS_IS_MINER: "true"
+        POLYTORUS_MINING_ADDRESS: "miner2_address_here"
+      volumes:
+        - ./data/containerlab/node-2:/data
+        - ./config:/config
+      cmd: |
+        mkdir -p /data &&
+        sleep 15 &&
+        polytorus --config /config/docker-node.toml modular start &
+        sleep 5 &&
+        polytorus --config /config/docker-node.toml modular mine miner2_address_here
+
+    # Validator node 3
+    node-3:
+      kind: linux
+      image: polytorus:latest
+      ports:
+        - "9003:9000"  # HTTP API
+        - "8003:8000"  # P2P
+      env:
+        POLYTORUS_NODE_ID: node-3
+        POLYTORUS_HTTP_PORT: 9000
+        POLYTORUS_P2P_PORT: 8000
+        POLYTORUS_DATA_DIR: /data
+        POLYTORUS_LOG_LEVEL: INFO
+        POLYTORUS_BOOTSTRAP_PEERS: "node-0:8000,node-1:8000,node-2:8000"
+        POLYTORUS_IS_MINER: "false"
+        POLYTORUS_MINING_ADDRESS: ""
+      volumes:
+        - ./data/containerlab/node-3:/data
+        - ./config:/config
+      cmd: |
+        mkdir -p /data &&
+        sleep 20 &&
+        polytorus --config /config/docker-node.toml modular start
+
+  links:
+    # Define network topology - full mesh for better connectivity
+    - endpoints: ["node-0:eth1", "node-1:eth1"]
+    - endpoints: ["node-0:eth2", "node-2:eth1"]
+    - endpoints: ["node-0:eth3", "node-3:eth1"]
+    - endpoints: ["node-1:eth2", "node-2:eth2"]
+    - endpoints: ["node-1:eth3", "node-3:eth2"]
+    - endpoints: ["node-2:eth3", "node-3:eth3"]
+
+mgmt:
+  network: clab-mgmt
+  ipv4-subnet: 172.100.100.0/24
