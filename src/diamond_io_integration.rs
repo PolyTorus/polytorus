@@ -951,17 +951,15 @@ impl PrivacyEngineIntegration {
             );
 
             // XOR with constant false (no-op but obfuscates)
-            if let Some(gate) = topology.gates.get(i * 2 + 1) {
-                if let CircuitGate::And { output, .. } = gate {
-                    let original_output = *output;
-                    topology.gates.insert(
-                        i * 2 + 2,
-                        CircuitGate::Xor {
-                            inputs: [original_output, constant_wire],
-                            output: dummy_wire,
-                        },
-                    );
-                }
+            if let Some(CircuitGate::And { output, .. }) = topology.gates.get(i * 2 + 1) {
+                let original_output = *output;
+                topology.gates.insert(
+                    i * 2 + 2,
+                    CircuitGate::Xor {
+                        inputs: [original_output, constant_wire],
+                        output: dummy_wire,
+                    },
+                );
             }
         }
 
