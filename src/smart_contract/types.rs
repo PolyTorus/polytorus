@@ -166,13 +166,24 @@ pub struct AbiParameter {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AbiType {
     Bool,
-    Int { size: u16 },
-    Uint { size: u16 },
+    Int {
+        size: u16,
+    },
+    Uint {
+        size: u16,
+    },
     Address,
-    Bytes { size: Option<u16> },
+    Bytes {
+        size: Option<u16>,
+    },
     String,
-    Array { inner: Box<AbiType>, size: Option<u64> },
-    Tuple { components: Vec<AbiParameter> },
+    Array {
+        inner: Box<AbiType>,
+        size: Option<u64>,
+    },
+    Tuple {
+        components: Vec<AbiParameter>,
+    },
 }
 
 /// State mutability of contract functions
@@ -182,6 +193,12 @@ pub enum StateMutability {
     View,
     NonPayable,
     Payable,
+}
+
+impl Default for ContractAbi {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ContractAbi {
@@ -213,10 +230,15 @@ impl ContractAbi {
         self.events.iter().find(|e| e.name == name)
     }
 
-    pub fn validate_function_call(&self, function_name: &str, input_data: &[u8]) -> Result<(), String> {
-        let function = self.get_function(function_name)
+    pub fn validate_function_call(
+        &self,
+        function_name: &str,
+        input_data: &[u8],
+    ) -> Result<(), String> {
+        let function = self
+            .get_function(function_name)
             .ok_or_else(|| format!("Function {} not found in ABI", function_name))?;
-        
+
         // Basic validation - in a real implementation, this would decode and validate the input data
         if input_data.len() < 4 {
             return Err("Input data too short for function call".to_string());
@@ -244,16 +266,22 @@ mod abi_tests {
     #[test]
     fn test_contract_abi_creation() {
         let abi = ContractAbi::new();
-        
+
         assert!(abi.functions.is_empty());
         assert!(abi.events.is_empty());
         assert!(abi.constructor.is_none());
+
+        // Test Default implementation
+        let default_abi = ContractAbi::default();
+        assert!(default_abi.functions.is_empty());
+        assert!(default_abi.events.is_empty());
+        assert!(default_abi.constructor.is_none());
     }
 
     #[test]
     fn test_abi_function_management() {
         let mut abi = ContractAbi::new();
-        
+
         let function = AbiFunction {
             name: "transfer".to_string(),
             inputs: vec![
@@ -268,23 +296,21 @@ mod abi_tests {
                     indexed: false,
                 },
             ],
-            outputs: vec![
-                AbiParameter {
-                    name: "success".to_string(),
-                    param_type: AbiType::Bool,
-                    indexed: false,
-                },
-            ],
+            outputs: vec![AbiParameter {
+                name: "success".to_string(),
+                param_type: AbiType::Bool,
+                indexed: false,
+            }],
             state_mutability: StateMutability::NonPayable,
         };
-        
+
         abi.add_function(function.clone());
         assert_eq!(abi.functions.len(), 1);
-        
+
         let retrieved = abi.get_function("transfer");
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().name, "transfer");
-        
+
         let not_found = abi.get_function("nonexistent");
         assert!(not_found.is_none());
     }
@@ -292,7 +318,7 @@ mod abi_tests {
     #[test]
     fn test_abi_event_management() {
         let mut abi = ContractAbi::new();
-        
+
         let event = AbiEvent {
             name: "Transfer".to_string(),
             inputs: vec![
@@ -314,10 +340,10 @@ mod abi_tests {
             ],
             anonymous: false,
         };
-        
+
         abi.add_event(event.clone());
         assert_eq!(abi.events.len(), 1);
-        
+
         let retrieved = abi.get_event("Transfer");
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().name, "Transfer");
@@ -326,7 +352,7 @@ mod abi_tests {
     #[test]
     fn test_abi_function_call_validation() {
         let mut abi = ContractAbi::new();
-        
+
         let function = AbiFunction {
             name: "transfer".to_string(),
             inputs: vec![
@@ -344,23 +370,29 @@ mod abi_tests {
             outputs: vec![],
             state_mutability: StateMutability::NonPayable,
         };
-        
+
         abi.add_function(function);
-        
+
         // Test valid function call
         let valid_input = vec![0u8; 68]; // 4 bytes selector + 64 bytes for two parameters
         assert!(abi.validate_function_call("transfer", &valid_input).is_ok());
-        
+
         // Test invalid function name
-        assert!(abi.validate_function_call("nonexistent", &valid_input).is_err());
-        
+        assert!(abi
+            .validate_function_call("nonexistent", &valid_input)
+            .is_err());
+
         // Test insufficient input data
         let short_input = vec![0u8; 3];
-        assert!(abi.validate_function_call("transfer", &short_input).is_err());
-        
+        assert!(abi
+            .validate_function_call("transfer", &short_input)
+            .is_err());
+
         // Test insufficient parameter data
         let insufficient_input = vec![0u8; 36]; // Less than required for 2 parameters
-        assert!(abi.validate_function_call("transfer", &insufficient_input).is_err());
+        assert!(abi
+            .validate_function_call("transfer", &insufficient_input)
+            .is_err());
     }
 
     #[test]
@@ -372,7 +404,7 @@ mod abi_tests {
         let bytes_type = AbiType::Bytes { size: Some(32) };
         let dynamic_bytes_type = AbiType::Bytes { size: None };
         let string_type = AbiType::String;
-        
+
         // Verify types can be created without issues
         assert!(matches!(bool_type, AbiType::Bool));
         assert!(matches!(int_type, AbiType::Int { size: 256 }));
@@ -389,7 +421,7 @@ mod abi_tests {
         let view = StateMutability::View;
         let non_payable = StateMutability::NonPayable;
         let payable = StateMutability::Payable;
-        
+
         // Verify all mutability states can be created
         assert!(matches!(pure, StateMutability::Pure));
         assert!(matches!(view, StateMutability::View));
@@ -403,12 +435,12 @@ mod abi_tests {
             inner: Box::new(AbiType::Uint { size: 256 }),
             size: Some(10),
         };
-        
+
         let dynamic_array_type = AbiType::Array {
             inner: Box::new(AbiType::Address),
             size: None,
         };
-        
+
         let tuple_type = AbiType::Tuple {
             components: vec![
                 AbiParameter {
@@ -423,7 +455,7 @@ mod abi_tests {
                 },
             ],
         };
-        
+
         // Verify complex types can be created
         assert!(matches!(array_type, AbiType::Array { .. }));
         assert!(matches!(dynamic_array_type, AbiType::Array { .. }));

@@ -60,13 +60,8 @@ impl PrivacyContractEngine {
         // Store metadata
         self.storage.store_contract_metadata(&metadata)?;
 
-        // Store circuit information
-        let circuit_data = bincode::serialize(&CircuitInfo {
-            id: circuit.id.clone(),
-            description: circuit.description.clone(),
-            input_size: circuit.input_size,
-            output_size: circuit.output_size,
-        })?;
+        // Store complete circuit (now serializable)
+        let circuit_data = bincode::serialize(&circuit)?;
 
         self.storage
             .set_contract_state(&contract_address, "circuit_info", &circuit_data)?;
@@ -182,14 +177,7 @@ impl PrivacyContractEngine {
             }
             "get_info" => {
                 // Return circuit information
-                let info = CircuitInfo {
-                    id: circuit.id.clone(),
-                    description: circuit.description.clone(),
-                    input_size: circuit.input_size,
-                    output_size: circuit.output_size,
-                };
-
-                return_data = bincode::serialize(&info)?;
+                return_data = bincode::serialize(&circuit)?;
                 Ok(())
             }
             "encrypt_data" => {
@@ -315,14 +303,7 @@ impl PrivacyContractEngine {
             .storage
             .get_contract_state(contract_address, "circuit_info")?
         {
-            let info: CircuitInfo = bincode::deserialize(&circuit_data)?;
-
-            let circuit = PrivacyCircuit {
-                id: info.id,
-                description: info.description,
-                input_size: info.input_size,
-                output_size: info.output_size,
-            };
+            let circuit: PrivacyCircuit = bincode::deserialize(&circuit_data)?;
 
             // Cache in memory
             self.active_circuits
@@ -333,15 +314,6 @@ impl PrivacyContractEngine {
             Ok(None)
         }
     }
-}
-
-/// Serializable circuit information
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-struct CircuitInfo {
-    id: String,
-    description: String,
-    input_size: usize,
-    output_size: usize,
 }
 
 impl UnifiedContractEngine for PrivacyContractEngine {

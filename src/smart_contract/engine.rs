@@ -371,7 +371,7 @@ impl ContractEngine {
 
         // Initialize gas meter
         let mut gas_meter = GasMeter::new(execution.gas_limit, self.gas_config.clone());
-        
+
         // Consume base gas for function call
         if let Err(e) = gas_meter.consume_function_call() {
             return Ok(ContractResult {
@@ -494,7 +494,7 @@ impl ContractEngine {
 
         // Initialize gas meter
         let mut gas_meter = GasMeter::new(execution.gas_limit, self.gas_config.clone());
-        
+
         // Consume base gas for function call
         if let Err(e) = gas_meter.consume_function_call() {
             return Ok(ContractResult {
@@ -916,14 +916,14 @@ mod engine_tests {
     use super::*;
     use crate::smart_contract::{
         state::ContractState,
-        types::{GasMeter, GasConfig},
+        types::{GasConfig, GasMeter},
     };
 
     #[test]
     fn test_gas_meter_creation() {
         let config = GasConfig::default();
         let gas_meter = GasMeter::new(1000000, config.clone());
-        
+
         assert_eq!(gas_meter.gas_limit, 1000000);
         assert_eq!(gas_meter.gas_used, 0);
         assert_eq!(gas_meter.remaining_gas(), 1000000);
@@ -934,12 +934,12 @@ mod engine_tests {
     fn test_gas_consumption() {
         let config = GasConfig::default();
         let mut gas_meter = GasMeter::new(1000, config.clone());
-        
+
         // Test consuming specific amounts
         assert!(gas_meter.consume_gas(500).is_ok());
         assert_eq!(gas_meter.gas_used, 500);
         assert_eq!(gas_meter.remaining_gas(), 500);
-        
+
         // Test exceeding gas limit
         assert!(gas_meter.consume_gas(600).is_err());
         assert_eq!(gas_meter.gas_used, 500); // unchanged after failed consumption
@@ -949,31 +949,43 @@ mod engine_tests {
     fn test_gas_meter_specific_operations() {
         let config = GasConfig::default();
         let mut gas_meter = GasMeter::new(100000, config.clone());
-        
+
         // Test specific operations
         assert!(gas_meter.consume_instruction().is_ok());
         assert_eq!(gas_meter.gas_used, config.instruction_cost);
-        
+
         assert!(gas_meter.consume_function_call().is_ok());
-        assert_eq!(gas_meter.gas_used, config.instruction_cost + config.function_call_cost);
-        
+        assert_eq!(
+            gas_meter.gas_used,
+            config.instruction_cost + config.function_call_cost
+        );
+
         assert!(gas_meter.consume_storage_read().is_ok());
-        assert_eq!(gas_meter.gas_used, config.instruction_cost + config.function_call_cost + config.storage_read_cost);
-        
+        assert_eq!(
+            gas_meter.gas_used,
+            config.instruction_cost + config.function_call_cost + config.storage_read_cost
+        );
+
         assert!(gas_meter.consume_storage_write().is_ok());
-        assert_eq!(gas_meter.gas_used, config.instruction_cost + config.function_call_cost + config.storage_read_cost + config.storage_write_cost);
+        assert_eq!(
+            gas_meter.gas_used,
+            config.instruction_cost
+                + config.function_call_cost
+                + config.storage_read_cost
+                + config.storage_write_cost
+        );
     }
 
     #[test]
     fn test_gas_exhaustion() {
         let config = GasConfig::default();
         let mut gas_meter = GasMeter::new(1000, config.clone());
-        
+
         // Consume all gas
         assert!(gas_meter.consume_gas(1000).is_ok());
         assert!(gas_meter.is_exhausted());
         assert_eq!(gas_meter.remaining_gas(), 0);
-        
+
         // Try to consume more
         assert!(gas_meter.consume_gas(1).is_err());
     }
@@ -981,7 +993,7 @@ mod engine_tests {
     #[test]
     fn test_enhanced_gas_config() {
         let config = GasConfig::default();
-        
+
         // Verify default values are reasonable
         assert!(config.instruction_cost > 0);
         assert!(config.memory_cost_per_page > 0);
@@ -996,20 +1008,23 @@ mod engine_tests {
     fn test_memory_gas_calculation() {
         let config = GasConfig::default();
         let mut gas_meter = GasMeter::new(100000, config.clone());
-        
+
         // Test memory allocation gas
         assert!(gas_meter.consume_memory(1).is_ok());
         assert_eq!(gas_meter.gas_used, config.memory_cost_per_page);
-        
+
         assert!(gas_meter.consume_memory(5).is_ok());
-        assert_eq!(gas_meter.gas_used, config.memory_cost_per_page + (5 * config.memory_cost_per_page));
+        assert_eq!(
+            gas_meter.gas_used,
+            config.memory_cost_per_page + (5 * config.memory_cost_per_page)
+        );
     }
 
     #[test]
     fn test_contract_engine_with_enhanced_gas() {
         let state = ContractState::new(":memory:").unwrap();
         let engine = ContractEngine::new(state).unwrap();
-        
+
         let execution = ContractExecution {
             contract_address: "0x123".to_string(),
             function_name: "main".to_string(),
@@ -1018,7 +1033,7 @@ mod engine_tests {
             caller: "0xabc".to_string(),
             value: 0,
         };
-        
+
         // This should not panic and should return a proper gas usage
         let result = engine.execute_contract(execution).unwrap();
         assert!(result.gas_used > 0);

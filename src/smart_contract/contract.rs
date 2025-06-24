@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    smart_contract::{state::ContractState, types::{ContractMetadata, ContractAbi}},
+    smart_contract::{
+        state::ContractState,
+        types::{ContractAbi, ContractMetadata},
+    },
     Result,
 };
 
