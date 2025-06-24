@@ -1,5 +1,9 @@
 //! Diamond IO Layer Implementation
 //!
+//! ⚠️  DEPRECATED: This general-purpose DiamondIO layer is deprecated.
+//! DiamondIO should ONLY be used for smart contract obfuscation.
+//! Use traditional cryptographic methods for general privacy features.
+//!
 //! This layer provides Diamond IO cryptographic operations integration.
 
 use std::{collections::HashMap, sync::Arc};

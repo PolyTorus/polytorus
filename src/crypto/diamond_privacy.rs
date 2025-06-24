@@ -51,8 +51,8 @@ impl Default for DiamondPrivacyConfig {
         Self {
             privacy_config: PrivacyConfig::default(),
             diamond_io_config: RealDiamondIOConfig::testing(),
-            enable_diamond_obfuscation: true,
-            enable_hybrid_privacy: true,
+            enable_diamond_obfuscation: false, // Disabled: DiamondIO only for smart contracts
+            enable_hybrid_privacy: false,      // Disabled: Use traditional privacy only
             circuit_complexity: DiamondCircuitComplexity::Medium,
         }
     }
@@ -416,8 +416,8 @@ mod tests {
         match provider {
             Ok(provider) => {
                 let stats = provider.get_diamond_privacy_stats();
-                assert!(stats.diamond_obfuscation_enabled);
-                assert!(stats.hybrid_privacy_enabled);
+                assert!(!stats.diamond_obfuscation_enabled); // Disabled by default now
+                assert!(!stats.hybrid_privacy_enabled); // Disabled by default now
             }
             Err(_) => {
                 // Skip test if Diamond IO not available (e.g., in CI)
@@ -478,7 +478,7 @@ mod tests {
 
         // Test deserialization
         let deserialized: DiamondPrivacyConfig = serde_json::from_str(&serialized).unwrap();
-        assert!(deserialized.enable_diamond_obfuscation);
-        assert!(deserialized.enable_hybrid_privacy);
+        assert!(!deserialized.enable_diamond_obfuscation); // Disabled by default now
+        assert!(!deserialized.enable_hybrid_privacy); // Disabled by default now
     }
 }

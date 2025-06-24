@@ -349,7 +349,7 @@ impl<N: NetworkConfig> BuildingBlock<N> {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_millis();
-        let mining_time = end_time - start_time;
+        let mining_time = end_time.saturating_sub(start_time);
         self.mining_stats.record_mining_time(mining_time);
 
         let data = self.prepare_hash_data()?;
