@@ -349,17 +349,19 @@ fn test_diamond_privacy_config_creation() {
     // Test default configuration (DiamondIO disabled by default)
     let default_config = DiamondPrivacyConfig::default();
     assert!(!default_config.enable_diamond_obfuscation); // Disabled by default now
-    assert!(!default_config.enable_hybrid_privacy);      // Disabled by default now
+    assert!(!default_config.enable_hybrid_privacy); // Disabled by default now
     assert!(matches!(
         default_config.circuit_complexity,
         DiamondCircuitComplexity::Medium
     ));
-    
+
     // Test custom configuration with DiamondIO enabled for testing
-    let mut test_config = DiamondPrivacyConfig::default();
-    test_config.enable_diamond_obfuscation = true;
-    test_config.enable_hybrid_privacy = true;
-    
+    let test_config = DiamondPrivacyConfig {
+        enable_diamond_obfuscation: true,
+        enable_hybrid_privacy: true,
+        ..Default::default()
+    };
+
     assert!(test_config.enable_diamond_obfuscation);
     assert!(test_config.enable_hybrid_privacy);
     assert!(matches!(
@@ -376,7 +378,7 @@ async fn test_diamond_privacy_provider_creation() {
         Ok(provider) => {
             let stats = provider.get_diamond_privacy_stats();
             assert!(!stats.diamond_obfuscation_enabled); // Disabled by default now
-            assert!(!stats.hybrid_privacy_enabled);     // Disabled by default now
+            assert!(!stats.hybrid_privacy_enabled); // Disabled by default now
             assert_eq!(stats.security_level, "Medium_with_diamond_io");
         }
         Err(_) => {
@@ -384,12 +386,14 @@ async fn test_diamond_privacy_provider_creation() {
             println!("Diamond IO not available, skipping Diamond privacy test");
         }
     }
-    
+
     // Test with DiamondIO explicitly enabled
-    let mut enabled_config = DiamondPrivacyConfig::default();
-    enabled_config.enable_diamond_obfuscation = true;
-    enabled_config.enable_hybrid_privacy = true;
-    
+    let enabled_config = DiamondPrivacyConfig {
+        enable_diamond_obfuscation: true,
+        enable_hybrid_privacy: true,
+        ..Default::default()
+    };
+
     match DiamondPrivacyProvider::new(enabled_config).await {
         Ok(provider) => {
             let stats = provider.get_diamond_privacy_stats();

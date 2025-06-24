@@ -171,11 +171,11 @@ async fn test_privacy_configuration_levels() {
 #[tokio::test]
 async fn test_enhanced_privacy_integration() {
     let mut config = AnonymousEUtxoConfig::testing();
-    
+
     // Create a custom enhanced privacy config with DiamondIO enabled for testing
     let mut enhanced_config = EnhancedPrivacyConfig::testing();
-    enhanced_config.enable_real_diamond_io = true;  // Enable for this specific test
-    enhanced_config.use_hybrid_mode = true;         // Enable hybrid mode for testing
+    enhanced_config.enable_real_diamond_io = true; // Enable for this specific test
+    enhanced_config.use_hybrid_mode = true; // Enable hybrid mode for testing
     config.privacy_config = enhanced_config;
 
     let processor = AnonymousEUtxoProcessor::new(config).await.unwrap();

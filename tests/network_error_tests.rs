@@ -61,22 +61,22 @@ async fn test_port_binding_conflict() {
     match result1 {
         Ok((_node1, _event_rx1, _command_tx1)) => {
             println!("✅ Successfully created first node");
-            
+
             // Try to create second node with same address (this should succeed in creation)
             // but would fail when actually trying to bind
             let result2 = EnhancedP2PNode::new(test_addr, bootstrap_peers);
-            
+
             match result2 {
                 Ok((_node2, _event_rx2, _command_tx2)) => {
                     println!("✅ Successfully created second node (binding conflict would occur at runtime)");
                 }
                 Err(e) => {
-                    println!("✅ Expected: Failed to create second node - {}", e);
+                    println!("✅ Expected: Failed to create second node - {e}");
                 }
             }
         }
         Err(e) => {
-            println!("❌ Failed to create first node: {}", e);
+            println!("❌ Failed to create first node: {e}");
         }
     }
 }
@@ -99,7 +99,7 @@ async fn test_message_size_limits() {
             assert!(data.len() < 1024); // Should be small
         }
         Err(e) => {
-            panic!("Failed to serialize normal message: {}", e);
+            panic!("Failed to serialize normal message: {e}");
         }
     }
 
@@ -117,7 +117,7 @@ async fn test_message_size_limits() {
             }
         }
         Err(e) => {
-            println!("❌ Large message serialization failed: {}", e);
+            println!("❌ Large message serialization failed: {e}");
         }
     }
 }
@@ -156,7 +156,7 @@ async fn test_network_resilience() {
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
-    println!("✅ Sent {} connection attempts", connection_attempts);
+    println!("✅ Sent {connection_attempts} connection attempts");
 
     // Wait for any events and count them
     let mut event_count = 0;
@@ -166,14 +166,14 @@ async fn test_network_resilience() {
         match timeout(Duration::from_millis(100), event_rx.recv()).await {
             Ok(Some(event)) => {
                 event_count += 1;
-                println!("  Received event: {:?}", event);
+                println!("  Received event: {event:?}");
             }
             Ok(None) => break,
             Err(_) => continue, // Timeout, keep waiting
         }
     }
 
-    println!("✅ Received {} network events", event_count);
+    println!("✅ Received {event_count} network events");
     println!("✅ Network resilience test completed");
 }
 
@@ -196,10 +196,7 @@ async fn test_connection_timeouts() {
             panic!("Unexpected: Connection succeeded to unreachable address");
         }
         Ok(Err(e)) => {
-            println!(
-                "✅ Expected: Connection failed to unreachable address - {}",
-                e
-            );
+            println!("✅ Expected: Connection failed to unreachable address - {e}");
         }
         Err(_) => {
             println!("✅ Expected: Connection timed out to unreachable address");
@@ -208,9 +205,9 @@ async fn test_connection_timeouts() {
 
     // Verify timeout was respected
     if elapsed < Duration::from_millis(150) {
-        println!("✅ Timeout was respected: {:?}", elapsed);
+        println!("✅ Timeout was respected: {elapsed:?}");
     } else {
-        println!("⚠️  Timeout took longer than expected: {:?}", elapsed);
+        println!("⚠️  Timeout took longer than expected: {elapsed:?}");
     }
 }
 
@@ -228,10 +225,10 @@ async fn test_invalid_address_handling() {
     for addr_str in invalid_addresses {
         match addr_str.parse::<SocketAddr>() {
             Ok(_) => {
-                println!("❌ Unexpected: {} parsed successfully", addr_str);
+                println!("❌ Unexpected: {addr_str} parsed successfully");
             }
             Err(e) => {
-                println!("✅ Expected: {} failed to parse - {}", addr_str, e);
+                println!("✅ Expected: {addr_str} failed to parse - {e}");
             }
         }
     }
@@ -245,24 +242,21 @@ async fn test_invalid_address_handling() {
     for addr_str in problematic_addresses {
         match addr_str.parse::<SocketAddr>() {
             Ok(addr) => {
-                println!("✅ {} parsed successfully: {}", addr_str, addr);
+                println!("✅ {addr_str} parsed successfully: {addr}");
 
                 // Test if we can bind to it
                 match tokio::net::TcpListener::bind(addr).await {
                     Ok(listener) => {
                         let actual_addr = listener.local_addr().unwrap();
-                        println!(
-                            "✅ Successfully bound to {} (actual: {})",
-                            addr, actual_addr
-                        );
+                        println!("✅ Successfully bound to {addr} (actual: {actual_addr})");
                     }
                     Err(e) => {
-                        println!("❌ Failed to bind to {}: {}", addr, e);
+                        println!("❌ Failed to bind to {addr}: {e}");
                     }
                 }
             }
             Err(e) => {
-                println!("❌ Failed to parse {}: {}", addr_str, e);
+                println!("❌ Failed to parse {addr_str}: {e}");
             }
         }
     }
