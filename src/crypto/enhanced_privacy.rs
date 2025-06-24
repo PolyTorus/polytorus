@@ -40,9 +40,9 @@ impl Default for EnhancedPrivacyConfig {
         Self {
             privacy_config: PrivacyConfig::default(),
             diamond_io_config: RealDiamondIOConfig::testing(),
-            enable_real_diamond_io: true,
-            use_hybrid_mode: true,
-            cleanup_interval: 3600, // 1 hour
+            enable_real_diamond_io: false, // Disabled: DiamondIO only for smart contracts
+            use_hybrid_mode: false,        // Disabled: Use traditional privacy only
+            cleanup_interval: 3600,        // 1 hour
         }
     }
 }
@@ -59,9 +59,9 @@ impl EnhancedPrivacyConfig {
                 commitment_randomness_size: 32,
             },
             diamond_io_config: RealDiamondIOConfig::testing(),
-            enable_real_diamond_io: true,
-            use_hybrid_mode: true,
-            cleanup_interval: 300, // 5 minutes for testing
+            enable_real_diamond_io: false, // Disabled: DiamondIO only for smart contracts
+            use_hybrid_mode: false,        // Disabled: Use traditional privacy only
+            cleanup_interval: 300,         // 5 minutes for testing
         }
     }
 
@@ -76,9 +76,9 @@ impl EnhancedPrivacyConfig {
                 commitment_randomness_size: 32,
             },
             diamond_io_config: RealDiamondIOConfig::production(),
-            enable_real_diamond_io: true,
-            use_hybrid_mode: true,
-            cleanup_interval: 7200, // 2 hours
+            enable_real_diamond_io: false, // Disabled: DiamondIO only for smart contracts
+            use_hybrid_mode: false,        // Disabled: Use traditional privacy only
+            cleanup_interval: 7200,        // 2 hours
         }
     }
 }
@@ -485,8 +485,8 @@ mod tests {
         let provider = provider.unwrap();
 
         let stats = provider.get_enhanced_statistics();
-        assert!(stats.real_diamond_io_enabled);
-        assert!(stats.hybrid_mode_enabled);
+        assert!(!stats.real_diamond_io_enabled); // Disabled by default now
+        assert!(!stats.hybrid_mode_enabled); // Disabled by default now
         assert_eq!(stats.total_circuits_created, 0);
     }
 
@@ -517,11 +517,11 @@ mod tests {
             enhanced_tx.base_private_transaction.private_outputs.len(),
             1
         );
-        assert_eq!(enhanced_tx.diamond_io_proofs.len(), 1);
-        assert_eq!(enhanced_tx.circuit_ids.len(), 1);
+        assert_eq!(enhanced_tx.diamond_io_proofs.len(), 0); // No DiamondIO proofs when disabled
+        assert_eq!(enhanced_tx.circuit_ids.len(), 0); // No circuits when disabled
         assert_eq!(
             enhanced_tx.enhanced_metadata.privacy_level,
-            "maximum_privacy"
+            "zero_knowledge" // Only ZK level when DiamondIO disabled
         );
 
         // Verify the enhanced transaction
@@ -555,6 +555,6 @@ mod tests {
         let provider = EnhancedPrivacyProvider::new(config).await.unwrap();
 
         let level = provider.determine_privacy_level();
-        assert_eq!(level, "maximum_privacy");
+        assert_eq!(level, "zero_knowledge"); // DiamondIO disabled, so only ZK level
     }
 }
