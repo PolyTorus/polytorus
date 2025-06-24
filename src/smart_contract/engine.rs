@@ -12,7 +12,7 @@ use crate::{
         contract::SmartContract,
         erc20::ERC20Contract,
         state::ContractState,
-        types::{ContractExecution, ContractMetadata, ContractResult, GasConfig},
+        types::{ContractExecution, ContractMetadata, ContractResult, GasConfig, GasMeter},
     },
     Result,
 };
@@ -26,6 +26,7 @@ struct HostContext {
     state: Arc<Mutex<ContractState>>,
     logs: Arc<Mutex<Vec<String>>>,
     state_changes: Arc<Mutex<HashMap<String, Vec<u8>>>>,
+    gas_meter: Arc<Mutex<GasMeter>>,
 }
 
 /// WASM contract execution engine
@@ -350,7 +351,7 @@ impl ContractEngine {
         state.list_contracts()
     }
 
-    /// Execute a smart contract function
+    /// Execute a smart contract function with proper gas metering
     pub fn execute_contract(&self, execution: ContractExecution) -> Result<ContractResult> {
         println!("Executing contract function: {}", execution.function_name);
 
@@ -368,15 +369,17 @@ impl ContractEngine {
             });
         }
 
-        // Simple gas limit enforcement using gas_config
-        let gas_cost = self.gas_config.instruction_cost * 10; // Base cost for function call
-        if execution.gas_limit < gas_cost {
+        // Initialize gas meter
+        let mut gas_meter = GasMeter::new(execution.gas_limit, self.gas_config.clone());
+        
+        // Consume base gas for function call
+        if let Err(e) = gas_meter.consume_function_call() {
             return Ok(ContractResult {
                 success: false,
                 return_value: vec![],
-                gas_used: gas_cost,
+                gas_used: gas_meter.gas_used,
                 state_changes: HashMap::new(),
-                logs: vec!["Gas limit exceeded".to_string()],
+                logs: vec![e],
             });
         }
 
@@ -408,6 +411,7 @@ impl ContractEngine {
         // Create host context for actual processing
         let logs = Arc::new(Mutex::new(Vec::new()));
         let state_changes = Arc::new(Mutex::new(HashMap::new()));
+        let gas_meter_ref = Arc::new(Mutex::new(gas_meter));
         let host_context = HostContext {
             contract_address: execution.contract_address.clone(),
             caller: execution.caller.clone(),
@@ -415,6 +419,7 @@ impl ContractEngine {
             state: self.state.clone(),
             logs: logs.clone(),
             state_changes: state_changes.clone(),
+            gas_meter: gas_meter_ref.clone(),
         };
 
         // Create store with host context
@@ -431,6 +436,13 @@ impl ContractEngine {
 
         // Call the function - state changes are now handled by host functions
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
+
+        // Get final gas usage
+        let final_gas_used = if let Ok(meter_guard) = gas_meter_ref.lock() {
+            meter_guard.gas_used
+        } else {
+            self.gas_config.function_call_cost // fallback
+        };
 
         // Get logs from host context
         let execution_logs = if let Ok(logs_guard) = logs.lock() {
@@ -449,7 +461,7 @@ impl ContractEngine {
         Ok(ContractResult {
             success: true,
             return_value: result,
-            gas_used: gas_cost,
+            gas_used: final_gas_used,
             state_changes: tracked_state_changes,
             logs: execution_logs,
         })
@@ -480,15 +492,17 @@ impl ContractEngine {
             });
         }
 
-        // Simple gas limit enforcement using gas_config
-        let gas_cost = self.gas_config.instruction_cost * 10; // Base cost for function call
-        if execution.gas_limit < gas_cost {
+        // Initialize gas meter
+        let mut gas_meter = GasMeter::new(execution.gas_limit, self.gas_config.clone());
+        
+        // Consume base gas for function call
+        if let Err(e) = gas_meter.consume_function_call() {
             return Ok(ContractResult {
                 success: false,
                 return_value: vec![],
-                gas_used: gas_cost,
+                gas_used: gas_meter.gas_used,
                 state_changes: HashMap::new(),
-                logs: vec!["Gas limit exceeded".to_string()],
+                logs: vec![e],
             });
         }
 
@@ -499,6 +513,7 @@ impl ContractEngine {
         // Create host context for actual processing
         let logs = Arc::new(Mutex::new(Vec::new()));
         let state_changes = Arc::new(Mutex::new(HashMap::new()));
+        let gas_meter_ref = Arc::new(Mutex::new(gas_meter));
         let host_context = HostContext {
             contract_address: execution.contract_address.clone(),
             caller: execution.caller.clone(),
@@ -506,6 +521,7 @@ impl ContractEngine {
             state: self.state.clone(),
             logs: logs.clone(),
             state_changes: state_changes.clone(),
+            gas_meter: gas_meter_ref.clone(),
         };
 
         // Create store with host context
@@ -522,6 +538,13 @@ impl ContractEngine {
 
         // Call the function - state changes are now handled by host functions
         let result = self.call_simple_function(&mut store, &instance, &execution.function_name)?;
+
+        // Get final gas usage
+        let final_gas_used = if let Ok(meter_guard) = gas_meter_ref.lock() {
+            meter_guard.gas_used
+        } else {
+            self.gas_config.function_call_cost // fallback
+        };
 
         // Get logs from host context
         let execution_logs = if let Ok(logs_guard) = logs.lock() {
@@ -540,7 +563,7 @@ impl ContractEngine {
         Ok(ContractResult {
             success: true,
             return_value: result,
-            gas_used: gas_cost,
+            gas_used: final_gas_used,
             state_changes: tracked_state_changes,
             logs: execution_logs,
         })
@@ -589,6 +612,13 @@ impl ContractEngine {
                         Ok(k) => k,
                         Err(_) => return -4, // Invalid UTF-8 in key
                     };
+
+                    // Consume gas for storage read
+                    if let Ok(mut gas_meter) = ctx.gas_meter.lock() {
+                        if gas_meter.consume_storage_read().is_err() {
+                            return -8; // Out of gas
+                        }
+                    }
 
                     // Read from database
                     let state_result = ctx.state.lock();
@@ -664,6 +694,13 @@ impl ContractEngine {
                         Ok(k) => k,
                         Err(_) => return -5, // Invalid UTF-8 in key
                     };
+
+                    // Consume gas for storage write
+                    if let Ok(mut gas_meter) = ctx.gas_meter.lock() {
+                        if gas_meter.consume_storage_write().is_err() {
+                            return -8; // Out of gas
+                        }
+                    }
 
                     // Write to database
                     let state_result = ctx.state.lock();
@@ -871,5 +908,120 @@ impl ContractEngine {
     pub fn get_contract_state(&self, contract_address: &str) -> Result<HashMap<String, Vec<u8>>> {
         let state = self.state.lock().unwrap();
         state.get_contract_state(contract_address)
+    }
+}
+
+#[cfg(test)]
+mod engine_tests {
+    use super::*;
+    use crate::smart_contract::{
+        state::ContractState,
+        types::{GasMeter, GasConfig},
+    };
+
+    #[test]
+    fn test_gas_meter_creation() {
+        let config = GasConfig::default();
+        let gas_meter = GasMeter::new(1000000, config.clone());
+        
+        assert_eq!(gas_meter.gas_limit, 1000000);
+        assert_eq!(gas_meter.gas_used, 0);
+        assert_eq!(gas_meter.remaining_gas(), 1000000);
+        assert!(!gas_meter.is_exhausted());
+    }
+
+    #[test]
+    fn test_gas_consumption() {
+        let config = GasConfig::default();
+        let mut gas_meter = GasMeter::new(1000, config.clone());
+        
+        // Test consuming specific amounts
+        assert!(gas_meter.consume_gas(500).is_ok());
+        assert_eq!(gas_meter.gas_used, 500);
+        assert_eq!(gas_meter.remaining_gas(), 500);
+        
+        // Test exceeding gas limit
+        assert!(gas_meter.consume_gas(600).is_err());
+        assert_eq!(gas_meter.gas_used, 500); // unchanged after failed consumption
+    }
+
+    #[test]
+    fn test_gas_meter_specific_operations() {
+        let config = GasConfig::default();
+        let mut gas_meter = GasMeter::new(100000, config.clone());
+        
+        // Test specific operations
+        assert!(gas_meter.consume_instruction().is_ok());
+        assert_eq!(gas_meter.gas_used, config.instruction_cost);
+        
+        assert!(gas_meter.consume_function_call().is_ok());
+        assert_eq!(gas_meter.gas_used, config.instruction_cost + config.function_call_cost);
+        
+        assert!(gas_meter.consume_storage_read().is_ok());
+        assert_eq!(gas_meter.gas_used, config.instruction_cost + config.function_call_cost + config.storage_read_cost);
+        
+        assert!(gas_meter.consume_storage_write().is_ok());
+        assert_eq!(gas_meter.gas_used, config.instruction_cost + config.function_call_cost + config.storage_read_cost + config.storage_write_cost);
+    }
+
+    #[test]
+    fn test_gas_exhaustion() {
+        let config = GasConfig::default();
+        let mut gas_meter = GasMeter::new(1000, config.clone());
+        
+        // Consume all gas
+        assert!(gas_meter.consume_gas(1000).is_ok());
+        assert!(gas_meter.is_exhausted());
+        assert_eq!(gas_meter.remaining_gas(), 0);
+        
+        // Try to consume more
+        assert!(gas_meter.consume_gas(1).is_err());
+    }
+
+    #[test]
+    fn test_enhanced_gas_config() {
+        let config = GasConfig::default();
+        
+        // Verify default values are reasonable
+        assert!(config.instruction_cost > 0);
+        assert!(config.memory_cost_per_page > 0);
+        assert!(config.storage_read_cost > 0);
+        assert!(config.storage_write_cost > config.storage_read_cost); // Write should cost more than read
+        assert!(config.function_call_cost > 0);
+        assert!(config.contract_creation_cost > config.function_call_cost); // Creation should cost more than call
+        assert!(config.max_gas_per_call > 1_000_000); // Should allow reasonable gas limits
+    }
+
+    #[test]
+    fn test_memory_gas_calculation() {
+        let config = GasConfig::default();
+        let mut gas_meter = GasMeter::new(100000, config.clone());
+        
+        // Test memory allocation gas
+        assert!(gas_meter.consume_memory(1).is_ok());
+        assert_eq!(gas_meter.gas_used, config.memory_cost_per_page);
+        
+        assert!(gas_meter.consume_memory(5).is_ok());
+        assert_eq!(gas_meter.gas_used, config.memory_cost_per_page + (5 * config.memory_cost_per_page));
+    }
+
+    #[test]
+    fn test_contract_engine_with_enhanced_gas() {
+        let state = ContractState::new(":memory:").unwrap();
+        let engine = ContractEngine::new(state).unwrap();
+        
+        let execution = ContractExecution {
+            contract_address: "0x123".to_string(),
+            function_name: "main".to_string(),
+            arguments: vec![],
+            gas_limit: 10000,
+            caller: "0xabc".to_string(),
+            value: 0,
+        };
+        
+        // This should not panic and should return a proper gas usage
+        let result = engine.execute_contract(execution).unwrap();
+        assert!(result.gas_used > 0);
+        assert!(result.gas_used <= 10000);
     }
 }

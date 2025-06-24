@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    smart_contract::{state::ContractState, types::ContractMetadata},
+    smart_contract::{state::ContractState, types::{ContractMetadata, ContractAbi}},
     Result,
 };
 
@@ -24,7 +24,7 @@ impl SmartContract {
         bytecode: Vec<u8>,
         creator: String,
         _constructor_args: Vec<u8>,
-        abi: Option<String>,
+        abi: Option<ContractAbi>,
     ) -> Result<Self> {
         let address = Self::generate_address(&bytecode, &creator)?;
         let bytecode_hash = Self::hash_bytecode(&bytecode)?;
