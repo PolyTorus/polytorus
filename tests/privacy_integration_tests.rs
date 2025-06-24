@@ -346,21 +346,51 @@ fn test_multiple_inputs_outputs_private_transaction() {
 // Diamond IO integration tests (may skip if Diamond IO not available)
 #[test]
 fn test_diamond_privacy_config_creation() {
-    let config = DiamondPrivacyConfig::default();
-
-    assert!(config.enable_diamond_obfuscation);
-    assert!(config.enable_hybrid_privacy);
+    // Test default configuration (DiamondIO disabled by default)
+    let default_config = DiamondPrivacyConfig::default();
+    assert!(!default_config.enable_diamond_obfuscation); // Disabled by default now
+    assert!(!default_config.enable_hybrid_privacy);      // Disabled by default now
     assert!(matches!(
-        config.circuit_complexity,
+        default_config.circuit_complexity,
+        DiamondCircuitComplexity::Medium
+    ));
+    
+    // Test custom configuration with DiamondIO enabled for testing
+    let mut test_config = DiamondPrivacyConfig::default();
+    test_config.enable_diamond_obfuscation = true;
+    test_config.enable_hybrid_privacy = true;
+    
+    assert!(test_config.enable_diamond_obfuscation);
+    assert!(test_config.enable_hybrid_privacy);
+    assert!(matches!(
+        test_config.circuit_complexity,
         DiamondCircuitComplexity::Medium
     ));
 }
 
 #[tokio::test]
 async fn test_diamond_privacy_provider_creation() {
-    let config = DiamondPrivacyConfig::default();
-
-    match DiamondPrivacyProvider::new(config).await {
+    // Test with default config (DiamondIO disabled)
+    let default_config = DiamondPrivacyConfig::default();
+    match DiamondPrivacyProvider::new(default_config).await {
+        Ok(provider) => {
+            let stats = provider.get_diamond_privacy_stats();
+            assert!(!stats.diamond_obfuscation_enabled); // Disabled by default now
+            assert!(!stats.hybrid_privacy_enabled);     // Disabled by default now
+            assert_eq!(stats.security_level, "Medium_with_diamond_io");
+        }
+        Err(_) => {
+            // Skip test if Diamond IO dependencies not available
+            println!("Diamond IO not available, skipping Diamond privacy test");
+        }
+    }
+    
+    // Test with DiamondIO explicitly enabled
+    let mut enabled_config = DiamondPrivacyConfig::default();
+    enabled_config.enable_diamond_obfuscation = true;
+    enabled_config.enable_hybrid_privacy = true;
+    
+    match DiamondPrivacyProvider::new(enabled_config).await {
         Ok(provider) => {
             let stats = provider.get_diamond_privacy_stats();
             assert!(stats.diamond_obfuscation_enabled);
@@ -369,7 +399,7 @@ async fn test_diamond_privacy_provider_creation() {
         }
         Err(_) => {
             // Skip test if Diamond IO dependencies not available
-            println!("Diamond IO not available, skipping Diamond privacy test");
+            println!("Diamond IO not available, skipping Diamond privacy test with enabled config");
         }
     }
 }
