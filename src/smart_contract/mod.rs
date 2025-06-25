@@ -18,6 +18,10 @@ pub mod unified_manager;
 pub mod unified_storage;
 pub mod wasm_engine;
 
+// Advanced storage and engine implementations
+pub mod database_storage;
+pub mod enhanced_unified_engine;
+
 #[cfg(test)]
 pub mod test_utils;
 
