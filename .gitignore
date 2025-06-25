@@ -27,3 +27,4 @@ test_simple_circuit_operations_obfuscation/
 
 .claude
 logs
+:memory:

@@ -174,6 +174,8 @@ impl RealDiamondIOProvider {
             description: "Privacy validation circuit".to_string(),
             input_size: self.config.input_size,
             output_size: self.derive_output_size_from_proof(proof),
+            topology: None,
+            circuit_type: crate::diamond_io_integration::CircuitType::Cryptographic,
         }; // Register the circuit with Diamond IO (handled internally by new implementation)
            // self.diamond_io.register_circuit(diamond_circuit)
            //     .map_err(|e| anyhow::anyhow!("Failed to register circuit: {}", e))?;
