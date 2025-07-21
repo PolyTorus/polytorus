@@ -100,7 +100,7 @@ redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
 # Utilities
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
-wasmtime = "33.0.0"  # Updated to latest version
+wasmtime = "33.0.2"  # Updated to latest version
 wat = "1.0"
 hex = "0.4"
 toml = "0.8"
