@@ -196,7 +196,7 @@ impl PolyTorusBlockchain {
         };
 
         // Initialize P2P network with provided or default config
-        let p2p_config = p2p_config.unwrap_or_else(|| Self::p2p_config_from_env());
+        let p2p_config = p2p_config.unwrap_or_else(Self::p2p_config_from_env);
         let p2p_network = WebRTCP2PNetwork::new(p2p_config)?;
 
         // Initialize HD wallet
@@ -871,7 +871,7 @@ async fn async_main() -> Result<()> {
             // Build P2P configuration from arguments
             let node_id = sub_matches
                 .get_one::<String>("node-id")
-                .map(|s| s.clone())
+                .cloned()
                 .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
             let listen_port = sub_matches
@@ -880,10 +880,10 @@ async fn async_main() -> Result<()> {
                 .parse::<u16>()
                 .unwrap_or(8080);
 
-            let bootstrap_peers = sub_matches
+            let bootstrap_peers: Vec<String> = sub_matches
                 .get_one::<String>("bootstrap-peers")
                 .map(|peers| peers.split(',').map(|s| s.trim().to_string()).collect())
-                .unwrap_or_else(|| Vec::new());
+                .unwrap_or_default();
 
             let p2p_config = P2PConfig {
                 node_id: node_id.clone(),

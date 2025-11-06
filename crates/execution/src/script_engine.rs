@@ -117,9 +117,6 @@ impl ScriptEngine {
     pub fn new(config: ExecutionConfig) -> Result<Self> {
         // Configure WASM engine with security settings
         let mut wasm_config = Config::new();
-        wasm_config.wasm_threads(false);
-        wasm_config.wasm_reference_types(false);
-        wasm_config.wasm_bulk_memory(true);
         wasm_config.consume_fuel(true);
         wasm_config.epoch_interruption(true);
 

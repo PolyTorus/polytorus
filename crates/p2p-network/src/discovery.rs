@@ -463,13 +463,13 @@ impl ConnectionPool {
 }
 
 /// DHT implementation for distributed peer discovery
-pub struct DHT {
+pub struct Dht {
     node_id: [u8; 20],
     routing_table: Arc<RwLock<HashMap<String, DHTNode>>>,
     k_bucket_size: usize,
 }
 
-impl DHT {
+impl Dht {
     pub fn new(node_id: String) -> Self {
         let mut hasher = sha1_smol::Sha1::new();
         hasher.update(node_id.as_bytes());
@@ -503,10 +503,7 @@ impl DHT {
         let mut nodes: Vec<_> = table.values().cloned().collect();
 
         // Sort by XOR distance to target
-        nodes.sort_by_key(|node| {
-            let distance = xor_distance(&node.id, target_id);
-            distance
-        });
+        nodes.sort_by_key(|node| xor_distance(&node.id, target_id));
 
         nodes.into_iter().take(count).collect()
     }

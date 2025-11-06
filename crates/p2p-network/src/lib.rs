@@ -55,7 +55,7 @@ use webrtc::{
 };
 
 use crate::auto_discovery::AutoDiscovery;
-use crate::discovery::{PeerDiscovery, DHT};
+use crate::discovery::{PeerDiscovery, Dht};
 use traits::{Hash, P2PNetworkLayer, UtxoBlock, UtxoTransaction};
 
 pub mod adaptive_network;
@@ -204,7 +204,7 @@ pub struct WebRTCP2PNetwork {
     /// Peer discovery service
     discovery: Option<Arc<PeerDiscovery>>,
     /// Distributed hash table for peer routing
-    dht: Arc<DHT>,
+    dht: Arc<Dht>,
     /// Auto discovery service
     auto_discovery: Arc<RwLock<AutoDiscovery>>,
 }
@@ -258,7 +258,7 @@ impl WebRTCP2PNetwork {
         );
 
         // Initialize DHT
-        let dht = Arc::new(DHT::new(config.node_id.clone()));
+        let dht = Arc::new(Dht::new(config.node_id.clone()));
 
         // Initialize auto discovery
         let auto_discovery = Arc::new(RwLock::new(AutoDiscovery::new(

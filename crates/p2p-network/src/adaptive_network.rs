@@ -192,7 +192,7 @@ impl WebRTCP2PNetwork {
         // Also try to broadcast to discovered peers that we might not be connected to
         let discovered_peers = self.get_discovered_peers().await;
 
-        if discovered_peers.len() > 0 {
+        if !discovered_peers.is_empty() {
             debug!(
                 "Adaptive broadcast: also considering {} discovered peers",
                 discovered_peers.len()
@@ -217,7 +217,7 @@ impl WebRTCP2PNetwork {
             discovered_peers_count: discovered_peers.len(),
             dht_nodes_count: dht_size,
             connected_peers_count: connected_peers.len(),
-            discovery_efficiency: if discovered_peers.len() > 0 {
+            discovery_efficiency: if !discovered_peers.is_empty() {
                 connected_peers.len() as f32 / discovered_peers.len() as f32
             } else {
                 0.0
