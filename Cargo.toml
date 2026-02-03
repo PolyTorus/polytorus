@@ -36,7 +36,7 @@ env_logger = "0.11"
 
 # WebRTC P2P networking
 webrtc = "0.11"
-bytes = "1.5"
+bytes = "1.11"
 
 # Only essential dependencies for modular layers
 sha2 = "0.10"
